@@ -1,0 +1,9 @@
+argparse
+cvxpylayers==0.1.6
+matplotlib
+numpy
+networkx
+scipy==1.11.4
+torch==2.2.0
+torchvision==0.17.0
+pyyaml
