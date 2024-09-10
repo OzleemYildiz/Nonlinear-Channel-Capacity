@@ -1,6 +1,7 @@
 import torch
-from utils import project_pdf, loss, capacity
+from utils import project_pdf, loss
 import numpy as np
+import copy
 
 
 def gd_capacity(max_x, alphabet_y, config, power):
@@ -32,21 +33,19 @@ def gd_capacity(max_x, alphabet_y, config, power):
             for i in range(config["max_iter"]):
                 # project back
                 optimizer.zero_grad()
-                h_y_negative = loss(
+                loss_it = loss(
                     pdf_x,
                     alphabet_y,
                     alphabet_x,
                     power,
                     config,
                 )
-                cap = capacity(
-                    h_y_negative, config, alphabet_x, pdf_x, power, alphabet_y
-                )
-                loss_it = cap * (-1)
+
                 loss_it.backward()
                 optimizer.step()
 
-                opt_capacity.append(cap.detach().numpy())
+                cap = loss_it.detach().clone()
+                opt_capacity.append(-cap.detach().numpy())
 
                 if i % 100 == 0:
                     print("Iter:", i, "Capacity:", opt_capacity[-1])

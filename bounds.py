@@ -1,5 +1,5 @@
 import numpy as np
-from utils import return_nonlinear_fn, return_derivative_of_nonlinear_fn
+from nonlinearity_utils import return_nonlinear_fn, return_derivative_of_nonlinear_fn
 from scipy.integrate import dblquad
 
 
@@ -25,7 +25,7 @@ def lower_bound_tarokh(config):
 def upper_bound_tarokh(power, config):
     nonlinear_func = return_nonlinear_fn(config)
     upper_bound = (
-        1 / 2 * np.log(1 + nonlinear_func(np.sqrt(power)) ** 2 / config["sigma"] ** 2)
+        1 / 2 * np.log(1 + nonlinear_func(np.sqrt(power)) ** 2 / config["sigma_2"] ** 2)
     )
     return upper_bound
 
@@ -37,8 +37,8 @@ def lower_bound_with_sdnr(power, config):
         * nonlinear_func(x + z)
         * (1 / np.sqrt(2 * np.pi * power))
         * np.exp(-0.5 * x**2 / power)
-        * (1 / (np.sqrt(2 * np.pi) * config["sigma"]))
-        * np.exp(-0.5 * z**2 / (config["sigma"] ** 2))
+        * (1 / (np.sqrt(2 * np.pi) * config["sigma_1"]))
+        * np.exp(-0.5 * z**2 / (config["sigma_1"] ** 2))
     )
     gamma = dblquad(fun1, -np.inf, np.inf, -np.inf, np.inf)[
         0
@@ -49,8 +49,8 @@ def lower_bound_with_sdnr(power, config):
         * nonlinear_func(x + z)
         * (1 / np.sqrt(2 * np.pi * power))
         * np.exp(-0.5 * x**2 / power)
-        * (1 / (np.sqrt(2 * np.pi) * config["sigma"]))
-        * np.exp(-0.5 * z**2 / (config["sigma"] ** 2))
+        * (1 / (np.sqrt(2 * np.pi) * config["sigma_1"]))
+        * np.exp(-0.5 * z**2 / (config["sigma_1"] ** 2))
     )
     sigma_y_2 = dblquad(fun2, -np.inf, np.inf, -np.inf, np.inf)[0]
 

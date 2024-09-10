@@ -4,10 +4,18 @@ import os
 import matplotlib.pyplot as plt
 from gaussian_capacity import gaussian_capacity, gaussian_with_l1_norm
 from gd import gd_capacity
-from utils import generate_alphabet_x_y, plot_snr, plot_pdf_snr, project_pdf
+from utils import (
+    generate_alphabet_x_y,
+    plot_snr,
+    plot_pdf_snr,
+    project_pdf,
+    return_regime_class,
+    regime_dependent_snr,
+)
 import numpy as np
 from bounds import bounds_l1_norm, upper_bound_tarokh, lower_bound_with_sdnr
 from scipy import io
+import time
 
 
 def main():
@@ -31,13 +39,8 @@ def main():
         config["cons_str"] = "First"
 
     print("**** AWGN Channel with Nonlinearity: ", config["nonlinearity"], "****")
+    snr_change, noise_power = regime_dependent_snr(config)
 
-    # Number of SNR points to be evaluated
-    snr_change = np.linspace(
-        10 * np.log10(config["min_power_cons"] / (config["sigma"] ** 2)),
-        10 * np.log10(config["max_power_cons"] / (config["sigma"] ** 2)),
-        config["n_snr"],
-    )
     capacity_gaussian = []
     capacity_learned = []
     capacity_ruth = []
@@ -49,13 +52,15 @@ def main():
     low_sdnr = []
 
     for snr in snr_change:
-        power = (10 ** (snr / 10)) * config["sigma"] ** 2
-        print("-------SNR in dB:", snr, "--------")
+        start = time.time()
 
-        calc_logsnr.append(np.log(1 + power / (config["sigma"] ** 2)) / 2)
+        print("-------SNR in dB:", snr, "--------")
+        power = (10 ** (snr / 10)) * noise_power
+        calc_logsnr.append(np.log(1 + power / (noise_power)) / 2)
         print("log(1+SNR)/2 :", calc_logsnr[-1])
 
         alphabet_x, alphabet_y, max_x, max_y = generate_alphabet_x_y(config, power)
+        regime_class = return_regime_class(config, alphabet_x, alphabet_y, power)
 
         if config["bound_active"]:
             if config["regime"] == 1:
@@ -65,7 +70,7 @@ def main():
                 low_sdnr.append(lower_bound_with_sdnr(power, config))
 
         # Gaussian Capacity
-        cap_g = gaussian_capacity(alphabet_x, alphabet_y, power, config)
+        cap_g = gaussian_capacity(regime_class)
         capacity_gaussian.append(cap_g)
 
         # If constraint type is 2, calculate gaussian with optimized snr  -- Ruth's paper
@@ -79,6 +84,11 @@ def main():
             capacity_learned.append(cap_learned)
             max_pdf_x = project_pdf(max_pdf_x, config["cons_type"], alphabet_x, power)
             map_snr_pdf[snr] = [max_pdf_x, max_alphabet_x]
+
+        del regime_class, alphabet_x, alphabet_y
+        end = time.time()
+        # print("Time taken for SNR: ", snr, " is ", end - start)
+
     res = {
         "Gaussian_Capacity": capacity_gaussian,
         "Capacity_without_Nonlinearity": calc_logsnr,

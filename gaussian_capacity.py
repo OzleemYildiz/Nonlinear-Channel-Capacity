@@ -1,29 +1,24 @@
-from utils import loss, capacity, capacity_from_samples, capacity_try
+from utils import loss
 import torch
 
 
-def gaussian_capacity(alphabet_x, alphabet_y, power, config):
+def gaussian_capacity(regime_class):
     # print("Gaussian Capacity Calculation")
     pdf_x = (
         1
-        / (torch.sqrt(torch.tensor([2 * torch.pi * power])))
-        * torch.exp(-0.5 * ((alphabet_x) ** 2) / power).float()
+        / (torch.sqrt(torch.tensor([2 * torch.pi * regime_class.power])))
+        * torch.exp(
+            -0.5 * ((regime_class.alphabet_x) ** 2) / regime_class.power
+        ).float()
     )
     pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
 
-    # loss_g = loss(
-    #     pdf_x,
-    #     alphabet_y,
-    #     alphabet_x,
-    #     power,
-    #     config,
-    # )
-    # # TODO: alphabet_x - make sure
-    # cap_g = capacity(loss_g, config, alphabet_x, pdf_x, power, alphabet_y)
+    loss_g = loss(
+        pdf_x,
+        regime_class,
+    )
 
-    # cap_g = capacity_from_samples(alphabet_x, pdf_x, config, power)
-
-    cap_g = capacity_try(alphabet_x, pdf_x, config, power)
+    cap_g = -loss_g
 
     print("Gaussian Capacity: ", cap_g)
     return cap_g
