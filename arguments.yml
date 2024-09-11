@@ -1,5 +1,5 @@
 min_power_cons : 1
-max_power_cons : 100
+max_power_cons : 50
 sigma_1 : 1
 sigma_2 : 1
 max_mass_points : 200
@@ -10,11 +10,12 @@ delta_y : 0.1
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment
 max_k_nochange : 10 # When to stop if the k change does not improve
 n_snr : 5 # number of SNRs
-nonlinearity : 4 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C2 (sgn(X)abs(X)^{0.9}), 3:nonlinear tanh(X), 4:nonlinear x4: x/(1 + x^4)^1/4
+nonlinearity : 3 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C2 (sgn(X)abs(X)^{0.9}), 3:nonlinear tanh(X), 4:nonlinear x4: x/(1 + x^4)^1/4
 output_dir : 'Results' # file name to save the results
 tanh_factor : 1 # k when the nonlinearity is tanh(x/k)
-regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(X+N)
+regime : 1 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : False
 bound_active: False 
+ba_active : False
 n_samples: 5000000

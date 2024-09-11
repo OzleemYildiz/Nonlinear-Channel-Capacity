@@ -11,32 +11,17 @@ from utils import (
     project_pdf,
     return_regime_class,
     regime_dependent_snr,
+    read_config
 )
 import numpy as np
 from bounds import bounds_l1_norm, upper_bound_tarokh, lower_bound_with_sdnr
 from scipy import io
 import time
+from blahut_arimoto_capacity import apply_blahut_arimoto
 
 
 def main():
-    # READ CONFIG FILE
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--config",
-        type=str,
-        default="arguments.yml",
-        help="Configure of post processing",
-    )
-    args = parser.parse_args()
-    config = yaml.load(open(args.config, "r"), Loader=yaml.Loader)
-    os.makedirs(config["output_dir"], exist_ok=True)
-    # Constraint type of the system
-    if config["cons_type"] == 1:
-        config["cons_str"] = "Avg"
-    elif config["cons_type"] == 0:
-        config["cons_str"] = "Peak"
-    else:
-        config["cons_str"] = "First"
+    config = read_config()
 
     print("**** AWGN Channel with Nonlinearity: ", config["nonlinearity"], "****")
     snr_change, noise_power = regime_dependent_snr(config)
@@ -44,7 +29,7 @@ def main():
     capacity_gaussian = []
     capacity_learned = []
     capacity_ruth = []
-
+    capacity_ba = []
     calc_logsnr = []
 
     map_snr_pdf = {}
@@ -85,6 +70,10 @@ def main():
             max_pdf_x = project_pdf(max_pdf_x, config["cons_type"], alphabet_x, power)
             map_snr_pdf[snr] = [max_pdf_x, max_alphabet_x]
 
+        if config["ba_active"]:
+            cap = apply_blahut_arimoto(regime_class)
+            capacity_ba.append(cap)
+
         del regime_class, alphabet_x, alphabet_y
         end = time.time()
         # print("Time taken for SNR: ", snr, " is ", end - start)
@@ -102,6 +91,8 @@ def main():
             res["Lower_Bound_with_SDNR"] = low_sdnr
     if config["cons_type"] == 2:
         res["Gaussian_Capacity_with_L1_Norm"] = capacity_ruth
+    if config["ba_active"]:
+        res["Blahut_Arimoto_Capacity"] = capacity_ba
 
     os.makedirs(
         config["output_dir"]

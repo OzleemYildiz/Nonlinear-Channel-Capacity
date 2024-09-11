@@ -77,3 +77,21 @@ class Second_Regime:
         # print(entropy_y, entropy_y_given_x)
         cap = entropy_y - entropy_y_given_x
         return cap
+
+    def capacity_like_ba(self, pdf_x):
+        pdf_y_given_x = self.calculate_pdf_u_given_x()
+        pdf_x_given_y = pdf_y_given_x * pdf_x
+        pdf_x_given_y = torch.transpose(pdf_x_given_y, 0, 1) / torch.sum(
+            pdf_x_given_y, axis=1
+        )
+        c = 0
+
+        for i in range(len(self.alphabet_x)):
+            if pdf_x[i] > 0:
+                c += torch.sum(
+                    pdf_x[i]
+                    * pdf_y_given_x[:, i]
+                    * torch.log(pdf_x_given_y[i, :] / pdf_x[i] + 1e-16)
+                )
+        c = c
+        return c

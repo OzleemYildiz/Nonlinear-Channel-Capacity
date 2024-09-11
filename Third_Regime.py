@@ -34,11 +34,12 @@ class Third_Regime:
         return entropy_y
 
     def calculate_pdf_y_given_x(self, pdf_x):
+        # f_y_given_x = f_x_and_y / f_x and f_x_and_y = sum over u (f_x_given_u * f_y_given_u* f_u)
         pdf_u = self.s_regime.calculate_pdf_u(pdf_x)
-        pdf_x_given_u = torch.transpose(self.pdf_u_given_x * pdf_x, 0, 1) / pdf_u
+        pdf_x_given_u = torch.transpose(self.pdf_u_given_x, 0, 1) / pdf_u
         pdf_x_and_y_given_u = pdf_x_given_u[:, None, :] * self.pdf_y_given_u[None, :, :]
         pdf_x_and_y = pdf_x_and_y_given_u @ pdf_u
-        pdf_y_given_x = torch.transpose(pdf_x_and_y, 0, 1) / pdf_x
+        pdf_y_given_x = torch.transpose(pdf_x_and_y, 0, 1)
         pdf_y_given_x = pdf_y_given_x / torch.sum(pdf_y_given_x, axis=0)
         return pdf_y_given_x
 
@@ -61,3 +62,21 @@ class Third_Regime:
         entropy_y_given_x = self.calculate_entropy_y_given_x(pdf_x, eps)
         cap = entropy_y - entropy_y_given_x
         return cap
+
+    def capacity_like_ba(self, pdf_x):
+        pdf_y_given_x = self.calculate_pdf_y_given_x(pdf_x)
+        pdf_x_given_y = pdf_y_given_x * pdf_x
+        pdf_x_given_y = torch.transpose(pdf_x_given_y, 0, 1) / torch.sum(
+            pdf_x_given_y, axis=1
+        )
+        c = 0
+
+        for i in range(len(self.alphabet_x)):
+            if pdf_x[i] > 0:
+                c += torch.sum(
+                    pdf_x[i]
+                    * pdf_y_given_x[:, i]
+                    * torch.log(pdf_x_given_y[i, :] / pdf_x[i] + 1e-16)
+                )
+        c = c
+        return c

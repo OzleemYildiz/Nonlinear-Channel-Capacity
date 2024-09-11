@@ -11,6 +11,8 @@ from nonlinearity_utils import return_nonlinear_fn, return_derivative_of_nonline
 from First_Regime import First_Regime
 from Second_Regime import Second_Regime
 from Third_Regime import Third_Regime
+import argparse
+import yaml
 
 
 def project_pdf(pdf_x, cons_type, alphabet_x, power):
@@ -29,11 +31,11 @@ def project_pdf(pdf_x, cons_type, alphabet_x, power):
     mu = cp.Parameter(m)
     if cons_type == 1:
         # average power is in theconstraint
-        constraints = [p_hat >= 0, cp.sum(p_hat) == 1, A @ p_hat <= mu]
+        constraints = [p_hat >= 1e-6, cp.sum(p_hat) == 1, A @ p_hat <= mu]
     elif cons_type == 0:  # peak power
-        constraints = [p_hat >= 0, cp.sum(p_hat) == 1]
+        constraints = [p_hat >= 1e-6, cp.sum(p_hat) == 1]
     else:
-        constraints = [p_hat >= 0, cp.sum(p_hat) == 1, A @ p_hat <= mu]
+        constraints = [p_hat >= 1e-6, cp.sum(p_hat) == 1, A @ p_hat <= mu]
 
     objective = cp.Minimize(cp.pnorm(p - p_hat, p=2))
     problem = cp.Problem(objective, constraints)
@@ -72,6 +74,9 @@ def loss(
         regime_class.power,
     )
     loss = -regime_class.capacity(pdf_x=pdf_x)
+    print("What we did", -loss)
+    cap = regime_class.capacity_like_ba(pdf_x)
+    print("What they did", cap)
     return loss
 
 
@@ -247,3 +252,25 @@ def regime_dependent_snr(config):
         config["n_snr"],
     )
     return snr_change, noise_power
+
+
+def read_config():
+    # READ CONFIG FILE
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="arguments.yml",
+        help="Configure of post processing",
+    )
+    args = parser.parse_args()
+    config = yaml.load(open(args.config, "r"), Loader=yaml.Loader)
+    os.makedirs(config["output_dir"], exist_ok=True)
+    # Constraint type of the system
+    if config["cons_type"] == 1:
+        config["cons_str"] = "Avg"
+    elif config["cons_type"] == 0:
+        config["cons_str"] = "Peak"
+    else:
+        config["cons_str"] = "First"
+    return config

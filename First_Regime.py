@@ -11,7 +11,7 @@ class First_Regime:
         self.alphabet_v = self.nonlinear_func(alphabet_x)  # V = phi(X+Z_1) when Z_1 = 0
         self.alphabet_y = alphabet_y  # Y = V + Z_2
         self.config = config
-        self.pdf_y_given_u = self.calculate_pdf_y_given_v()
+        self.pdf_y_given_v = self.calculate_pdf_y_given_v()
         self.power = power
         self.entropy_y_given_x = self.calculate_entropy_y_given_x()
 
@@ -19,7 +19,7 @@ class First_Regime:
         self.alphabet_v = alphabet_v
 
     def calculate_pdf_y_given_v(self):
-        cond_yu = (
+        pdf_y_given_v = (
             1
             / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_2"])
             * torch.exp(
@@ -31,7 +31,8 @@ class First_Regime:
                 / self.config["sigma_2"] ** 2
             )
         )
-        return cond_yu
+        pdf_y_given_v = pdf_y_given_v / torch.sum(pdf_y_given_v, axis=0)
+        return pdf_y_given_v
 
     def calculate_entropy_y(self, pdf_x, eps=1e-20):
 
@@ -40,7 +41,7 @@ class First_Regime:
             raise ValueError("Alphabet_x is empty")
 
         # pdf_x = pdf_u since one-one function
-        pdf_y = (self.pdf_y_given_u @ pdf_x) / torch.sum(self.pdf_y_given_u @ pdf_x)
+        pdf_y = (self.pdf_y_given_v @ pdf_x) / torch.sum(self.pdf_y_given_v @ pdf_x)
         entropy_y = torch.sum(-pdf_y * torch.log(pdf_y + eps)) + torch.log(
             torch.tensor([self.config["delta_y"]])
         )
@@ -60,3 +61,21 @@ class First_Regime:
         entropy_y = self.calculate_entropy_y(pdf_x)
         cap = entropy_y - self.entropy_y_given_x
         return cap
+
+    def capacity_like_ba(self, pdf_x):
+        pdf_y_given_x = self.calculate_pdf_y_given_v()
+        pdf_x_given_y = pdf_y_given_x * pdf_x
+        pdf_x_given_y = torch.transpose(pdf_x_given_y, 0, 1) / torch.sum(
+            pdf_x_given_y, axis=1
+        )
+        c = 0
+
+        for i in range(len(self.alphabet_x)):
+            if pdf_x[i] > 0:
+                c += torch.sum(
+                    pdf_x[i]
+                    * pdf_y_given_x[:, i]
+                    * torch.log(pdf_x_given_y[i, :] / pdf_x[i] + 1e-16)
+                )
+        c = c
+        return c
