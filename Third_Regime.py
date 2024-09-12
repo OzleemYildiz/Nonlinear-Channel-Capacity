@@ -11,13 +11,27 @@ class Third_Regime:
         self.config = config
         self.power = power
         self.nonlinear_fn = return_nonlinear_fn(self.config)
+        self.alphabet_y = alphabet_y
 
         self.s_regime = Second_Regime(alphabet_x, config, power)
         self.alphabet_v = self.nonlinear_fn(self.s_regime.alphabet_u)
-        self.delta_v = self.s_regime.calculate_delta_y()
         self.pdf_u_given_x = self.s_regime.calculate_pdf_u_given_x()
 
         self.f_regime = First_Regime(alphabet_x, alphabet_y, config, power)
+        self.f_regime.set_alphabet_v(
+            self.alphabet_v
+        )  # since Z_1 is not 0, we define new U and V
+        self.pdf_y_given_v = self.f_regime.calculate_pdf_y_given_v()
+        self.pdf_y_given_u = self.pdf_y_given_v
+
+    def set_alphabet_x(self, alphabet_x):
+        self.alphabet_x = alphabet_x
+        self.s_regime = Second_Regime(alphabet_x, self.config, self.power)
+        self.alphabet_v = self.nonlinear_fn(self.s_regime.alphabet_u)
+        self.pdf_u_given_x = self.s_regime.calculate_pdf_u_given_x()
+        self.f_regime = First_Regime(
+            alphabet_x, self.alphabet_y, self.config, self.power
+        )
         self.f_regime.set_alphabet_v(
             self.alphabet_v
         )  # since Z_1 is not 0, we define new U and V

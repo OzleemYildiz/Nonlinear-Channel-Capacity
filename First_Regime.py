@@ -15,6 +15,11 @@ class First_Regime:
         self.power = power
         self.entropy_y_given_x = self.calculate_entropy_y_given_x()
 
+    def set_alphabet_x(self, alphabet_x):
+        self.alphabet_x = alphabet_x
+        self.alphabet_v = self.nonlinear_func(alphabet_x)
+        self.pdf_y_given_v = self.calculate_pdf_y_given_v()
+
     def set_alphabet_v(self, alphabet_v):
         self.alphabet_v = alphabet_v
 
@@ -63,7 +68,7 @@ class First_Regime:
         return cap
 
     def capacity_like_ba(self, pdf_x):
-        pdf_y_given_x = self.calculate_pdf_y_given_v()
+        pdf_y_given_x = self.pdf_y_given_v
         pdf_x_given_y = pdf_y_given_x * pdf_x
         pdf_x_given_y = torch.transpose(pdf_x_given_y, 0, 1) / torch.sum(
             pdf_x_given_y, axis=1

@@ -16,7 +16,6 @@ import yaml
 
 
 def project_pdf(pdf_x, cons_type, alphabet_x, power):
-    # breakpoint()
     # pdf cannot be negative
     # pdf_x = torch.relu(pdf_x)
     # sum of pdf is 1
@@ -24,7 +23,7 @@ def project_pdf(pdf_x, cons_type, alphabet_x, power):
     # average power constraint
     n, m = len(alphabet_x), 1
     if n == 0:
-        breakpoint()
+        raise ValueError("Alphabet_x is empty")
     p_hat = cp.Variable(n)
     p = cp.Parameter(n)
     A = cp.Parameter((m, n))
@@ -73,10 +72,29 @@ def loss(
         regime_class.alphabet_x,
         regime_class.power,
     )
-    loss = -regime_class.capacity(pdf_x=pdf_x)
-    print("What we did", -loss)
+    # loss = -regime_class.capacity(pdf_x=pdf_x)
+    # print("What we did", -loss)
+
+    # Make sure that projection is working
+    assert pdf_x is not None, "pdf_x is None"
+    assert (
+        torch.abs(torch.sum(pdf_x) - 1) <= 1e-5
+    ), "pdf_x is not normalized the sum is " + str(torch.sum(pdf_x).detach().numpy())
+    if torch.sum(pdf_x < 0) == 0:
+        # , "pdf_x has negative values " + str(
+        # pdf_x[np.where((pdf_x < 0))].detach().numpy())
+        for ind, i in enumerate(pdf_x[np.where((pdf_x < 0))]):
+            if pdf_x[ind] <= 1e-5:
+                pdf_x[ind] = abs(pdf_x[ind])
+            else:
+                raise ValueError(
+                    "pdf_x has negative values "
+                    + str(pdf_x[np.where((pdf_x < 0))].detach().numpy())
+                )
+
     cap = regime_class.capacity_like_ba(pdf_x)
-    print("What they did", cap)
+    # print("What they did", cap)
+    loss = -cap
     return loss
 
 
@@ -118,6 +136,7 @@ def plot_snr(
     snr_range,
     res,
     config,
+    save_location=None,
 ):
 
     plt.figure(figsize=(5, 4))
@@ -128,48 +147,61 @@ def plot_snr(
     plt.legend(leg_str)
     plt.xlabel("SNR (dB)")
     plt.ylabel("Capacity")
-    plt.savefig(
-        config["output_dir"]
-        + "/"
-        + config["cons_str"]
-        + "_nonlinearity="
-        + str(config["nonlinearity"])
-        + "_regime="
-        + str(config["regime"])
-        + "_gd_"
-        + str(config["gd_active"])
-        + "/Comp"
-        + ".png"
-    )
+    plt.grid()
+    if save_location == None:
+        plt.savefig(
+            config["output_dir"]
+            + "/"
+            + config["cons_str"]
+            + "_nonlinearity="
+            + str(config["nonlinearity"])
+            + "_regime="
+            + str(config["regime"])
+            + "_gd_"
+            + str(config["gd_active"])
+            + "/Comp"
+            + ".png"
+        )
+    else:
+        plt.savefig(save_location + "/Comp" + ".png")
     plt.close()
 
 
-def plot_pdf_snr(map_snr_pdf, snr_range, config):
-    breakpoint()
+def plot_pdf_snr(map_snr_pdf, snr_range, config, save_location=None):
+
     plt.figure(figsize=(5, 4))
     for snr in snr_range:
-        pdf_x, alphabet_x = map_snr_pdf[snr]
-        act_pdf_x = pdf_x.detach().numpy() > 0
-        act_alp = alphabet_x.detach().numpy()[act_pdf_x]
+        pdf_x, alphabet_x = map_snr_pdf[str(snr)]
+        if not isinstance(pdf_x, np.ndarray):
+            pdf_x = pdf_x.detach().numpy()
+        if not isinstance(alphabet_x, np.ndarray):
+            alphabet_x = alphabet_x.detach().numpy()
+
+        act_pdf_x = pdf_x > 0
+        act_alp = alphabet_x[act_pdf_x]
         plt.scatter(
             snr * np.ones_like(act_alp),
             act_alp,
-            s=pdf_x.detach().numpy()[act_pdf_x] * 100,
+            s=pdf_x[act_pdf_x] * 100,
         )
     plt.xlabel("SNR (dB)")
     plt.ylabel("X")
-    plt.savefig(
-        config["output_dir"]
-        + "/"
-        + config["cons_str"]
-        + "_nonlinearity="
-        + str(config["nonlinearity"])
-        + "_regime="
-        + str(config["regime"])
-        + "_gd_"
-        + str(config["gd_active"])
-        + "/pdf_snr.png"
-    )
+    plt.grid()
+    if save_location == None:
+        plt.savefig(
+            config["output_dir"]
+            + "/"
+            + config["cons_str"]
+            + "_nonlinearity="
+            + str(config["nonlinearity"])
+            + "_regime="
+            + str(config["regime"])
+            + "_gd_"
+            + str(config["gd_active"])
+            + "/pdf_snr.png"
+        )
+    else:
+        plt.savefig(save_location + "/pdf_snr.png")
     plt.close()
 
 
@@ -191,28 +223,20 @@ def generate_alphabet_x_y(config, power):
         first_moment = power  # E[|X|] < P
         max_x = config["stop_sd"] * first_moment
 
-    # phi(X)+ N
+    # Note that all nonlinearity functions are one-one functions and non-decreasing
+    # # phi(X)+ Z_2
     if config["regime"] == 1:
         # 0:linear
         max_y = nonlinear_func(max_x) + config["sigma_2"] * config["stop_sd"]
-
-    elif config["regime"] == 2:  # phi(X+N)
-        # NOTE!!: We will only use 0,3 and 4 nonlinearity for now -- 1 and 2 are not supported
-        if config["nonlinearity"] == 0:  # linear
-            max_y = max_x + config["sigma_1"] * config["stop_sd"]
-        elif config["nonlinearity"] == 3:
-            max_y = 1  # since tanh is defined between -1 and 1
-        elif config["nonlinearity"] == 4:
-            max_y = 1  # since x/(1+x^4)^1/4 is defined between -1 and 1
+    # phi(X+Z_1)
+    elif config["regime"] == 2:
+        max_y = nonlinear_func(max_x + config["sigma_1"] * config["stop_sd"])
+    # phi(X+Z_1)+Z_2
     elif config["regime"] == 3:
-        if config["nonlinearity"] == 0:
-            max_y = (
-                max_x
-                + np.sqrt(config["sigma_1"] ** 2 + config["sigma_2"] ** 2)
-                * config["stop_sd"]
-            )
-        if config["nonlinearity"] == 3 or config["nonlinearity"] == 4:
-            max_y = 1 + config["sigma_2"] * config["stop_sd"]
+        max_y = (
+            nonlinear_func(max_x + config["sigma_1"] * config["stop_sd"])
+            + config["sigma_2"] * config["stop_sd"]
+        )
 
     sample_num = math.ceil(2 * max_y / config["delta_y"]) + 1
     alphabet_y = torch.linspace(-max_y, max_y, sample_num)

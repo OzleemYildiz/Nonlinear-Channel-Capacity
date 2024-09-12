@@ -14,10 +14,13 @@ from utils import (
     generate_alphabet_x_y,
     return_regime_class,
     regime_dependent_snr,
+    plot_pdf_snr,
+    plot_snr,
 )
 import torch
 import matplotlib.pyplot as plt
 import os
+from scipy import io
 
 
 # constraints are probability sums to 1 and non-negative
@@ -94,8 +97,9 @@ def return_pdf_y_x_for_ba(config, regime_class):
     return pdf_y_given_x
 
 
-def apply_blahut_arimoto(regime_class):
+def apply_blahut_arimoto(regime_class, config):
     # Only Peak Power Constraint works
+    print("---------Blahut-Arimoto Capacity---------")
     pdf_y_given_x = return_pdf_y_x_for_ba(config, regime_class)
 
     capacity, input_dist = blahut_arimoto(
@@ -105,13 +109,14 @@ def apply_blahut_arimoto(regime_class):
         average_power=False,
     )
 
+    print("Blahut Arimoto Capacity: ", capacity)
     return capacity
 
 
 def main():
 
     # Average Power Constraint - Sweep over lambda_2
-    lambda_2 = np.linspace(0.000004, 0.02, 10)
+    lambda_2 = np.linspace(0.005, 0.15, 30)
     config = read_config()
     power = config["max_power_cons"]
 
@@ -124,6 +129,8 @@ def main():
     power = []
     capacity = []
     log_snr = []
+    snr_range = []
+    map_snr_pdf = {}
     for l in lambda_2:
         print("-----------------Lambda_2: ", l, "--------------------")
         cap, input_dist = blahut_arimoto(
@@ -132,20 +139,16 @@ def main():
 
         p = np.sum(input_dist * alphabet_x.numpy() ** 2)
         log_snr.append(np.log(1 + p / (noise_power)) / 2)
+        snr = 10 * np.log10(p / (noise_power))
+        snr_range.append(snr)
 
-        print("Power: ", p)
+        map_snr_pdf[str(snr)] = [input_dist, alphabet_x.numpy()]
+
+        print("SNR: ", snr)
         print("Capacity: ", cap)
         print("Log SNR: ", log_snr[-1])
         power.append(p)
         capacity.append(cap)
-
-    plt.plot(power, capacity)
-    plt.plot(power, log_snr)
-    plt.xlabel("Power")
-    plt.ylabel("Capacity")
-    plt.grid()
-    plt.legend(["Capacity", "Log SNR"])
-    # save figure
 
     file_name = (
         "blahut_arimoto/"
@@ -157,9 +160,7 @@ def main():
         + "_"
         + "nonlinearity="
         + str(config["nonlinearity"])
-        + "/"
     )
-
     try:
         os.mkdir("blahut_arimoto")
     except FileExistsError:
@@ -170,7 +171,14 @@ def main():
     except FileExistsError:
         pass
 
-    plt.savefig(file_name + "power_capacity.png")
+    res = {"BA Capacity": capacity, "Log SNR": log_snr}
+    plot_pdf_snr(map_snr_pdf, snr_range, config, save_location=file_name)
+
+    plot_snr(snr_range, res, config, save_location=file_name)
+
+    res["snr_range"] = snr_range
+    io.savemat(file_name + "/results.mat", res)
+    io.savemat(file_name + "/pdf_snr.mat", map_snr_pdf)
 
 
 if __name__ == "__main__":

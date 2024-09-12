@@ -11,7 +11,7 @@ from utils import (
     project_pdf,
     return_regime_class,
     regime_dependent_snr,
-    read_config
+    read_config,
 )
 import numpy as np
 from bounds import bounds_l1_norm, upper_bound_tarokh, lower_bound_with_sdnr
@@ -65,13 +65,18 @@ def main():
 
         # Gradient Descent
         if config["gd_active"]:
-            cap_learned, max_pdf_x = gd_capacity(max_x, alphabet_y, config, power)
-            capacity_learned.append(cap_learned)
-            max_pdf_x = project_pdf(max_pdf_x, config["cons_type"], alphabet_x, power)
-            map_snr_pdf[snr] = [max_pdf_x, max_alphabet_x]
+            cap_learned, max_pdf_x, max_alphabet_x = gd_capacity(
+                max_x, config, power, regime_class
+            )
 
-        if config["ba_active"]:
-            cap = apply_blahut_arimoto(regime_class)
+            capacity_learned.append(cap_learned)
+            max_pdf_x = project_pdf(
+                max_pdf_x, config["cons_type"], max_alphabet_x, power
+            )
+            map_snr_pdf[str(snr)] = [max_pdf_x, max_alphabet_x]
+
+        if config["ba_active"] and config["cons_type"] == 0:
+            cap = apply_blahut_arimoto(regime_class, config)
             capacity_ba.append(cap)
 
         del regime_class, alphabet_x, alphabet_y
@@ -91,7 +96,7 @@ def main():
             res["Lower_Bound_with_SDNR"] = low_sdnr
     if config["cons_type"] == 2:
         res["Gaussian_Capacity_with_L1_Norm"] = capacity_ruth
-    if config["ba_active"]:
+    if config["ba_active"] and config["cons_type"] == 0:
         res["Blahut_Arimoto_Capacity"] = capacity_ba
 
     os.makedirs(
@@ -134,8 +139,9 @@ def main():
             + "_gd_"
             + str(config["gd_active"])
             + "/pdf.mat",
-            {"map_snr_pdf": map_snr_pdf},
+            map_snr_pdf,
         )
+        plot_pdf_snr(map_snr_pdf, snr_change, config, save_location=file_name)
 
 
 if __name__ == "__main__":

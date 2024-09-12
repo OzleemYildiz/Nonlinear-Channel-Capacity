@@ -4,8 +4,8 @@ import numpy as np
 import copy
 
 
-def gd_capacity(max_x, alphabet_y, config, power):
-    print("GD Capacity Calculation")
+def gd_capacity(max_x, config, power, regime_class):
+    print("------GD Capacity Calculation--------")
     max_capacity = 0
     max_dict = {}
     max_opt_capacity = torch.tensor([])
@@ -15,11 +15,13 @@ def gd_capacity(max_x, alphabet_y, config, power):
 
     for i in range(config["max_mass_points"]):
         for lr in config["lr"]:
-            mass_points = i + 100
+            mass_points = i + 200
 
             print("Number of Mass Points:", mass_points)
 
             alphabet_x = torch.linspace(-max_x, max_x, mass_points)
+            regime_class.set_alphabet_x(alphabet_x)
+
             pdf_x = (
                 torch.ones_like(alphabet_x) * 1 / mass_points
             )  # (uniform distribution)
@@ -33,13 +35,8 @@ def gd_capacity(max_x, alphabet_y, config, power):
             for i in range(config["max_iter"]):
                 # project back
                 optimizer.zero_grad()
-                loss_it = loss(
-                    pdf_x,
-                    alphabet_y,
-                    alphabet_x,
-                    power,
-                    config,
-                )
+
+                loss_it = loss(pdf_x, regime_class)
 
                 loss_it.backward()
                 optimizer.step()
@@ -81,4 +78,4 @@ def gd_capacity(max_x, alphabet_y, config, power):
 
     max_pdf_x = project_pdf(max_pdf_x, config["cons_type"], max_alphabet_x, power)
 
-    return max_capacity, max_pdf_x
+    return max_capacity, max_pdf_x, max_alphabet_x

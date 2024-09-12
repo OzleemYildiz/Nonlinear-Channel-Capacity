@@ -14,6 +14,11 @@ class Second_Regime:
         self.power = power
         self.nonlinear_fn = return_nonlinear_fn(self.config)
 
+    def set_alphabet_x(self, alphabet_x):
+        self.alphabet_x = alphabet_x
+        self.alphabet_u = self.calculate_u_points()
+        self.pdf_u_given_x = self.calculate_pdf_u_given_x()
+
     def calculate_u_points(self):
         max_u = max(self.alphabet_x) + self.config["sigma_1"] * self.config["stop_sd"]
         sample_num = math.ceil(2 * (max_u) / self.config["delta_y"]) + 1
@@ -79,7 +84,7 @@ class Second_Regime:
         return cap
 
     def capacity_like_ba(self, pdf_x):
-        pdf_y_given_x = self.calculate_pdf_u_given_x()
+        pdf_y_given_x = self.pdf_u_given_x
         pdf_x_given_y = pdf_y_given_x * pdf_x
         pdf_x_given_y = torch.transpose(pdf_x_given_y, 0, 1) / torch.sum(
             pdf_x_given_y, axis=1
