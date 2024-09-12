@@ -167,7 +167,9 @@ def plot_snr(
     plt.close()
 
 
-def plot_pdf_snr(map_snr_pdf, snr_range, config, save_location=None):
+def plot_pdf_snr(map_snr_pdf, snr_range, config, save_location=None, file_name=None):
+    if file_name is None:
+        file_name = "pdf_snr.png"
 
     plt.figure(figsize=(5, 4))
     for snr in snr_range:
@@ -198,10 +200,11 @@ def plot_pdf_snr(map_snr_pdf, snr_range, config, save_location=None):
             + str(config["regime"])
             + "_gd_"
             + str(config["gd_active"])
-            + "/pdf_snr.png"
+            + "/"
+            + file_name
         )
     else:
-        plt.savefig(save_location + "/pdf_snr.png")
+        plt.savefig(save_location + "/" + file_name)
     plt.close()
 
 

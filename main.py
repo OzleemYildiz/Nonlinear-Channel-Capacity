@@ -33,6 +33,7 @@ def main():
     calc_logsnr = []
 
     map_snr_pdf = {}
+    map_snr_pdf_ba = {}
     up_tarokh = []
     low_sdnr = []
 
@@ -73,11 +74,15 @@ def main():
             max_pdf_x = project_pdf(
                 max_pdf_x, config["cons_type"], max_alphabet_x, power
             )
-            map_snr_pdf[str(snr)] = [max_pdf_x, max_alphabet_x]
+            map_snr_pdf[str(snr)] = [
+                max_pdf_x.detach().numpy(),
+                max_alphabet_x.detach().numpy(),
+            ]
 
         if config["ba_active"] and config["cons_type"] == 0:
-            cap = apply_blahut_arimoto(regime_class, config)
+            cap, input_dist = apply_blahut_arimoto(regime_class, config)
             capacity_ba.append(cap)
+            map_snr_pdf_ba[str(snr)] = [input_dist, regime_class.alphabet_x.numpy()]
 
         del regime_class, alphabet_x, alphabet_y
         end = time.time()
@@ -127,21 +132,23 @@ def main():
     )
     plot_snr(snr_change, res, config)
     if config["gd_active"]:
-        plot_pdf_snr(map_snr_pdf, snr_change, config)
-        io.savemat(
-            config["output_dir"]
-            + "/"
-            + config["cons_str"]
-            + "_nonlinearity="
-            + str(config["nonlinearity"])
-            + "_regime="
-            + str(config["regime"])
-            + "_gd_"
-            + str(config["gd_active"])
-            + "/pdf.mat",
-            map_snr_pdf,
-        )
-        plot_pdf_snr(map_snr_pdf, snr_change, config, save_location=file_name)
+        plot_pdf_snr(map_snr_pdf, snr_change, config, file_name="pdf_snr_gd.png")
+        # io.savemat(
+        #     config["output_dir"]
+        #     + "/"
+        #     + config["cons_str"]
+        #     + "_nonlinearity="
+        #     + str(config["nonlinearity"])
+        #     + "_regime="
+        #     + str(config["regime"])
+        #     + "_gd_"
+        #     + str(config["gd_active"])
+        #     + "/pdf.mat",
+        #     map_snr_pdf,
+        # )
+        # plot_pdf_snr(map_snr_pdf, snr_change, config, save_location=file_name)
+    if config["ba_active"] and config["cons_type"] == 0:
+        plot_pdf_snr(map_snr_pdf_ba, snr_change, config, file_name="pdf_snr_ba.png")
 
 
 if __name__ == "__main__":

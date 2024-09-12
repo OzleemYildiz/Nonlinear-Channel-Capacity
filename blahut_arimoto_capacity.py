@@ -110,7 +110,7 @@ def apply_blahut_arimoto(regime_class, config):
     )
 
     print("Blahut Arimoto Capacity: ", capacity)
-    return capacity
+    return capacity, input_dist
 
 
 def main():
