@@ -38,11 +38,12 @@ class Second_Regime:
                 / self.config["sigma_1"] ** 2
             )
         )
-        pdf_u_given_x = pdf_u_given_x / torch.sum(pdf_u_given_x, axis=0)
+        pdf_u_given_x = pdf_u_given_x / (torch.sum(pdf_u_given_x, axis=0))
         return pdf_u_given_x
 
     def calculate_pdf_u(self, pdf_x):
-        pdf_u = (self.pdf_u_given_x @ pdf_x) / torch.sum(self.pdf_u_given_x @ pdf_x)
+        # breakpoint()
+        pdf_u = (self.pdf_u_given_x @ pdf_x) / (torch.sum(self.pdf_u_given_x @ pdf_x))
         return pdf_u
 
     def calculate_delta_y(self, eps=1e-20):
@@ -84,6 +85,7 @@ class Second_Regime:
         return cap
 
     def capacity_like_ba(self, pdf_x):
+        # breakpoint()
         pdf_y_given_x = self.pdf_u_given_x
         pdf_x_given_y = pdf_y_given_x * pdf_x
         pdf_x_given_y = torch.transpose(pdf_x_given_y, 0, 1) / torch.sum(

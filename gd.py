@@ -2,6 +2,7 @@ import torch
 from utils import project_pdf, loss
 import numpy as np
 import copy
+from blahut_arimoto_capacity import apply_blahut_arimoto
 
 
 def gd_capacity(max_x, config, power, regime_class):
@@ -22,9 +23,14 @@ def gd_capacity(max_x, config, power, regime_class):
             alphabet_x = torch.linspace(-max_x, max_x, mass_points)
             regime_class.set_alphabet_x(alphabet_x)
 
-            pdf_x = (
-                torch.ones_like(alphabet_x) * 1 / mass_points
-            )  # (uniform distribution)
+            if config["cons_type"] == 0 and config["gd_initial_ba"]:
+                _, pdf_x = apply_blahut_arimoto(regime_class, config)
+                # breakpoint()
+                pdf_x = torch.tensor(pdf_x).float()
+            else:  # uniform distribution if no initial distribution
+                pdf_x = (
+                    torch.ones_like(alphabet_x) * 1 / mass_points
+                )  # (uniform distribution)
 
             pdf_x.requires_grad = True
 

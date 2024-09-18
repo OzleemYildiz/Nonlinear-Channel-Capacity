@@ -93,6 +93,7 @@ def loss(
                 )
 
     cap = regime_class.capacity_like_ba(pdf_x)
+    # cap = regime_class.capacity(pdf_x)
     # print("What they did", cap)
     loss = -cap
     return loss
@@ -137,6 +138,7 @@ def plot_snr(
     res,
     config,
     save_location=None,
+    low_tarokh=None,
 ):
 
     plt.figure(figsize=(5, 4))
@@ -144,6 +146,11 @@ def plot_snr(
     for keys in res.keys():
         plt.plot(snr_range, res[keys])
         leg_str.append(keys)
+
+    if low_tarokh is not None and config["regime"] == 1:
+        plt.plot(low_tarokh["SNR:"], low_tarokh["Lower_Bound"], "--")
+        leg_str.append("Lower Bound Tarokh")
+
     plt.legend(leg_str)
     plt.xlabel("SNR (dB)")
     plt.ylabel("Capacity")

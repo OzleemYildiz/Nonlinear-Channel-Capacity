@@ -36,7 +36,8 @@ class First_Regime:
                 / self.config["sigma_2"] ** 2
             )
         )
-        pdf_y_given_v = pdf_y_given_v / torch.sum(pdf_y_given_v, axis=0)
+        pdf_y_given_v = pdf_y_given_v / (torch.sum(pdf_y_given_v, axis=0) )
+
         return pdf_y_given_v
 
     def calculate_entropy_y(self, pdf_x, eps=1e-20):
@@ -68,6 +69,7 @@ class First_Regime:
         return cap
 
     def capacity_like_ba(self, pdf_x):
+        # breakpoint()
         pdf_y_given_x = self.pdf_y_given_v
         pdf_x_given_y = pdf_y_given_x * pdf_x
         pdf_x_given_y = torch.transpose(pdf_x_given_y, 0, 1) / torch.sum(

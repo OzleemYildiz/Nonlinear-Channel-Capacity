@@ -99,7 +99,7 @@ def return_pdf_y_x_for_ba(config, regime_class):
 
 def apply_blahut_arimoto(regime_class, config):
     # Only Peak Power Constraint works
-    print("---------Blahut-Arimoto Capacity---------")
+    print("...Blahut-Arimoto Capacity...")
     pdf_y_given_x = return_pdf_y_x_for_ba(config, regime_class)
 
     capacity, input_dist = blahut_arimoto(

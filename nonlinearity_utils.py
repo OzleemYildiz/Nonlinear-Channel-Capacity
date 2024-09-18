@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 
 # It is one-one function so pdf stays the alphabet changes
@@ -38,19 +39,43 @@ def return_nonlinear_fn(config):
 
 
 def return_derivative_of_nonlinear_fn(config):
+    # This function is numpy
+
     # 0:linear
     if config["nonlinearity"] == 0:
-        nonlinear_fn = lambda x: torch.tensor(1)
+        nonlinear_fn = lambda x: np.tensor(1)
     # 3:nonlinear tanh(X)
     elif config["nonlinearity"] == 3:
         nonlinear_fn = (
-            lambda x: (1 / torch.cosh(torch.tensor(x / config["tanh_factor"]))) ** 2
+            lambda x: (1 / np.cosh(x / config["tanh_factor"])) ** 2
             / config["tanh_factor"]
         )
     # 4:nonlinear x4: x/(1 + x^4)^1/4
     elif config["nonlinearity"] == 4:
-        nonlinear_fn = lambda x: torch.tensor(1 / (1 + x**4) ** (5 / 4))
+        nonlinear_fn = lambda x: 1 / (1 + x**4) ** (5 / 4)
     else:
         raise ValueError("Derivative is not supported")
+
+    return nonlinear_fn
+
+
+def return_nonlinear_fn_numpy(config):
+    # 0:linear
+    if config["nonlinearity"] == 0:
+        nonlinear_fn = lambda x: x
+    #  1:nonlinear C1 (sgn(X)sqrt(abs(X)))
+    elif config["nonlinearity"] == 1:
+        nonlinear_fn = lambda x: np.sign(x) * np.sqrt(np.abs(x))
+    # 2: nonlinear C2 (sgn(X)abs(X)^{0.9})
+    elif config["nonlinearity"] == 2:
+        nonlinear_fn = lambda x: np.sign(x) * np.abs(x) ** 0.9
+    # 3:nonlinear tanh(X)
+    elif config["nonlinearity"] == 3:
+        nonlinear_fn = lambda x: np.tanh(x / config["tanh_factor"])
+    # 4:nonlinear x4: x/(1 + x^4)^1/4
+    elif config["nonlinearity"] == 4:
+        nonlinear_fn = lambda x: x / ((1 + x**4) ** (1 / 4))
+    else:
+        raise ValueError("Nonlinearity not defined")
 
     return nonlinear_fn

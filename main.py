@@ -14,7 +14,13 @@ from utils import (
     read_config,
 )
 import numpy as np
-from bounds import bounds_l1_norm, upper_bound_tarokh, lower_bound_with_sdnr
+from bounds import (
+    bounds_l1_norm,
+    upper_bound_tarokh,
+    lower_bound_with_sdnr,
+    lower_bound_tarokh,
+    lower_bound_tarokh_third_regime,
+)
 from scipy import io
 import time
 from blahut_arimoto_capacity import apply_blahut_arimoto
@@ -36,7 +42,7 @@ def main():
     map_snr_pdf_ba = {}
     up_tarokh = []
     low_sdnr = []
-
+    low_tarokh = []
     for snr in snr_change:
         start = time.time()
 
@@ -49,11 +55,13 @@ def main():
         regime_class = return_regime_class(config, alphabet_x, alphabet_y, power)
 
         if config["bound_active"]:
-            if config["regime"] == 1:
+            if config["regime"] == 1 and config["cons_type"] == 1:
                 up_tarokh.append(upper_bound_tarokh(power, config))
             if config["regime"] == 2:
                 # up_tarokh.append((calc_logsnr[-1]))
                 low_sdnr.append(lower_bound_with_sdnr(power, config))
+            if config["regime"] == 3:
+                low_tarokh.append(lower_bound_tarokh_third_regime(power, config))
 
         # Gaussian Capacity
         cap_g = gaussian_capacity(regime_class)
@@ -88,6 +96,23 @@ def main():
         end = time.time()
         # print("Time taken for SNR: ", snr, " is ", end - start)
 
+    if config["bound_active"] and config["regime"] == 1:
+        low_tarokh, snr_tarokh = lower_bound_tarokh(config)
+        # max handle
+        if max(snr_change) > np.max(snr_tarokh[:-1]):
+            snr_tarokh[-1] = max(snr_change)
+            if min(snr_change) > np.max(snr_tarokh[:-1]):
+                snr_tarokh = [min(snr_change), snr_tarokh[-1]]
+                low_tarokh = [low_tarokh[-1], low_tarokh[-1]]
+        else:
+            snr_tarokh = snr_tarokh[:-1]
+            low_tarokh = low_tarokh[:-1]
+
+        ind = np.where(np.array(snr_tarokh) >= min(snr_change))
+        low_tarokh = np.array(low_tarokh)[ind]
+        snr_tarokh = np.array(snr_tarokh)[ind]
+        low_tarokh = {"SNR:": snr_tarokh, "Lower_Bound": low_tarokh}
+
     res = {
         "Gaussian_Capacity": capacity_gaussian,
         "Capacity_without_Nonlinearity": calc_logsnr,
@@ -99,12 +124,14 @@ def main():
             res["Upper_Bound_by_Tarokh"] = up_tarokh
         if config["regime"] == 2:
             res["Lower_Bound_with_SDNR"] = low_sdnr
+        if config["regime"] == 3:
+            res["Lower_Bound_Tarokh"] = low_tarokh
     if config["cons_type"] == 2:
         res["Gaussian_Capacity_with_L1_Norm"] = capacity_ruth
     if config["ba_active"] and config["cons_type"] == 0:
         res["Blahut_Arimoto_Capacity"] = capacity_ba
 
-    os.makedirs(
+    save_location = (
         config["output_dir"]
         + "/"
         + config["cons_str"]
@@ -112,43 +139,46 @@ def main():
         + str(config["nonlinearity"])
         + "_regime="
         + str(config["regime"])
-        + "_gd_"
+        + "_sigma_1="
+        + str(config["sigma_1"])
+        + "_sigma_2="
+        + str(config["sigma_2"])
+        + "_gd="
         + str(config["gd_active"])
-        + "/",
+        + "_ba-init="
+        + str(config["gd_initial_ba"])
+        + "/"
+    )
+    os.makedirs(
+        save_location,
         exist_ok=True,
     )
     io.savemat(
-        config["output_dir"]
-        + "/"
-        + config["cons_str"]
-        + "_nonlinearity="
-        + str(config["nonlinearity"])
-        + "_regime="
-        + str(config["regime"])
-        + "_gd_"
-        + str(config["gd_active"])
-        + "/res.mat",
+        save_location + "/res.mat",
         res,
     )
-    plot_snr(snr_change, res, config)
+    if config["bound_active"] and config["regime"] == 1:
+        plot_snr(
+            snr_change, res, config, save_location=save_location, low_tarokh=low_tarokh
+        )
+    else:
+        plot_snr(snr_change, res, config, save_location=save_location)
     if config["gd_active"]:
-        plot_pdf_snr(map_snr_pdf, snr_change, config, file_name="pdf_snr_gd.png")
-        # io.savemat(
-        #     config["output_dir"]
-        #     + "/"
-        #     + config["cons_str"]
-        #     + "_nonlinearity="
-        #     + str(config["nonlinearity"])
-        #     + "_regime="
-        #     + str(config["regime"])
-        #     + "_gd_"
-        #     + str(config["gd_active"])
-        #     + "/pdf.mat",
-        #     map_snr_pdf,
-        # )
-        # plot_pdf_snr(map_snr_pdf, snr_change, config, save_location=file_name)
+        plot_pdf_snr(
+            map_snr_pdf,
+            snr_change,
+            config,
+            save_location=save_location,
+            file_name="pdf_snr_gd.png",
+        )
     if config["ba_active"] and config["cons_type"] == 0:
-        plot_pdf_snr(map_snr_pdf_ba, snr_change, config, file_name="pdf_snr_ba.png")
+        plot_pdf_snr(
+            map_snr_pdf_ba,
+            snr_change,
+            config,
+            save_location=save_location,
+            file_name="pdf_snr_ba.png",
+        )
 
 
 if __name__ == "__main__":
