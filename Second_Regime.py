@@ -13,11 +13,13 @@ class Second_Regime:
         self.pdf_u_given_x = self.calculate_pdf_u_given_x()
         self.power = power
         self.nonlinear_fn = return_nonlinear_fn(self.config)
+        self.calculate_delta_y(eps=1e-35)
 
     def set_alphabet_x(self, alphabet_x):
         self.alphabet_x = alphabet_x
         self.alphabet_u = self.calculate_u_points()
         self.pdf_u_given_x = self.calculate_pdf_u_given_x()
+        self.calculate_delta_y(eps=1e-35)
 
     def calculate_u_points(self):
         max_u = max(self.alphabet_x) + self.config["sigma_1"] * self.config["stop_sd"]
@@ -46,19 +48,44 @@ class Second_Regime:
         pdf_u = (self.pdf_u_given_x @ pdf_x) / (torch.sum(self.pdf_u_given_x @ pdf_x))
         return pdf_u
 
-    def calculate_delta_y(self, eps=1e-20):
-        u_bnds = np.append(
-            self.alphabet_u - self.config["delta_y"] / 2,
-            self.alphabet_u[-1] + self.config["delta_y"] / 2,
-        )
-        y_bnds = self.nonlinear_fn(u_bnds)
-        # Note that there is one negative value in difference - no clue
-        self.delta_y = np.abs(np.ediff1d(y_bnds)) + eps
+    def calculate_delta_y(self, eps=1e-35):
 
-    def calculate_entropy_y(self, pdf_x, eps=1e-20):
-        pdf_u = self.calculate_pdf_u(pdf_x)
-        self.calculate_delta_y(eps)
-        entropy_y = torch.sum(-pdf_u * torch.log((pdf_u) / self.delta_y))
+        y_pts = self.nonlinear_fn(self.alphabet_u)
+
+        y_pts_new, indices = torch.unique(y_pts, return_inverse=True)
+        self.indices = indices
+        # breakpoint()
+        # self.pdf_u = torch.bincount(indices, weights=self.pdf_u)
+        # temp = torch.zeros_like(self.pdf_u)
+        # self.pdf_u = temp.scatter_reduce(
+        #     0, indices, self.pdf_u, reduce="sum", include_self=False
+        # )[: torch.max(indices) + 1]
+        new_pdf_u_given_x = torch.zeros((len(y_pts_new), self.pdf_u_given_x.shape[1]))
+        for i in range(self.pdf_u_given_x.shape[1]):
+            new_pdf_u_given_x[:, i] = torch.bincount(
+                indices, weights=self.pdf_u_given_x[:, i]
+            )
+        # breakpoint()
+        self.pdf_u_given_x = new_pdf_u_given_x
+
+        if y_pts_new.shape[0] > 1:
+            y_bnds = torch.cat(
+                (
+                    y_pts_new - self.config["delta_y"] / 2,
+                    torch.tensor([y_pts_new[-1] + self.config["delta_y"] / 2]),
+                )
+            )
+
+            self.delta_y = torch.diff(y_bnds) + eps
+        else:
+            self.delta_y = eps
+
+    def calculate_entropy_y(self, pdf_x, eps=1e-35):
+        self.pdf_u = self.calculate_pdf_u(pdf_x)
+        # self.calculate_delta_y(eps)
+
+        # breakpoint()
+        entropy_y = torch.sum(-self.pdf_u * torch.log((self.pdf_u) / self.delta_y))
 
         if torch.isnan(entropy_y):
             raise ValueError("Entropy is NaN")
@@ -67,7 +94,7 @@ class Second_Regime:
 
     def calculate_entropy_y_given_x(self, pdf_x, eps):
 
-        entropy_y_given_x = np.dot(
+        entropy_y_given_x = torch.dot(
             torch.sum(
                 -self.pdf_u_given_x
                 * torch.log((self.pdf_u_given_x + eps) / (self.delta_y.reshape(-1, 1))),
@@ -86,6 +113,10 @@ class Second_Regime:
 
     def capacity_like_ba(self, pdf_x):
         # breakpoint()
+        self.pdf_u = self.calculate_pdf_u(pdf_x)
+        breakpoint()
+        eps = 1e-35
+        self.calculate_delta_y(eps)
         pdf_y_given_x = self.pdf_u_given_x
         pdf_x_given_y = pdf_y_given_x * pdf_x
         pdf_x_given_y = torch.transpose(pdf_x_given_y, 0, 1) / torch.sum(

@@ -32,9 +32,13 @@ def return_nonlinear_fn(config):
     # 4:nonlinear x4: x/(1 + x^4)^1/4
     elif config["nonlinearity"] == 4:
         nonlinear_fn = lambda x: torch.tensor(x / ((1 + x**4) ** (1 / 4)))
+    elif config["nonlinearity"] == 5:
+        # nonlinear_fn = lambda x: torch.ones_like(torch.tensor(x))
+        nonlinear_fn = lambda x: torch.clip(
+            torch.tensor(x), -config["clipping_limit"], config["clipping_limit"]
+        )
     else:
         raise ValueError("Nonlinearity not defined")
-
     return nonlinear_fn
 
 
@@ -43,7 +47,11 @@ def return_derivative_of_nonlinear_fn(config):
 
     # 0:linear
     if config["nonlinearity"] == 0:
-        nonlinear_fn = lambda x: np.tensor(1)
+        nonlinear_fn = lambda x: 1
+    elif config["nonlinearity"] == 1:
+        nonlinear_fn = lambda x: (
+            np.sign(x) / (2 * np.sqrt(np.abs(x))) if abs(x) > 1e-3 else 50
+        )
     # 3:nonlinear tanh(X)
     elif config["nonlinearity"] == 3:
         nonlinear_fn = (

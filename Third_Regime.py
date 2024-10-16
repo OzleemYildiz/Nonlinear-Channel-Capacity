@@ -23,6 +23,7 @@ class Third_Regime:
         )  # since Z_1 is not 0, we define new U and V
         self.pdf_y_given_v = self.f_regime.calculate_pdf_y_given_v()
         self.pdf_y_given_u = self.pdf_y_given_v
+        self.update_after_indices()
 
     def set_alphabet_x(self, alphabet_x):
         self.alphabet_x = alphabet_x
@@ -37,11 +38,31 @@ class Third_Regime:
         )  # since Z_1 is not 0, we define new U and V
         self.pdf_y_given_v = self.f_regime.calculate_pdf_y_given_v()
         self.pdf_y_given_u = self.pdf_y_given_v
+        self.update_after_indices()
+
+    def update_after_indices(self):
+        new_pdf_y_given_v = torch.zeros(
+            (self.pdf_y_given_v.shape[0], max(self.s_regime.indices) + 1)
+        )
+        for i in range(self.pdf_y_given_v.shape[0]):
+            new_pdf_y_given_v[i, :] = torch.bincount(
+                self.s_regime.indices, weights=self.pdf_y_given_v[i, :]
+            )
+        self.pdf_y_given_v = new_pdf_y_given_v
+        self.pdf_y_given_u = self.pdf_y_given_v
+
+        new_pdf_u_given_x = torch.zeros(
+            (max(self.s_regime.indices) + 1, self.pdf_u_given_x.shape[1])
+        )
+        for i in range(self.pdf_u_given_x.shape[1]):
+            new_pdf_u_given_x[:, i] = torch.bincount(
+                self.s_regime.indices, weights=self.pdf_u_given_x[:, i]
+            )
+        self.pdf_u_given_x = new_pdf_u_given_x
 
     def calculate_entropy_y(self, pdf_x, eps):
         pdf_v = self.s_regime.calculate_pdf_u(pdf_x)
         pdf_y = (self.pdf_y_given_v @ pdf_v) / torch.sum(self.pdf_y_given_v @ pdf_v)
-
         entropy_y = torch.sum(-pdf_y * torch.log(pdf_y + eps)) + torch.log(
             torch.tensor([self.config["delta_y"]])
         )
@@ -50,6 +71,7 @@ class Third_Regime:
     def calculate_pdf_y_given_x(self, pdf_x):
         # f_y_given_x = f_x_and_y / f_x and f_x_and_y = sum over u (f_x_given_u * f_y_given_u* f_u)
         pdf_u = self.s_regime.calculate_pdf_u(pdf_x)
+
         pdf_x_given_u = torch.transpose(self.pdf_u_given_x, 0, 1) / (pdf_u)
         pdf_x_and_y_given_u = pdf_x_given_u[:, None, :] * self.pdf_y_given_u[None, :, :]
         pdf_x_and_y = pdf_x_and_y_given_u @ pdf_u
