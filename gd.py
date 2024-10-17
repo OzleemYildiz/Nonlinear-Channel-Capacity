@@ -5,6 +5,7 @@ from utils import (
     return_regime_class,
     get_interference_alphabet_x_y,
     loss_interference,
+    generate_alphabet_x_y,
 )
 import numpy as np
 import copy
@@ -28,13 +29,14 @@ def gd_capacity(max_x, config, power, regime_class):
 
     for i in range(config["max_mass_points"]):
         for lr in config["lr"]:
-            mass_points = i + config["mass_points"][0]
+            # mass_points = i + config["mass_points"][0]
 
-            print("Number of Mass Points:", mass_points)
-
-            alphabet_x = torch.linspace(-max_x, max_x, mass_points)
+            # alphabet_x = torch.linspace(-max_x, max_x, mass_points)
+            alphabet_x, alphabet_y, max_x, max_y = generate_alphabet_x_y(config, power)
             regime_class.set_alphabet_x(alphabet_x)
-
+            # FIXME: remove this -unnecessary now
+            mass_points = len(alphabet_x)
+            print("Number of Mass Points:", mass_points)
             if config["cons_type"] == 0 and config["gd_initial_ba"]:
                 _, pdf_x = apply_blahut_arimoto(regime_class, config)
                 # breakpoint()
@@ -273,9 +275,31 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
             # Both RX1 and RX2 will have the same delta separation between points - number of mass points dont matter
             # FIXME: Change the current implementation to this as well- it makes more sense I think
 
-            # Initial distributions are uniform
+            # Initial distributions are uniform for peak power constraint
+            # if config["cons_type"] == 0:
             pdf_x_RX1 = torch.ones_like(alphabet_x_RX1) * 1 / len(alphabet_x_RX1)
             pdf_x_RX2 = torch.ones_like(alphabet_x_RX2) * 1 / len(alphabet_x_RX2)
+            # elif config["cons_type"] == 1:
+            #     # # Initial distributions are gaussian for average power constraint
+            #     pdf_x_RX1 = (
+            #         1
+            #         / (torch.sqrt(torch.tensor([2 * torch.pi]) * power))
+            #         * torch.exp(-0.5 * ((alphabet_x_RX1) ** 2) / power)
+            #     )
+            #     pdf_x_RX1 = project_pdf(
+            #         pdf_x_RX1, config["cons_type"], alphabet_x_RX1, power
+            #     )
+
+            #     pdf_x_RX2 = (
+            #         1
+            #         / (torch.sqrt(torch.tensor([2 * torch.pi]) * power))
+            #         * torch.exp(-0.5 * ((alphabet_x_RX2) ** 2) / power)
+            #     )
+            #     pdf_x_RX2 = project_pdf(
+            #         pdf_x_RX2, config["cons_type"], alphabet_x_RX2, power
+            #     )
+            # else:
+            #     raise ValueError("Constraint type not supported")
 
             pdf_x_RX1.requires_grad = True
             pdf_x_RX2.requires_grad = True
@@ -419,7 +443,7 @@ def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
                 # Now optimize for RX1
                 for i in range(config["max_iter"]):
                     optimizer_RX1.zero_grad()
-                    # FIXME: original is upd_RX1=True
+
                     loss, cap_RX1, cap_RX2 = loss_interference(
                         pdf_x_RX1,
                         pdf_x_RX2,
@@ -427,7 +451,7 @@ def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
                         f_reg_RX2,
                         lmbd,
                         upd_RX2=False,
-                        upd_RX1=False,
+                        upd_RX1=True,
                     )
 
                     loss.backward()
@@ -435,12 +459,12 @@ def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
                     sum_capacity = loss.detach().clone()
                     opt_sum_capacity.append(-sum_capacity.detach().numpy())
                     # FIXME: projection moved here
-                    pdf_x_RX1 = project_pdf(
-                        pdf_x_RX1,
-                        f_reg_RX1.config["cons_type"],
-                        f_reg_RX1.alphabet_x,
-                        f_reg_RX1.power,
-                    )
+                    # pdf_x_RX1 = project_pdf(
+                    #     pdf_x_RX1,
+                    #     f_reg_RX1.config["cons_type"],
+                    #     f_reg_RX1.alphabet_x,
+                    #     f_reg_RX1.power,
+                    # )
 
                     if i % 100 == 0:
                         print(
@@ -471,7 +495,6 @@ def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
                 for i in range(config["max_iter"]):
                     optimizer_RX2.zero_grad()
 
-                    # FIXME: original is upd_RX2=True
                     loss, cap_RX1, cap_RX2 = loss_interference(
                         pdf_x_RX1,
                         pdf_x_RX2,
@@ -479,7 +502,7 @@ def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
                         f_reg_RX2,
                         lmbd,
                         upd_RX1=False,
-                        upd_RX2=False,
+                        upd_RX2=True,
                     )
 
                     loss.backward()
@@ -487,12 +510,12 @@ def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
                     sum_capacity = loss.detach().clone()
                     opt_sum_capacity.append(-sum_capacity.detach().numpy())
                     # FIXME: projection moved here
-                    pdf_x_RX2 = project_pdf(
-                        pdf_x_RX2,
-                        f_reg_RX2.config["cons_type"],
-                        f_reg_RX2.alphabet_x,
-                        f_reg_RX2.power,
-                    )
+                    # pdf_x_RX2 = project_pdf(
+                    #     pdf_x_RX2,
+                    #     f_reg_RX2.config["cons_type"],
+                    #     f_reg_RX2.alphabet_x,
+                    #     f_reg_RX2.power,
+                    # )
                     if i % 100 == 0:
                         print(
                             "Iter of RX2 update:",

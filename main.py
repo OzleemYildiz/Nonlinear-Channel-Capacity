@@ -43,7 +43,18 @@ def define_save_location(config):
         + str(config["nonlinearity"])
         + "_regime="
         + str(config["regime"])
+        + "_tdm="
+        + str(config["time_division_active"])
     )
+    if config["time_division_active"]:
+        save_location = (
+            save_location
+            + "_min_pow="
+            + str(config["min_power_cons"])
+            + "_power_change_active="
+            + str(config["power_change_active"])
+        )
+
     if config["regime"] == 1:
         save_location = save_location + "_sigma2=" + str(config["sigma_2"])
     elif config["regime"] == 2:
@@ -111,7 +122,7 @@ def main():
     sdnr_tarokh_low = []
 
     if config["time_division_active"]:
-        tau_list = np.linspace(0.1, 0.9, config["n_time_division"])
+        tau_list = np.linspace(0.01, 0.99, config["n_time_division"])
         # Fill this if and only time division is active
         rate_1_tau_gaussian = []
         rate_2_tau_gaussian = []
@@ -145,6 +156,7 @@ def main():
                 alphabet_x, alphabet_y, max_x, max_y = generate_alphabet_x_y(
                     config, power
                 )
+                # breakpoint()
                 regime_class = return_regime_class(
                     config, alphabet_x, alphabet_y, power
                 )
