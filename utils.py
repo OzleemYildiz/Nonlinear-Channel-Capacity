@@ -96,8 +96,8 @@ def loss(
                     + str(pdf_x[np.where((pdf_x < 0))].detach().numpy())
                 )
 
-    # cap = regime_class.capacity_like_ba(pdf_x)
-    cap = regime_class.capacity(pdf_x)
+    cap = regime_class.capacity_like_ba(pdf_x)
+    # cap = regime_class.capacity(pdf_x)
     # print("What they did", cap)
     loss = -cap
     return loss
@@ -135,14 +135,15 @@ def plot_res(
         plt.savefig(save_location + "pdfx_lambda=" + str(format(lmbd, ".1f")) + ".png")
         plt.close()
 
-        plt.figure(figsize=(5, 4))
-        plt.plot(np.arange(len(max_sum_cap[ind])), max_sum_cap[ind])
-        plt.xlabel("iteration")
-        plt.ylabel("Sum capacity")
-        plt.savefig(
-            save_location + "sum_capacity_lambda=" + str(format(lmbd, ".1f")) + ".png"
-        )
-        plt.close()
+        # ---- This was necessary for the sequential gradient descent version
+        # plt.figure(figsize=(5, 4))
+        # plt.plot(np.arange(len(max_sum_cap[ind])), max_sum_cap[ind])
+        # plt.xlabel("iteration")
+        # plt.ylabel("Sum capacity")
+        # plt.savefig(
+        #     save_location + "sum_capacity_lambda=" + str(format(lmbd, ".1f")) + ".png"
+        # )
+        # plt.close()
 
 
 def plot_vs_change(
@@ -331,7 +332,7 @@ def read_config(args_name="arguments.yml"):
     )
     args = parser.parse_args()
     config = yaml.load(open(args.config, "r"), Loader=yaml.Loader)
-    os.makedirs(config["output_dir"], exist_ok=True)
+    # os.makedirs(config["output_dir"], exist_ok=True)
     # Constraint type of the system
     if config["cons_type"] == 1:
         config["cons_str"] = "Avg"
@@ -358,49 +359,48 @@ def get_interference_alphabet_x_y(config, power):
     if config["cons_type"] == 0:  # peak power
         peak_power = power
         max_x = np.sqrt(peak_power)
+        max_x2 = np.sqrt(config["power_2"])
     elif config["cons_type"] == 1:  # average power
         avg_power = power
         max_x = config["stop_sd"] * np.sqrt(avg_power)
+        max_x2 = config["stop_sd"] * np.sqrt(config["power_2"])
     else:  # first moment
         first_moment = power  # E[|X|] < P
         max_x = config["stop_sd"] * first_moment
+        max_x2 = config["stop_sd"] * config["power_2"]
+
+    if config["int_ratio"] > 0 and config["int_ratio"] <= 1:
+        delta_x2 = config["delta_y"]
+        delta_x1 = config["int_ratio"] * config["delta_y"]
+    elif config["int_ratio"] > 1:
+        delta_x1 = config["delta_y"]
+        delta_x2 = config["delta_y"] / config["int_ratio"]
+    else:
+        raise ValueError("Interference ratio must be positive")
+
+    max_x_1 = max_x + (delta_x1 - (max_x % delta_x1))
+    max_x_2 = max_x2 + (delta_x2 - (max_x2 % delta_x2))
 
     if config["regime"] == 1:
         # Note that both X1 and X2 are the same power
         max_y_1 = (
-            nonlinear_func(max_x + config["int_ratio"] * max_x)
+            nonlinear_func(max_x_1 + config["int_ratio"] * max_x_2)
             + config["sigma_12"] * config["stop_sd"]
         )
-        max_y_2 = nonlinear_func(max_x) + config["sigma_22"] * config["stop_sd"]
+        max_y_2 = nonlinear_func(max_x_2) + config["sigma_22"] * config["stop_sd"]
     else:
         raise ValueError("Regime not defined")
 
-    # Change max points to be symmetric around 0 with delta is fixed by adding the remainder
-    max_y_1 = max_y_1 + (config["delta_y"] - (max_y_1 % config["delta_y"]))
-    max_y_2 = max_y_2 + (config["delta_y"] - (max_y_2 % config["delta_y"]))
-    max_x = max_x + (config["delta_y"] - (max_x % config["delta_y"]))
+    max_y_1 = max_y_1 + (delta_x1 - (max_y_1 % delta_x1))
+    max_y_2 = max_y_2 + (delta_x2 - (max_y_2 % delta_x2))
 
     # Create the alphabet with the fixed delta
-    alphabet_x = torch.arange(-max_x, max_x + config["delta_y"] / 2, config["delta_y"])
-    alphabet_y_1 = torch.arange(
-        -max_y_1, max_y_1 + config["delta_y"] / 2, config["delta_y"]
-    )
-    alphabet_y_2 = torch.arange(
-        -max_y_2, max_y_2 + config["delta_y"] / 2, config["delta_y"]
-    )
+    alphabet_x_1 = torch.arange(-max_x_1, max_x_1 + delta_x1 / 2, delta_x1)
+    alphabet_x_2 = torch.arange(-max_x_2, max_x_2 + delta_x2 / 2, delta_x2)
 
-    # sample_num_1 = math.ceil(2 * max_y_1 / config["delta_y"]) + 1
-    # alphabet_y_1 = torch.linspace(-max_y_1, max_y_1, sample_num_1)
-
-    # sample_num_2 = math.ceil(2 * max_y_2 / config["delta_y"]) + 1
-    # alphabet_y_2 = torch.linspace(-max_y_2, max_y_2, sample_num_2)
-
-    # # Gaussian Result
-    # # alphabet_x
-    # sample_num_g = math.ceil(2 * max_x / config["delta_y"]) + 1
-    # alphabet_x = torch.linspace(-max_x, max_x, sample_num_g)
-
-    return alphabet_x, alphabet_y_1, alphabet_x, alphabet_y_2
+    alphabet_y_1 = torch.arange(-max_y_1, max_y_1 + delta_x1 / 2, delta_x1)
+    alphabet_y_2 = torch.arange(-max_y_2, max_y_2 + delta_x2 / 2, delta_x2)
+    return alphabet_x_1, alphabet_y_1, alphabet_x_2, alphabet_y_2
 
 
 def plot_interference(res, config, save_location):
@@ -507,7 +507,8 @@ def loss_interference(
         pdf_x_RX2,
         f_reg_RX2.alphabet_x,
     )
-    cap_RX2 = f_reg_RX2.capacity(pdf_x_RX2)
+
+    cap_RX2 = f_reg_RX2.capacity_like_ba(pdf_x_RX2)
 
     if torch.isnan(cap_RX1) or torch.isnan(cap_RX2):
         breakpoint()

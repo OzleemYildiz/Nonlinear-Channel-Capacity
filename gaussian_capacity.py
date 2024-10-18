@@ -57,8 +57,10 @@ def gaussian_interference_capacity(
     )
     pdf_x_2 = (pdf_x_2 / torch.sum(pdf_x_2)).to(torch.float32)
     config["sigma_2"] = config["sigma_22"]
-    f_reg_RX2 = First_Regime(alphabet_x_RX2, alphabet_y_RX2, config, power)
-    cap_RX2 = f_reg_RX2.capacity(pdf_x_2)
+    f_reg_RX2 = First_Regime(
+        alphabet_x_RX2, alphabet_y_RX2, config, config["power_2"]
+    )  # 2nd user
+    cap_RX2 = f_reg_RX2.capacity_like_ba(pdf_x_2)
 
     # Z = X1 +aX2 distribution has variance power + a^2 power
     # TODO: This is bad way to solve it. Need to find a better way
@@ -71,8 +73,11 @@ def gaussian_interference_capacity(
     # breakpoint()
     pdf_x_1 = (pdf_x_1 / torch.sum(pdf_x_1)).to(torch.float32)
     config["sigma_2"] = config["sigma_12"]
-    f_reg_RX1 = First_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power)
-    f_reg_RX1.set_interference_active(alphabet_x_RX2, pdf_x_2)
-    cap_RX1 = f_reg_RX1.capacity(pdf_x_1)
+    f_reg_RX1 = First_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power)  # 1st user
+    cap_RX1 = f_reg_RX1.capacity_of_interference(
+        pdf_x_1,
+        pdf_x_2,
+        f_reg_RX2.alphabet_x,
+    )
 
     return cap_RX1, cap_RX2

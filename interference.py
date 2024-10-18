@@ -27,8 +27,12 @@ def define_save_location(config):
         + str(config["regime"])
         # + "_int_ratio="
         # + str(config["int_ratio"])
-        + "_min_pow="
+        + "_min_pow_1="
         + str(config["min_power_cons"])
+        + "_power_2="
+        + str(config["power_2"])
+        + "_int_ratio="
+        + str(config["int_ratio"])
         + "_delta_y="
         + str(config["delta_y"])
         + "_max_iter="

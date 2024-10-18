@@ -1,10 +1,11 @@
 min_power_cons : 10
 max_power_cons : 10
+power_2 : 10
 sigma_11 : 1 
 sigma_12 : 1
 sigma_21 : 1
 sigma_22 : 1
-int_ratio : 1 # interference ratio <= 1, k*delta_y for an integer k
+int_ratio : 2 # interference ratio >0, k*delta_y for an integer k
 delta_y : 0.1
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment
 n_snr : 1 # number of SNRs
@@ -17,5 +18,5 @@ stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as sto
 gd_active : True
 epsilon : 0.0005 #convergence criteria
 lr : [0.0001] # learning rate
-max_iter : 10000 # maximum number of iterations
-max_seq_iter : 20 # px1 and px2 are updated alternatively, this is the maximum number of iterations for each update
+max_iter : 10 # maximum number of iterations
+max_seq_iter : 20 # px1 and px2 are updated alternatively, this is the maximum number of iterations for each update 

@@ -21,6 +21,7 @@ class First_Regime:
         self.power = power
         self.entropy_y_given_x = self.calculate_entropy_y_given_x()
         self.interference_active = interference_active
+        self.delta = self.alphabet_x[1] - self.alphabet_x[0]
 
     def set_alphabet_x(self, alphabet_x):
         self.alphabet_x = alphabet_x
@@ -55,9 +56,7 @@ class First_Regime:
 
         # pdf_x = pdf_u since one-one function
         pdf_y = (self.pdf_y_given_v @ pdf_x) / torch.sum(self.pdf_y_given_v @ pdf_x)
-        entropy_y = torch.sum(-pdf_y * torch.log(pdf_y + eps)) + torch.log(
-            torch.tensor([self.config["delta_y"]])
-        )
+        entropy_y = torch.sum(-pdf_y * torch.log(pdf_y + eps)) + torch.log(self.delta)
 
         if torch.isnan(entropy_y):
             raise ValueError("Entropy is NaN")
@@ -70,6 +69,7 @@ class First_Regime:
         )
         return entropy_y_given_x
 
+    # Note: Not using this currently
     def capacity(self, pdf_x):
         if not self.interference_active:
             entropy_y = self.calculate_entropy_y(pdf_x)
@@ -161,9 +161,7 @@ class First_Regime:
             int_pdf_x, int_alphabet_x, self.config["int_ratio"]
         )
         max_u = max(self.alphabet_x) + max(self.int_alphabet_x)
-        self.alphabet_u = torch.arange(
-            -max_u, max_u + self.config["delta_y"] / 2, self.config["delta_y"]
-        )
+        self.alphabet_u = torch.arange(-max_u, max_u + self.delta / 2, self.delta)
         self.alphabet_v = self.nonlinear_func(self.alphabet_u)
         self.pdf_y_given_v = self.calculate_pdf_y_given_v()
         # breakpoint()
@@ -189,8 +187,7 @@ class First_Regime:
 
         entropy_y_given_x = (
             torch.sum(
-                -pdf_y_given_x
-                * torch.log((pdf_y_given_x + 1e-20) / (self.config["delta_y"])),
+                -pdf_y_given_x * torch.log((pdf_y_given_x + 1e-20) / (self.delta)),
                 axis=0,
             )
             @ pdf_x
@@ -211,12 +208,8 @@ class First_Regime:
             # ind_temp = np.digitize(u_temp, self.alphabet_u, right=True)
 
             # --Shift can be found by finding the first and last indices
-            f_ind = np.where(
-                abs(u_temp[0] - self.alphabet_u) < self.config["delta_y"] / 2
-            )[0]
-            l_ind = np.where(
-                abs(u_temp[-1] - self.alphabet_u) < self.config["delta_y"] / 2
-            )[0]
+            f_ind = np.where(abs(u_temp[0] - self.alphabet_u) < self.delta / 2)[0]
+            l_ind = np.where(abs(u_temp[-1] - self.alphabet_u) < self.delta / 2)[0]
             if l_ind.size == 0:
                 l_ind = [len(self.alphabet_u)]
                 breakpoint()
@@ -250,29 +243,30 @@ class First_Regime:
 
     def capacity_of_interference(self, pdf_x_RX1, pdf_x_RX2, alphabet_x_RX2):
 
-        max_y = (
-            self.nonlinear_func(max(self.alphabet_x) + max(alphabet_x_RX2))
-            + self.config["sigma_2"] * self.config["stop_sd"]
-        )
-        max_y = max_y + (self.config["delta_y"] - (max_y % self.config["delta_y"]))
+        # max_y = (
+        #     self.nonlinear_func(max(self.alphabet_x) + max(alphabet_x_RX2))
+        #     + self.config["sigma_2"] * self.config["stop_sd"]
+        # )
+        # max_y = max_y + (self.delta - (max_y % self.delta))
 
-        alphabet_y = torch.arange(
-            -max_y, max_y + self.config["delta_y"] / 2, self.config["delta_y"]
-        )
+        # alphabet_y = torch.arange(-max_y, max_y + self.delta / 2, self.delta)
         # pdf_y_given_x1_r = torch.zeros((len(alphabet_y), len(self.alphabet_x)))
-        pdf_y = torch.zeros_like(alphabet_y)
+        pdf_y = torch.zeros_like(self.alphabet_y)
         entropy_y_given_x = 0
         # breakpoint()
         for ind, x in enumerate(self.alphabet_x):
             # U = X1 + aX2, a = 1 #FIXME: a is fixed to 1
-            alphabet_u = alphabet_x_RX2 + x
+            alphabet_u = self.config["int_ratio"] * alphabet_x_RX2 + x
             alphabet_v = self.nonlinear_func(alphabet_u)
             pdf_y_given_x1_and_x2 = (
                 1
                 / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_2"])
                 * torch.exp(
                     -0.5
-                    * ((alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1)) ** 2)
+                    * (
+                        (self.alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1))
+                        ** 2
+                    )
                     / self.config["sigma_2"] ** 2
                 )
             )
@@ -281,7 +275,10 @@ class First_Regime:
             )
             # breakpoint()
             # pdf_y_given_x1_r[:, ind] = pdf_y_given_x1_and_x2 @ pdf_x_RX2
-            pdf_y_given_x1 = pdf_y_given_x1_and_x2 @ pdf_x_RX2
+
+            pdf_y_given_x1 = (
+                pdf_y_given_x1_and_x2 @ pdf_x_RX2 / self.config["int_ratio"]
+            )
             pdfy_given_x1 = pdf_y_given_x1 / (torch.sum(pdf_y_given_x1, axis=0) + 1e-30)
             plogp_y_given_x = pdfy_given_x1 * torch.log(pdfy_given_x1 + 1e-20)
             entropy_y_given_x += torch.sum(plogp_y_given_x * pdf_x_RX1[ind])
