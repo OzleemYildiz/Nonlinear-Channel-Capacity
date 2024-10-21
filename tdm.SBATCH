@@ -4,9 +4,9 @@
 #SBATCH --cpus-per-task=1                # uses 1 compute core per task
 #SBATCH --time=8:00:00
 #SBATCH --mem=2GB
-#SBATCH --job-name=int
+#SBATCH --job-name=tdm
 #SBATCH --account=pr_215_general
-#SBATCH --output=int1.out
+#SBATCH --output=tdm.out
 
 module purge
 
