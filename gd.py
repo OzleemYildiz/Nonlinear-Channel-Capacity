@@ -29,10 +29,11 @@ def gd_capacity(max_x, config, power, regime_class):
 
     for i in range(config["max_mass_points"]):
         for lr in config["lr"]:
-            # mass_points = i + config["mass_points"][0]
+            # mass_points = i * 100 + config["mass_points"][0]
 
             # alphabet_x = torch.linspace(-max_x, max_x, mass_points)
             alphabet_x, alphabet_y, max_x, max_y = generate_alphabet_x_y(config, power)
+            # alphabet_x = torch.linspace(-max_x, max_x, mass_points)
             regime_class.set_alphabet_x(alphabet_x)
             # FIXME: remove this -unnecessary now
             mass_points = len(alphabet_x)
@@ -42,21 +43,31 @@ def gd_capacity(max_x, config, power, regime_class):
                 # breakpoint()
                 pdf_x = torch.tensor(pdf_x).float()
             else:  # uniform distribution if no initial distribution
-                pdf_x = (
-                    torch.ones_like(alphabet_x) * 1 / mass_points
-                )  # (uniform distribution)
-
+                # if config["cons_type"] == 0:
+                pdf_x = torch.ones_like(alphabet_x) * 1 / mass_points
+                # else:
+                # pdf_x = (
+                #     1  # gaussian distribution for average power constraint
+                #     / (torch.sqrt(torch.tensor([2 * torch.pi]) * power))
+                #     * torch.exp(-0.5 * ((alphabet_x) ** 2) / power)
+                # )
+                # pdf_x = torch.rand(alphabet_x.shape[0])
+                # pdf_x = torch.ones_like(alphabet_x) * 1 / mass_points
+                pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
+                # breakpoint()
+            pdf_x = project_pdf(pdf_x, config["cons_type"], alphabet_x, power)
             pdf_x.requires_grad = True
 
-            optimizer = torch.optim.Adam([pdf_x], lr=lr)
-
+            # optimizer = torch.optim.Adam([pdf_x], lr=lr)
+            optimizer = torch.optim.AdamW([pdf_x], lr=lr, weight_decay=1e-5)
             opt_capacity = []
 
             for i in range(config["max_iter"]):
+                # breakpoint()
                 # project back
                 optimizer.zero_grad()
 
-                loss_it = loss(pdf_x, regime_class)
+                loss_it = loss(pdf_x, regime_class, project_active=True)
                 # breakpoint()
                 loss_it.backward()
                 optimizer.step()
@@ -73,7 +84,7 @@ def gd_capacity(max_x, config, power, regime_class):
                     and np.abs(
                         np.mean(opt_capacity[-50:]) - np.mean(opt_capacity[-100:-50])
                     )
-                    < 1e-5
+                    < config["epsilon"]
                 ):
                     break
 
@@ -98,7 +109,7 @@ def gd_capacity(max_x, config, power, regime_class):
 
     max_pdf_x = project_pdf(max_pdf_x, config["cons_type"], max_alphabet_x, power)
 
-    return max_capacity, max_pdf_x, max_alphabet_x
+    return max_capacity, max_pdf_x, max_alphabet_x, opt_capacity
 
 
 def gd_on_alphabet_capacity(max_x, config, power, regime_class):
@@ -286,18 +297,18 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
             #         / (torch.sqrt(torch.tensor([2 * torch.pi]) * power))
             #         * torch.exp(-0.5 * ((alphabet_x_RX1) ** 2) / power)
             #     )
-            #     pdf_x_RX1 = project_pdf(
-            #         pdf_x_RX1, config["cons_type"], alphabet_x_RX1, power
-            #     )
+            pdf_x_RX1 = project_pdf(
+                pdf_x_RX1, config["cons_type"], alphabet_x_RX1, power
+            )
 
             #     pdf_x_RX2 = (
             #         1
             #         / (torch.sqrt(torch.tensor([2 * torch.pi]) * power))
             #         * torch.exp(-0.5 * ((alphabet_x_RX2) ** 2) / power)
             #     )
-            #     pdf_x_RX2 = project_pdf(
-            #         pdf_x_RX2, config["cons_type"], alphabet_x_RX2, power
-            #     )
+            pdf_x_RX2 = project_pdf(
+                pdf_x_RX2, config["cons_type"], alphabet_x_RX2, power
+            )
             # else:
             #     raise ValueError("Constraint type not supported")
 

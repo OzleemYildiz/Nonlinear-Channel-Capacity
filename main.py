@@ -106,6 +106,7 @@ def main():
 
     snr_change, noise_power = regime_dependent_snr(config)
     save_location = define_save_location(config)
+    print("Saving in: " + save_location)
 
     capacity_gaussian = []
     capacity_learned = []
@@ -116,6 +117,7 @@ def main():
 
     map_pdf = {}
     map_pdf_ba = {}  # TODO: Change this too
+    alphabet_x = []
     up_tarokh = []
     low_sdnr = []
     low_tarokh_third = []
@@ -130,11 +132,12 @@ def main():
         rate_2_tau_learned = []
     else:
         tau_list = np.array([1])
-
+    power_change = []
     for snr in snr_change:
         start = time.time()
         print("-------SNR in dB:", snr, "--------")
         power = (10 ** (snr / 10)) * noise_power
+        power_change.append(power)
         res_tau = {"R1": {}, "R2": {}}
         for tau in tau_list:
             print("----------Time Division: ", tau, "----------")
@@ -210,9 +213,22 @@ def main():
 
                 # Gradient Descent
                 if config["gd_active"]:
-                    cap_learned, max_pdf_x, max_alphabet_x = gd_capacity(
+                    cap_learned, max_pdf_x, max_alphabet_x, opt_capacity = gd_capacity(
                         max_x, config, power, regime_class
                     )
+
+                    # FIXME: Messy
+                    plt.figure()
+                    plt.plot(opt_capacity)
+                    plt.xlabel("Iterations")
+                    plt.grid()
+                    plt.savefig(save_location + "/opt_capacity.png")
+                    plt.close()
+                    io.savemat(
+                        save_location + "/opt_capacity.mat",
+                        {"opt_capacity": opt_capacity},
+                    )
+
                     if ind == 0:  # keeping record of only tau results for demonstration
                         capacity_learned.append(cap_learned)
                     max_pdf_x = project_pdf(
@@ -369,6 +385,17 @@ def main():
                 save_location=save_location,
                 file_name="pdf_snr_ba.png",
             )
+        io.savemat(
+            save_location + "/pdf.mat",
+            map_pdf,
+        )
+        plot_pdf_vs_change(
+            map_pdf,
+            power_change,
+            config,
+            save_location=save_location,
+            file_name="pdf_snr_gd.png",
+        )
     else:
         # If it's active, the goal is to plot R1 and R2 curves
 

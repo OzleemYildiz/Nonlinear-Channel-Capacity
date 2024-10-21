@@ -299,3 +299,25 @@ class First_Regime:
         # breakpoint()
 
         return cap
+
+    def new_capacity(self, pdf_x):
+
+        pdf_y_given_x = (
+            1
+            / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_2"])
+            * torch.exp(
+                -0.5
+                * (
+                    (self.alphabet_y.reshape(-1, 1) - self.alphabet_v.reshape(1, -1))
+                    ** 2
+                )
+                / self.config["sigma_2"] ** 2
+            )
+        )
+        pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
+        py_x_logpy_x = pdf_y_given_x * torch.log(pdf_y_given_x + 1e-20)
+        px_py_x_logpy_x = py_x_logpy_x @ pdf_x
+        f_term = torch.sum(px_py_x_logpy_x)
+        py = pdf_y_given_x @ pdf_x
+        s_term = torch.sum(py * torch.log(py + 1e-20))
+        return f_term - s_term

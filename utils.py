@@ -22,6 +22,18 @@ def project_pdf(pdf_x, cons_type, alphabet_x, power):
     # pdf_x = pdf_x/torch.sum(pdf_x)
     # average power constraint
 
+    # We should check if the projection is necessary
+    cond1 = torch.abs(torch.sum(pdf_x) - 1) < 1e-5  # sum of pdf is 1
+    cond2 = torch.sum(pdf_x < 0) == 0  # pdf cannot be negative
+    if cons_type == 1:
+        cond3 = torch.sum(alphabet_x**2 * pdf_x) <= power + 1e-3
+    else:
+        cond3 = True
+
+    if cond1 and cond2 and cond3:
+        # breakpoint()
+        return pdf_x
+
     n, m = len(alphabet_x), 1
     if n == 0:
         raise ValueError("Alphabet_x is empty")
@@ -31,13 +43,14 @@ def project_pdf(pdf_x, cons_type, alphabet_x, power):
     mu = cp.Parameter(m)
     if cons_type == 1:
         # average power is in theconstraint
-        constraints = [p_hat >= 1e-4, cp.sum(p_hat) == 1, A @ p_hat <= mu]
+        constraints = [p_hat >= 1e-6, cp.sum(p_hat) == 1, A @ p_hat <= mu]
     elif cons_type == 0:  # peak power
         constraints = [p_hat >= 1e-6, cp.sum(p_hat) == 1]
     else:
         constraints = [p_hat >= 1e-6, cp.sum(p_hat) == 1, A @ p_hat <= mu]
 
-    objective = cp.Minimize(cp.pnorm(p - p_hat, p=2))
+    # objective = cp.Minimize(cp.pnorm(p - p_hat, p=2))
+    objective = cp.Minimize(cp.sum_squares(p - p_hat))
     problem = cp.Problem(objective, constraints)
 
     if cons_type == 1:
@@ -70,13 +83,16 @@ def project_pdf(pdf_x, cons_type, alphabet_x, power):
 def loss(
     pdf_x,
     regime_class,
+    project_active=True,
 ):
-    pdf_x = project_pdf(
-        pdf_x,
-        regime_class.config["cons_type"],
-        regime_class.alphabet_x,
-        regime_class.power,
-    )
+    if project_active:
+        pdf_x = project_pdf(
+            pdf_x,
+            regime_class.config["cons_type"],
+            regime_class.alphabet_x,
+            regime_class.power,
+        )
+    # breakpoint()
 
     # Make sure that projection is working
     # assert pdf_x is not None, "pdf_x is None"
@@ -84,20 +100,17 @@ def loss(
     #    torch.abs(torch.sum(pdf_x) - 1) <= 1e-4
     # ), "pdf_x is not normalized the sum is " + str(torch.sum(pdf_x).detach().numpy())
 
-    if torch.sum(pdf_x < 0) == 0:
+    if torch.sum(pdf_x < 0) != 0:
+        # breakpoint()
         # , "pdf_x has negative values " + str(
         # pdf_x[np.where((pdf_x < 0))].detach().numpy())
-        for ind, i in enumerate(pdf_x[np.where((pdf_x < 0))]):
-            if pdf_x[ind] <= 1e-5:
-                pdf_x[ind] = abs(pdf_x[ind])
-            else:
-                raise ValueError(
-                    "pdf_x has negative values "
-                    + str(pdf_x[np.where((pdf_x < 0))].detach().numpy())
-                )
+        # if torch.max(torch.abs(pdf_x[pdf_x < 0])) > 1e-4:
+        #     breakpoint()
+        pdf_x = torch.relu(pdf_x) + 1e-20
 
-    cap = regime_class.capacity_like_ba(pdf_x)
+    # cap = regime_class.capacity_like_ba(pdf_x)
     # cap = regime_class.capacity(pdf_x)
+    cap = regime_class.new_capacity(pdf_x)
     # print("What they did", cap)
     loss = -cap
     return loss
@@ -241,6 +254,20 @@ def plot_pdf_vs_change(
     else:
         plt.savefig(save_location + "/" + file_name)
     plt.close()
+
+    for chn in range_change:
+        if config["power_change_active"]:
+            pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100)) + "ind=0"]
+        else:
+            pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100))]
+        save_new = save_location + "/pdf_" + str(int(chn * 100)) + ".png"
+        plt.figure(figsize=(5, 4))
+        plt.plot(alphabet_x, pdf_x)
+        plt.grid()
+        plt.xlabel("X")
+        plt.ylabel("PDF")
+        plt.savefig(save_new)
+        plt.close()
 
 
 def generate_alphabet_x_y(config, power):

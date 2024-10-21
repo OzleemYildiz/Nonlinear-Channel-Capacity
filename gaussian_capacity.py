@@ -18,6 +18,7 @@ def gaussian_capacity(regime_class):
     loss_g = loss(
         pdf_x,
         regime_class,
+        # project_active=False,
     )
 
     cap_g = -loss_g

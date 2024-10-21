@@ -3,8 +3,8 @@ max_power_cons : 10
 sigma_1 : 1
 sigma_2 : 1
 max_mass_points : 1
-epsilon : 0.005 #convergence criteria
-lr : [0.0001] # learning rate
+epsilon : 0.00000005 #convergence criteria
+lr : [0.0000001] # learning rate
 max_iter : 50000 # maximum number of iterations
 delta_y : 0.1
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment
@@ -23,6 +23,6 @@ gd_initial_ba : False # It has to be peak power constraint
 bound_active: True
 ba_active : False # Blahut Arimoto - only works with the peak power constraint
 n_samples: 5000000
-time_division_active: True # When this is active, I have only one SNR is active - forced in the code
+time_division_active: True  # When this is active, I have only one SNR is active - forced in the code
 n_time_division: 10
 power_change_active: False # R1 and R2 boosts their power according to the time allocated to them to use the same power for the total duration
