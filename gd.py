@@ -344,15 +344,15 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
                         cap_RX2,
                     )
 
-                if (
-                    i > 100
-                    and np.abs(
-                        np.mean(opt_sum_capacity[-50:])
-                        - np.mean(opt_sum_capacity[-100:-50])
-                    )
-                    < 1e-5
-                ):
-                    break
+                # if (
+                #     i > 100
+                #     and np.abs(
+                #         np.mean(opt_sum_capacity[-50:])
+                #         - np.mean(opt_sum_capacity[-100:-50])
+                #     )
+                #     < 1e-5
+                # ):
+                #     break
             save_opt_sum_capacity.append(opt_sum_capacity)
             max_sum_cap.append(opt_sum_capacity[-1])
             max_cap_RX1.append(cap_RX1.detach().numpy())

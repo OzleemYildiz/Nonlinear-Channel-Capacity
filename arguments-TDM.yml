@@ -4,7 +4,7 @@ sigma_1 : 1
 sigma_2 : 1
 max_mass_points : 1
 epsilon : 0.00000005 #convergence criteria
-lr : [0.0000001] # learning rate
+lr : [0.000001] # learning rate
 max_iter : 50000 # maximum number of iterations
 delta_y : 0.1
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment

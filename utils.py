@@ -284,6 +284,10 @@ def generate_alphabet_x_y(config, power):
         max_x = config["stop_sd"] * np.sqrt(avg_power)
         # max_x = stop_s*avg_power
 
+        # If it's clipped after this value, it does not matter to put values outside
+        if config["nonlinearity"] == 5:
+            max_x = config["clipping_limit"]
+
     else:  # first moment
         first_moment = power  # E[|X|] < P
         max_x = config["stop_sd"] * first_moment
@@ -391,6 +395,10 @@ def get_interference_alphabet_x_y(config, power):
         avg_power = power
         max_x = config["stop_sd"] * np.sqrt(avg_power)
         max_x2 = config["stop_sd"] * np.sqrt(config["power_2"])
+        # If it's clipped after this value, it does not matter to put values outside
+        if config["nonlinearity"] == 5:
+            max_x = config["clipping_limit"]
+            max_x2 = config["clipping_limit"]
     else:  # first moment
         first_moment = power  # E[|X|] < P
         max_x = config["stop_sd"] * first_moment

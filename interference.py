@@ -93,6 +93,7 @@ def main():
         )
         cap1, cap2 = gaussian_interference_capacity(
             power,
+            power,
             config,
             alphabet_x_RX1,
             alphabet_y_RX1,
@@ -105,7 +106,7 @@ def main():
         res_gaus = [cap1, cap2]
 
         if config["gd_active"]:
-            lambda_sweep = np.linspace(0.01, 0.99, 10)
+            lambda_sweep = np.linspace(0.01, 0.99, 3)
             (
                 max_sum_cap,
                 max_pdf_x_RX1,
