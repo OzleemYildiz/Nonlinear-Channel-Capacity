@@ -362,7 +362,7 @@ def read_config(args_name="arguments.yml"):
         help="Configure of post processing",
     )
     args = parser.parse_args()
-    config = yaml.load(open(args.config, "r"), Loader=yaml.Loader)
+    config = yaml.load(open("args/" + args.config, "r"), Loader=yaml.Loader)
     # os.makedirs(config["output_dir"], exist_ok=True)
     # Constraint type of the system
     if config["cons_type"] == 1:

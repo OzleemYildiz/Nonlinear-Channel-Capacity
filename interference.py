@@ -62,7 +62,7 @@ def main():
     # Y1 = Phi(X1 + AX2 + N11)+ N12
     # Y2 = Phi(X2  + N21)+ N22
 
-    config = read_config(args_name="arguments-interference.yml")
+    config = read_config()
     print(
         "**** AWGN Interference Channel with Nonlinearity: ",
         config["nonlinearity"],
@@ -106,7 +106,7 @@ def main():
         res_gaus = [cap1, cap2]
 
         if config["gd_active"]:
-            lambda_sweep = np.linspace(0.01, 0.99, 3)
+            lambda_sweep = np.linspace(0.01, 0.99, config["n_lmbd"])
             (
                 max_sum_cap,
                 max_pdf_x_RX1,

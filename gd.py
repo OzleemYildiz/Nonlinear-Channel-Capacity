@@ -317,7 +317,7 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
 
             optimizer = torch.optim.Adam([pdf_x_RX1, pdf_x_RX2], lr=lr)
             opt_sum_capacity = []
-
+            max_sum_cap_h = 0
             for i in range(config["max_iter"]):
                 optimizer.zero_grad()
                 if torch.sum(pdf_x_RX1.isnan()) > 0 or torch.sum(pdf_x_RX2.isnan()) > 0:
@@ -343,31 +343,47 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
                         " R2:",
                         cap_RX2,
                     )
+                if opt_sum_capacity[-1] > max_sum_cap_h:
+                    max_sum_cap_h = opt_sum_capacity[-1]
+                    max_pdf_x_RX1_h = pdf_x_RX1
+                    max_pdf_x_RX2_h = pdf_x_RX2
+                    max_cap_RX1_h = cap_RX1.detach().numpy()
+                    max_cap_RX2_h = cap_RX2.detach().numpy()
 
-                # if (
-                #     i > 100
-                #     and np.abs(
-                #         np.mean(opt_sum_capacity[-50:])
-                #         - np.mean(opt_sum_capacity[-100:-50])
-                #     )
-                #     < 1e-5
-                # ):
-                #     break
+                if (
+                    i > 100
+                    and np.abs(
+                        np.mean(opt_sum_capacity[-50:])
+                        - np.mean(opt_sum_capacity[-100:-50])
+                    )
+                    < config["epsilon"]
+                ):
+                    break
+
             save_opt_sum_capacity.append(opt_sum_capacity)
-            max_sum_cap.append(opt_sum_capacity[-1])
-            max_cap_RX1.append(cap_RX1.detach().numpy())
-            max_cap_RX2.append(cap_RX2.detach().numpy())
+            max_sum_cap.append(max_sum_cap_h)
+            max_cap_RX1.append(max_cap_RX1_h)
+            max_cap_RX2.append(max_cap_RX2_h)
 
             # save the pdfs after projection
             pdf_x_RX1 = project_pdf(
-                pdf_x_RX1, config["cons_type"], alphabet_x_RX1, power
+                max_pdf_x_RX1_h, config["cons_type"], alphabet_x_RX1, power
             )
             pdf_x_RX2 = project_pdf(
-                pdf_x_RX2, config["cons_type"], alphabet_x_RX2, power
+                max_pdf_x_RX2_h, config["cons_type"], alphabet_x_RX2, power
             )
             max_pdf_x_RX1.append(pdf_x_RX1.detach().clone().numpy())
             max_pdf_x_RX2.append(pdf_x_RX2.detach().clone().numpy())
 
+            print(
+                "*****Max Capacity:",
+                max_sum_cap_h,
+                "R1:",
+                max_cap_RX1_h,
+                "R2:",
+                max_cap_RX2_h,
+                "*****",
+            )
     # breakpoint()
     return (
         max_sum_cap,
