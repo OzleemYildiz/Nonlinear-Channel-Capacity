@@ -345,10 +345,10 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
                     )
                 if opt_sum_capacity[-1] > max_sum_cap_h:
                     max_sum_cap_h = opt_sum_capacity[-1]
-                    max_pdf_x_RX1_h = pdf_x_RX1
-                    max_pdf_x_RX2_h = pdf_x_RX2
-                    max_cap_RX1_h = cap_RX1.detach().numpy()
-                    max_cap_RX2_h = cap_RX2.detach().numpy()
+                    max_pdf_x_RX1_h = pdf_x_RX1.clone().detach()
+                    max_pdf_x_RX2_h = pdf_x_RX2.clone().detach()
+                    max_cap_RX1_h = cap_RX1.clone().detach().numpy()
+                    max_cap_RX2_h = cap_RX2.clone().detach().numpy()
 
                 if (
                     i > 100
