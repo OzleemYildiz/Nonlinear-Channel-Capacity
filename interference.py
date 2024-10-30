@@ -13,6 +13,7 @@ from scipy import io
 from gd import (
     gradient_descent_on_interference,
     sequential_gradient_descent_on_interference,
+    gradient_descent_projection_with_learning_rate,
 )
 
 
@@ -115,7 +116,10 @@ def main():
                 max_cap_RX2,
                 save_opt_sum_capacity,
                 # ) = sequential_gradient_descent_on_interference(config, power, lambda_sweep)
-            ) = gradient_descent_on_interference(config, power, lambda_sweep)
+                # ) = gradient_descent_on_interference(config, power, lambda_sweep)
+            ) = gradient_descent_projection_with_learning_rate(
+                config, power, lambda_sweep
+            )
 
         res_gd = {"R1": {}, "R2": {}}
         res_gd["R1"]["Learned"] = max_cap_RX1

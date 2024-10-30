@@ -139,6 +139,7 @@ def main():
         power = (10 ** (snr / 10)) * noise_power
         power_change.append(power)
         res_tau = {"R1": {}, "R2": {}}
+
         for tau in tau_list:
             print("----------Time Division: ", tau, "----------")
             if config["power_change_active"]:
@@ -159,7 +160,7 @@ def main():
                 alphabet_x, alphabet_y, max_x, max_y = generate_alphabet_x_y(
                     config, power
                 )
-                # breakpoint()
+
                 regime_class = return_regime_class(
                     config, alphabet_x, alphabet_y, power
                 )
@@ -269,7 +270,7 @@ def main():
 
                 # Time Division Active Calculation
                 if config["time_division_active"]:
-                    # breakpoint()
+
                     if config["power_change_active"]:
                         if ind == 0:
                             rate_1_tau_gaussian.append(tau * cap_g)
@@ -278,10 +279,18 @@ def main():
                             rate_2_tau_gaussian.append((1 - tau) * cap_g)
                             rate_2_tau_learned.append((1 - tau) * cap_learned)
                     else:
-                        rate_1_tau_gaussian.append(tau * cap_g)
-                        rate_2_tau_gaussian.append((1 - tau) * cap_g)
-                        rate_1_tau_learned.append(tau * cap_learned)
-                        rate_2_tau_learned.append((1 - tau) * cap_learned)
+                        # Since we only have one SNR value that we learn the distribution for, we can break here
+                        rate_1_tau_gaussian.append((tau_list * cap_g.numpy()))
+                        rate_1_tau_gaussian = rate_1_tau_gaussian[0]
+                        rate_2_tau_gaussian.append((1 - tau_list) * cap_g.numpy())
+                        rate_2_tau_gaussian = rate_2_tau_gaussian[0]
+                        rate_1_tau_learned.append(tau_list * cap_learned)
+                        rate_1_tau_learned = rate_1_tau_learned[0]
+                        rate_2_tau_learned.append((1 - tau_list) * cap_learned)
+                        rate_2_tau_learned = rate_2_tau_learned[0]
+
+            if config["time_division_active"] and not config["power_change_active"]:
+                break
 
         if config["time_division_active"]:
             res_tau["R1"]["Gaussian"] = rate_1_tau_gaussian
@@ -294,7 +303,6 @@ def main():
             io.savemat(save_location + "/res_tau.mat", res_tau)
 
         # print("Time taken for SNR: ", snr, " is ", end - start)
-    # breakpoint()
 
     low_tarokh = None
     if (
@@ -398,10 +406,14 @@ def main():
         )
     else:
         # If it's active, the goal is to plot R1 and R2 curves
-
-        plot_vs_change(
-            tau_list, res, config, save_location=save_location, low_tarokh=low_tarokh
-        )
+        if not (not config["power_change_active"] and config["time_division_active"]):
+            plot_vs_change(
+                tau_list,
+                res,
+                config,
+                save_location=save_location,
+                low_tarokh=low_tarokh,
+            )
 
         if config["gd_active"] or (
             config["gd_alphabet_active"] and config["cons_type"] == 0

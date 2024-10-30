@@ -6,6 +6,7 @@ from utils import (
     get_interference_alphabet_x_y,
     loss_interference,
     generate_alphabet_x_y,
+    check_pdf_x_region,
 )
 import numpy as np
 import copy
@@ -266,7 +267,7 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
 
     # FIXME : This is not clean
     config["sigma_2"] = config["sigma_22"]
-    f_reg_RX2 = First_Regime(alphabet_x_RX2, alphabet_y_RX2, config, power)
+    f_reg_RX2 = First_Regime(alphabet_x_RX2, alphabet_y_RX2, config, config["power_2"])
     config["sigma_2"] = config["sigma_12"]
     f_reg_RX1 = First_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power)
 
@@ -307,7 +308,7 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
             #         * torch.exp(-0.5 * ((alphabet_x_RX2) ** 2) / power)
             #     )
             pdf_x_RX2 = project_pdf(
-                pdf_x_RX2, config["cons_type"], alphabet_x_RX2, power
+                pdf_x_RX2, config["cons_type"], alphabet_x_RX2, config["power_2"]
             )
             # else:
             #     raise ValueError("Constraint type not supported")
@@ -370,7 +371,7 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
                 max_pdf_x_RX1_h, config["cons_type"], alphabet_x_RX1, power
             )
             pdf_x_RX2 = project_pdf(
-                max_pdf_x_RX2_h, config["cons_type"], alphabet_x_RX2, power
+                max_pdf_x_RX2_h, config["cons_type"], alphabet_x_RX2, config["power_2"]
             )
             max_pdf_x_RX1.append(pdf_x_RX1.detach().clone().numpy())
             max_pdf_x_RX2.append(pdf_x_RX2.detach().clone().numpy())
@@ -567,7 +568,7 @@ def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
 
                 # RX2 pdf projection
                 pdf_x_RX2 = project_pdf(
-                    pdf_x_RX2, config["cons_type"], alphabet_x_RX2, power
+                    pdf_x_RX2, config["cons_type"], alphabet_x_RX2, config["power_2"]
                 )
 
                 seq_cap.append(opt_sum_capacity[-1])
@@ -584,12 +585,173 @@ def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
             )
 
             pdf_x_RX2 = project_pdf(
-                pdf_x_RX2, config["cons_type"], alphabet_x_RX2, power
+                pdf_x_RX2, config["cons_type"], alphabet_x_RX2, config["power_2"]
             )
 
             max_pdf_x_RX1.append(pdf_x_RX1.detach().clone().numpy())
             max_pdf_x_RX2.append(pdf_x_RX2.detach().clone().numpy())
 
+    # breakpoint()
+    return (
+        max_sum_cap,
+        max_pdf_x_RX1,
+        max_pdf_x_RX2,
+        max_cap_RX1,
+        max_cap_RX2,
+        save_opt_sum_capacity,
+    )
+
+
+def gradient_descent_projection_with_learning_rate(config, power, lambda_sweep):
+    print("---Gradient Descent on Interference Channel ----")
+
+    if config["regime"] != 1:
+        raise ValueError("This function only works for regime 1")
+
+    alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
+        get_interference_alphabet_x_y(config, power)
+    )
+
+    # FIXME : This is not clean
+    config["sigma_2"] = config["sigma_22"]
+    f_reg_RX2 = First_Regime(alphabet_x_RX2, alphabet_y_RX2, config, config["power_2"])
+    config["sigma_2"] = config["sigma_12"]
+    f_reg_RX1 = First_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power)
+
+    # Initializations
+    max_sum_cap = []
+    max_pdf_x_RX1 = []
+    max_pdf_x_RX2 = []
+    max_cap_RX1 = []
+    max_cap_RX2 = []
+    save_opt_sum_capacity = []
+
+    for ind, lmbd in enumerate(lambda_sweep):
+        # FIXME: currently different learning rate comparison is not supported
+        print("++++++++ Lambda: ", lmbd, " ++++++++")
+
+        for lr in config["lr"]:
+            # Both RX1 and RX2 will have the same delta separation between points - number of mass points dont matter
+            # FIXME: Change the current implementation to this as well- it makes more sense I think
+
+            pdf_x_RX1 = torch.ones_like(alphabet_x_RX1) * 1 / len(alphabet_x_RX1)
+            pdf_x_RX2 = torch.ones_like(alphabet_x_RX2) * 1 / len(alphabet_x_RX2)
+
+            pdf_x_RX1 = project_pdf(
+                pdf_x_RX1, config["cons_type"], alphabet_x_RX1, power
+            )
+
+            pdf_x_RX2 = project_pdf(
+                pdf_x_RX2, config["cons_type"], alphabet_x_RX2, config["power_2"]
+            )
+
+            pdf_x_RX1.requires_grad = True
+            pdf_x_RX2.requires_grad = True
+
+            opt_sum_capacity = []
+            max_sum_cap_h = 0
+            for i in range(config["max_iter"]):
+                pdf_x_RX1.grad = torch.ones_like(pdf_x_RX1)
+                pdf_x_RX2.grad = torch.ones_like(pdf_x_RX2)
+
+                loss, cap_RX1, cap_RX2 = loss_interference(
+                    pdf_x_RX1, pdf_x_RX2, f_reg_RX1, f_reg_RX2, lmbd
+                )
+
+                loss.backward()
+                sum_capacity = loss.detach().clone()
+                opt_sum_capacity.append(-sum_capacity.detach().numpy())
+                with torch.no_grad():
+                    pdf_x_RX1_grad = pdf_x_RX1.grad
+                    pdf_x_RX1 -= lr * pdf_x_RX1_grad
+
+                    check = 0
+                    lr_new = lr
+                    enough_check = True
+
+                    while (
+                        not check_pdf_x_region(
+                            pdf_x_RX1, alphabet_x_RX1, config["cons_type"], power
+                        )
+                    ) and enough_check:
+                        lr_new = lr_new / 2
+                        pdf_x_RX1 += lr_new * pdf_x_RX1_grad
+
+                        check += 1
+                        if check > config["max_lr_check"]:
+                            enough_check = False
+
+                    pdf_x_RX2_grad = pdf_x_RX2.grad
+                    pdf_x_RX2 -= lr * pdf_x_RX2_grad
+                    check = 0
+                    lr_new = lr
+                    enough_check = True
+
+                    while (
+                        not check_pdf_x_region(
+                            pdf_x_RX2,
+                            alphabet_x_RX2,
+                            config["cons_type"],
+                            config["power_2"],
+                        )
+                    ) and enough_check:
+                        lr_new = lr_new / 2
+                        pdf_x_RX2 += lr_new * pdf_x_RX2_grad
+                        check += 1
+                        if check > 20:
+                            enough_check = False
+                if i % 100 == 0:
+                    print(
+                        "Iter:",
+                        i,
+                        " Sum Capacity:",
+                        opt_sum_capacity[-1],
+                        " R1:",
+                        cap_RX1,
+                        " R2:",
+                        cap_RX2,
+                    )
+                if opt_sum_capacity[-1] > max_sum_cap_h:
+                    max_sum_cap_h = opt_sum_capacity[-1]
+                    max_pdf_x_RX1_h = pdf_x_RX1.clone().detach()
+                    max_pdf_x_RX2_h = pdf_x_RX2.clone().detach()
+                    max_cap_RX1_h = cap_RX1.clone().detach().numpy()
+                    max_cap_RX2_h = cap_RX2.clone().detach().numpy()
+
+                if (
+                    i > 100
+                    and np.abs(
+                        np.mean(opt_sum_capacity[-50:])
+                        - np.mean(opt_sum_capacity[-100:-50])
+                    )
+                    < config["epsilon"]
+                ):
+                    break
+
+            save_opt_sum_capacity.append(opt_sum_capacity)
+            max_sum_cap.append(max_sum_cap_h)
+            max_cap_RX1.append(max_cap_RX1_h)
+            max_cap_RX2.append(max_cap_RX2_h)
+
+            # save the pdfs after projection
+            pdf_x_RX1 = project_pdf(
+                max_pdf_x_RX1_h, config["cons_type"], alphabet_x_RX1, power
+            )
+            pdf_x_RX2 = project_pdf(
+                max_pdf_x_RX2_h, config["cons_type"], alphabet_x_RX2, config["power_2"]
+            )
+            max_pdf_x_RX1.append(pdf_x_RX1.detach().clone().numpy())
+            max_pdf_x_RX2.append(pdf_x_RX2.detach().clone().numpy())
+
+            print(
+                "*****Max Capacity:",
+                max_sum_cap_h,
+                "R1:",
+                max_cap_RX1_h,
+                "R2:",
+                max_cap_RX2_h,
+                "*****",
+            )
     # breakpoint()
     return (
         max_sum_cap,

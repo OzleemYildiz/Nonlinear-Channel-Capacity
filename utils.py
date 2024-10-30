@@ -22,15 +22,7 @@ def project_pdf(pdf_x, cons_type, alphabet_x, power):
     # pdf_x = pdf_x/torch.sum(pdf_x)
     # average power constraint
 
-    # We should check if the projection is necessary
-    cond1 = torch.abs(torch.sum(pdf_x) - 1) < 1e-5  # sum of pdf is 1
-    cond2 = torch.sum(pdf_x < 0) == 0  # pdf cannot be negative
-    if cons_type == 1:
-        cond3 = torch.sum(alphabet_x**2 * pdf_x) <= power + 1e-3
-    else:
-        cond3 = True
-
-    if cond1 and cond2 and cond3:
+    if check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
         # breakpoint()
         return pdf_x
 
@@ -166,7 +158,7 @@ def plot_vs_change(
     save_location=None,
     low_tarokh=None,
 ):
-    # breakpoint()
+    breakpoint()
     plt.figure(figsize=(5, 4))
     leg_str = []
     for keys in res.keys():
@@ -214,6 +206,9 @@ def plot_pdf_vs_change(
             file_name = "pdf_tau.png"
 
     plt.figure(figsize=(5, 4))
+    if config["time_division_active"] and not config["power_change_active"]:
+        range_change = [range_change[0]]  # Because I only ran the code for one value
+
     for chn in range_change:
         if config["power_change_active"]:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100)) + "ind=0"]
@@ -468,7 +463,7 @@ def make_gifs_of_pdfs():
 
 
 def plot_R1_R2_curve(res, power, save_location, res_gaus=None):
-
+    breakpoint()
     figure = plt.figure(figsize=(5, 4))
     # See how many plot we need to do
     hold_keys = []
@@ -550,3 +545,14 @@ def loss_interference(
 
     sum_capacity = lmbd * cap_RX1 + (1 - lmbd) * cap_RX2
     return -sum_capacity, cap_RX1, cap_RX2
+
+
+def check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
+    # We should check if the projection is necessary
+    cond1 = torch.abs(torch.sum(pdf_x) - 1) < 1e-5  # sum of pdf is 1
+    cond2 = torch.sum(pdf_x < 0) == 0  # pdf cannot be negative
+    if cons_type == 1:
+        cond3 = torch.sum(alphabet_x**2 * pdf_x) <= power + 1e-3
+    else:
+        cond3 = True
+    return cond1 and cond2 and cond3
