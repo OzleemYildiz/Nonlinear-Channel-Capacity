@@ -101,5 +101,4 @@ def find_best_gaussian(regime_class):
             # then higher the power, the better
             break
     print("Gaussian Capacity: ", best_cap)
-    breakpoint()
     return best_power, best_cap
