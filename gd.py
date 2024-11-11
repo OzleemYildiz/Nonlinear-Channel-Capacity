@@ -80,14 +80,16 @@ def gd_capacity(max_x, config, power, regime_class):
                     print("Iter:", i, "Capacity:", opt_capacity[-1])
 
                 # moving average of capacity between last 100 iterations did not improve, stop
-                if (
-                    i > 100
-                    and np.abs(
-                        np.mean(opt_capacity[-50:]) - np.mean(opt_capacity[-100:-50])
-                    )
-                    < config["epsilon"]
-                ):
-                    break
+                if not config["gd_nostop_cond"]:
+                    if (
+                        i > 100
+                        and np.abs(
+                            np.mean(opt_capacity[-50:])
+                            - np.mean(opt_capacity[-100:-50])
+                        )
+                        < config["epsilon"]
+                    ):
+                        break
 
             # is it enough mass point check?
             if opt_capacity[-1] > max_capacity:

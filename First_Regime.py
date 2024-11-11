@@ -301,7 +301,6 @@ class First_Regime:
         return cap
 
     def new_capacity(self, pdf_x):
-
         pdf_y_given_x = (
             1
             / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_2"])
@@ -314,6 +313,7 @@ class First_Regime:
                 / self.config["sigma_2"] ** 2
             )
         )
+
         pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
         py_x_logpy_x = pdf_y_given_x * torch.log(pdf_y_given_x + 1e-20)
         px_py_x_logpy_x = py_x_logpy_x @ pdf_x

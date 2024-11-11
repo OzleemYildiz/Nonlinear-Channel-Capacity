@@ -57,7 +57,7 @@ def main():
     # Y1 = Phi(X1 + AX2 + N11)+ N12
     # Y2 = Phi(X2  + N21)+ N22
 
-    config = read_config(args_name="arguments-interference.yml")
+    config = read_config(args_name="arguments-interference1.yml")
     print(
         "**** AWGN Interference Channel with Nonlinearity: ",
         config["nonlinearity"],
@@ -71,7 +71,7 @@ def main():
 
     cap_gaus_RX1 = []
     cap_gaus_RX2 = []
-    lambda_power = np.linspace(0.01, 0.99, 10)
+    lambda_power = np.linspace(0.01, 0.99, 60)
     for power in np.logspace(
         np.log10(config["min_power_cons"]),
         np.log10(config["max_power_cons"]),

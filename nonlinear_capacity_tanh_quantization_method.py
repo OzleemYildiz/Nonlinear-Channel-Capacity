@@ -72,7 +72,9 @@ SNR_list = [x*2.0 for x in range(11)] # I don't know why it's a list
 Nx = int(1e3)
 Nz = int(1e3)
 Nu = int(1e3)
-
+gaus_pdf = (
+            lambda x: 1 / np.sqrt(2 * np.pi * Omega) * np.exp(-0.5 * x**2 / Omega)
+        )
 max_sig = 4.0
 
 varz = 1

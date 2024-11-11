@@ -32,10 +32,15 @@ def return_nonlinear_fn(config):
     # 4:nonlinear x4: x/(1 + x^4)^1/4
     elif config["nonlinearity"] == 4:
         nonlinear_fn = lambda x: torch.tensor(x / ((1 + x**4) ** (1 / 4)))
+    # 5:nonlinear clipping
     elif config["nonlinearity"] == 5:
         # nonlinear_fn = lambda x: torch.ones_like(torch.tensor(x))
-        nonlinear_fn = lambda x: torch.clip(
-            torch.tensor(x), -config["clipping_limit"], config["clipping_limit"]
+        nonlinear_fn = (
+            lambda x: config["clipping_limit_y"]
+            / config["clipping_limit_x"]
+            * torch.clip(
+                torch.tensor(x), -config["clipping_limit_x"], config["clipping_limit_x"]
+            )
         )
     else:
         raise ValueError("Nonlinearity not defined")

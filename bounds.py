@@ -10,7 +10,7 @@ from scipy.integrate import quad
 from matplotlib import pyplot as plt
 from utils import regime_dependent_snr, read_config
 import math
-from scipy.special import erfc
+from scipy.special import erfc, erf
 
 
 def bounds_l1_norm(power, sigma, config):
@@ -271,13 +271,131 @@ def main():
 # clipping function - regime 1 - average power constraint
 # call in the for loop for every power value
 def sdnr_bound_regime_1_tarokh_ref7(power, config):
-    A = config["clipping_limit"]
+    A = config["clipping_limit_x"]
+
     Omega = power  # average power
     gamma = A / np.sqrt(Omega)
     alpha = 1 - np.exp(-(gamma**2)) + np.sqrt(np.pi) / 2 * gamma * erfc(gamma)
     sigma_d_2 = Omega * (1 - np.exp(-(gamma**2)) - alpha**2)
     cap = 1 / 2 * np.log(1 + alpha**2 * Omega / (sigma_d_2 + config["sigma_2"] ** 2))
     return cap
+
+
+# The following checks if lowering the power increases the capacity
+def updated_sdnr_bound_regime_1_tarokh_ref7(power, config):
+    A = config["clipping_limit_x"]
+    max_pow = power
+    list_pow = np.linspace(max_pow, 0.01, 1000)
+    best_cap = 0
+
+    for power in list_pow:
+
+        Omega = power  # average power
+        gamma = A / np.sqrt(Omega)
+        alpha = 1 - np.exp(-(gamma**2)) + np.sqrt(np.pi) / 2 * gamma * erfc(gamma)
+        alpha = alpha
+        # alpha = alpha * config["clipping_limit_y"] / config["clipping_limit_x"]
+        sigma_d_2 = Omega * (1 - np.exp(-(gamma**2)) - alpha**2)
+        # sigma_d_2 = (
+        #     sigma_d_2
+        #     * config["clipping_limit_y"] ** 2
+        #     / config["clipping_limit_x"] ** 2
+        # )
+        cap = (
+            1 / 2 * np.log(1 + alpha**2 * Omega / (sigma_d_2 + config["sigma_2"] ** 2))
+        )
+        if cap >= best_cap:
+            best_cap = cap
+        else:
+            break
+
+    return cap
+
+
+def sdnr_new(power, config):
+
+    max_pow = power
+    list_pow = np.linspace(max_pow, 0.01, 1000)
+    best_cap = 0
+
+    for power in list_pow:
+        Omega = power  # average power
+        gaus_pdf = (
+            lambda x: 1 / np.sqrt(2 * np.pi * Omega) * np.exp(-0.5 * x**2 / Omega)
+        )  # Gaussian pdf with variance Omega
+
+        b_calc = (
+            lambda x: config["clipping_limit_y"]
+            / config["clipping_limit_x"]
+            * gaus_pdf(x)
+        )
+        B = quad(
+            b_calc,
+            -config["clipping_limit_x"],
+            config["clipping_limit_x"],
+        )[0]
+        # print("B:", B)
+        nonlin_fn = return_nonlinear_fn(config)
+        z_calc = lambda x: (nonlin_fn(x)) ** 2 * gaus_pdf(x)
+        e_z2 = quad(
+            z_calc,
+            -config["clipping_limit_x"],
+            config["clipping_limit_x"],
+        )[0]
+        z_calc = lambda x: (config["clipping_limit_y"]) ** 2 * gaus_pdf(x)
+        e_z2 += quad(z_calc, -np.inf, -config["clipping_limit_x"])[0]
+        e_z2 += quad(z_calc, config["clipping_limit_x"], np.inf)[0]
+        # print("Ez2:", e_z2)
+        sigma_d_2 = e_z2 - B**2 * power
+        cap = 1 / 2 * np.log(1 + B**2 * power / (sigma_d_2 + config["sigma_2"] ** 2))
+
+        if cap >= best_cap:
+            best_cap = cap
+        else:
+            break
+    return cap
+
+
+def sdnr_new_with_erf(power, config):
+    max_pow = power
+    list_pow = np.linspace(max_pow, 0.01, 1000)
+    best_cap = 0
+
+    for power in list_pow:
+        Omega = power  # average power
+        gaus_pdf = (
+            lambda x: 1 / np.sqrt(2 * np.pi * Omega) * np.exp(-0.5 * x**2 / Omega)
+        )  # Gaussian pdf with variance Omega
+
+        B = (
+            config["clipping_limit_y"]
+            / config["clipping_limit_x"]
+            * erf(config["clipping_limit_x"] / np.sqrt(2 * Omega))
+        )
+
+        z_calc = lambda x: x**2 * gaus_pdf(x)
+        A = quad(z_calc, 0, config["clipping_limit_x"])[0]
+        C_z = 2 * (
+            config["clipping_limit_y"] / config["clipping_limit_x"]
+        ) ** 2 * A + config["clipping_limit_y"] ** 2 * (
+            1 - erf(config["clipping_limit_x"] / np.sqrt(2 * Omega))
+        )
+
+        sigma_d_2 = C_z - B**2 * power
+        cap = 1 / 2 * np.log(1 + B**2 * power / (sigma_d_2 + config["sigma_2"] ** 2))
+        if np.isnan(cap):
+            breakpoint()
+
+        if cap >= best_cap:
+            best_cap = cap
+        else:
+            break
+    return cap
+
+
+#This is a bound for 
+def sundeep_upper_bound_third_regime():
+    pass
 
 
 if __name__ == "__main__":

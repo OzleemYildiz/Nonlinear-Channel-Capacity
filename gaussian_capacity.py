@@ -4,14 +4,12 @@ from First_Regime import First_Regime
 import math
 
 
-def gaussian_capacity(regime_class):
+def gaussian_capacity(regime_class, power):
     # print("Gaussian Capacity Calculation")
     pdf_x = (
         1
-        / (torch.sqrt(torch.tensor([2 * torch.pi * regime_class.power])))
-        * torch.exp(
-            -0.5 * ((regime_class.alphabet_x) ** 2) / regime_class.power
-        ).float()
+        / (torch.sqrt(torch.tensor([2 * torch.pi * power])))
+        * torch.exp(-0.5 * ((regime_class.alphabet_x) ** 2) / power).float()
     )
     pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
 
@@ -23,7 +21,6 @@ def gaussian_capacity(regime_class):
 
     cap_g = -loss_g
 
-    print("Gaussian Capacity: ", cap_g)
     return cap_g
 
 
@@ -86,3 +83,23 @@ def gaussian_interference_capacity(
     )
 
     return cap_RX1, cap_RX2
+
+
+def find_best_gaussian(regime_class):
+    max_power = regime_class.power
+
+    power_range = torch.arange(max_power, 0, -1)
+    best_cap = 0
+    best_power = 0
+    for power in power_range:
+        cap_g = gaussian_capacity(regime_class, power)
+        if cap_g - best_cap > 1e-5:
+            best_cap = cap_g
+            best_power = power
+        else:
+            # lowering the power at every step but it does not increase the capacity
+            # then higher the power, the better
+            break
+    print("Gaussian Capacity: ", best_cap)
+    breakpoint()
+    return best_power, best_cap

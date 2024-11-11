@@ -102,7 +102,10 @@ def loss(
 
     # cap = regime_class.capacity_like_ba(pdf_x)
     # cap = regime_class.capacity(pdf_x)
-    cap = regime_class.new_capacity(pdf_x)
+    if regime_class.config["regime"] == 1:
+        cap = regime_class.new_capacity(pdf_x)
+    else:
+        cap = regime_class.capacity_like_ba(pdf_x)
     # print("What they did", cap)
     loss = -cap
     return loss
@@ -158,7 +161,6 @@ def plot_vs_change(
     save_location=None,
     low_tarokh=None,
 ):
-    breakpoint()
     plt.figure(figsize=(5, 4))
     leg_str = []
     for keys in res.keys():
@@ -281,7 +283,7 @@ def generate_alphabet_x_y(config, power):
 
         # If it's clipped after this value, it does not matter to put values outside
         if config["nonlinearity"] == 5:
-            max_x = config["clipping_limit"]
+            max_x = config["clipping_limit_x"]
 
     else:  # first moment
         first_moment = power  # E[|X|] < P
@@ -310,12 +312,21 @@ def generate_alphabet_x_y(config, power):
     # sample_num_g = math.ceil(2 * max_x / config["delta_y"]) + 1
     # alphabet_x = torch.linspace(-max_x, max_x, sample_num_g)
 
-    max_y = max_y + (config["delta_y"] - (max_y % config["delta_y"]))
-    max_x = max_x + (config["delta_y"] - (max_x % config["delta_y"]))
+    # FIXME: Make sure that the delta change does not affect the rest of the code
+    sample_num_g = math.ceil(2 * max_x / config["delta_y"]) + 1
+    if (
+        sample_num_g < config["min_samples"]
+    ):  # This is to make sure that the number of samples is at least some minimum number
+        delta_y = 2 * max_x / config["min_samples"]
+    else:
+        delta_y = config["delta_y"]
+
+    max_y = max_y + (delta_y - (max_y % delta_y))
+    max_x = max_x + (delta_y - (max_x % delta_y))
 
     # Create the alphabet with the fixed delta
-    alphabet_x = torch.arange(-max_x, max_x + config["delta_y"] / 2, config["delta_y"])
-    alphabet_y = torch.arange(-max_y, max_y + config["delta_y"] / 2, config["delta_y"])
+    alphabet_x = torch.arange(-max_x, max_x + delta_y / 2, delta_y)
+    alphabet_y = torch.arange(-max_y, max_y + delta_y / 2, delta_y)
     return alphabet_x, alphabet_y, max_x, max_y
 
 
@@ -366,6 +377,7 @@ def read_config(args_name="arguments.yml"):
         config["cons_str"] = "Peak"
     else:
         config["cons_str"] = "First"
+
     return config
 
 
@@ -392,8 +404,8 @@ def get_interference_alphabet_x_y(config, power):
         max_x2 = config["stop_sd"] * np.sqrt(config["power_2"])
         # If it's clipped after this value, it does not matter to put values outside
         if config["nonlinearity"] == 5:
-            max_x = config["clipping_limit"]
-            max_x2 = config["clipping_limit"]
+            max_x = config["clipping_limit_x"]
+            max_x2 = config["clipping_limit_x"]
     else:  # first moment
         first_moment = power  # E[|X|] < P
         max_x = config["stop_sd"] * first_moment
@@ -463,7 +475,6 @@ def make_gifs_of_pdfs():
 
 
 def plot_R1_R2_curve(res, power, save_location, res_gaus=None):
-    breakpoint()
     figure = plt.figure(figsize=(5, 4))
     # See how many plot we need to do
     hold_keys = []

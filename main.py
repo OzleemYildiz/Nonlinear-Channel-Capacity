@@ -3,7 +3,11 @@ import argparse
 import os
 import torch
 import matplotlib.pyplot as plt
-from gaussian_capacity import gaussian_capacity, gaussian_with_l1_norm
+from gaussian_capacity import (
+    gaussian_capacity,
+    gaussian_with_l1_norm,
+    find_best_gaussian,
+)
 from gd import gd_capacity, gd_on_alphabet_capacity
 from utils import (
     generate_alphabet_x_y,
@@ -25,6 +29,9 @@ from bounds import (
     lower_bound_tarokh_third_regime,
     lower_bound_tarokh_third_regime_with_pw,
     sdnr_bound_regime_1_tarokh_ref7,
+    updated_sdnr_bound_regime_1_tarokh_ref7,
+    sdnr_new,
+    sdnr_new_with_erf,
 )
 from scipy import io
 import time
@@ -69,7 +76,7 @@ def define_save_location(config):
         )
 
     if config["gd_active"]:
-        save_location = save_location + "_gd_" + str(config["gd_active"])
+        save_location = save_location + "_gd=" + str(config["gd_active"])
         if config["gd_initial_ba"]:
             save_location = save_location + "_initial_ba"
     if config["gd_alphabet_active"]:
@@ -77,7 +84,15 @@ def define_save_location(config):
             save_location + "_gd_alphabet_" + str(config["gd_alphabet_active"])
         )
     if config["nonlinearity"] == 5:
-        save_location = save_location + "_clip=" + str(config["clipping_limit"])
+        save_location = (
+            save_location
+            + "_clipx="
+            + str(config["clipping_limit_x"])
+            + "_clipy="
+            + str(config["clipping_limit_y"])
+        )
+    elif config["nonlinearity"] == 3:
+        save_location = save_location + "tanh" + str(config["tanh_factor"]) + "x"
 
     save_location = save_location + "/"
     os.makedirs(
@@ -105,10 +120,12 @@ def main():
             config["n_snr"] = 1
 
     snr_change, noise_power = regime_dependent_snr(config)
+
     save_location = define_save_location(config)
     print("Saving in: " + save_location)
 
     capacity_gaussian = []
+    power_gaussian = []
     capacity_learned = []
     capacity_learned_over_alphabet = []
     capacity_ruth = []
@@ -122,6 +139,7 @@ def main():
     low_sdnr = []
     low_tarokh_third = []
     sdnr_tarokh_low = []
+    my_new_bound = []
 
     if config["time_division_active"]:
         tau_list = np.linspace(0.01, 0.99, config["n_time_division"])
@@ -171,8 +189,11 @@ def main():
                         up_tarokh.append(upper_bound_tarokh(power, config))
                         if config["nonlinearity"] == 5:
                             sdnr_tarokh_low.append(
-                                sdnr_bound_regime_1_tarokh_ref7(power, config)
+                                # sdnr_bound_regime_1_tarokh_ref7(power, config)
+                                updated_sdnr_bound_regime_1_tarokh_ref7(power, config)
                             )
+                            # my_new_bound.append(sdnr_new(power, config))
+                            my_new_bound.append(sdnr_new_with_erf(power, config))
                     if (
                         config["regime"] == 2 and config["cons_type"] == 1
                     ):  # average power
@@ -184,9 +205,11 @@ def main():
                     #     )
 
                 # Gaussian Capacity
-                cap_g = gaussian_capacity(regime_class)
+                # cap_g = gaussian_capacity(regime_class)
+                power_g, cap_g = find_best_gaussian(regime_class)
                 if ind == 0:  # keeping record of only tau results for demonstration
                     capacity_gaussian.append(cap_g)
+                    power_gaussian.append(power_g)
 
                 if config["ba_active"] and config["cons_type"] == 0:
                     (cap, input_dist) = apply_blahut_arimoto(regime_class, config)
@@ -344,6 +367,7 @@ def main():
             res["Upper_Bound_by_Tarokh"] = up_tarokh
             if config["nonlinearity"] == 5:
                 res["Lower_Bound_by_SDNR"] = sdnr_tarokh_low
+                res["My_New_Bound"] = my_new_bound
         if config["regime"] == 2 and config["cons_type"] == 1:  # average power bound
             res["Lower_Bound_with_SDNR"] = low_sdnr
         if config["regime"] == 3 and config["cons_type"] == 1:
@@ -360,15 +384,6 @@ def main():
     if config["ba_active"] and config["cons_type"] == 0:
         res["Blahut_Arimoto_Capacity"] = capacity_ba
 
-    io.savemat(
-        save_location + "/res.mat",
-        res,
-    )
-    io.savemat(
-        save_location + "/config.mat",
-        config,
-    )
-
     if not config["time_division_active"]:
         # If it's active, the goal is to plot R1 and R2 curves
         plot_vs_change(
@@ -378,6 +393,7 @@ def main():
         if config["gd_active"] or (
             config["gd_alphabet_active"] and config["cons_type"] == 0
         ):
+
             plot_pdf_vs_change(
                 map_pdf,
                 snr_change,
@@ -397,13 +413,7 @@ def main():
             save_location + "/pdf.mat",
             map_pdf,
         )
-        plot_pdf_vs_change(
-            map_pdf,
-            power_change,
-            config,
-            save_location=save_location,
-            file_name="pdf_snr_gd.png",
-        )
+
     else:
         # If it's active, the goal is to plot R1 and R2 curves
         if not (not config["power_change_active"] and config["time_division_active"]):
@@ -437,6 +447,18 @@ def main():
                 save_location=save_location,
                 file_name="pdf_snr_ba.png",
             )
+
+    res["Power_Gaussian"] = power_gaussian
+    res["Power_Change"] = power_change
+    io.savemat(
+        save_location + "/res.mat",
+        res,
+    )
+    io.savemat(
+        save_location + "/config.mat",
+        config,
+    )
+
     print("Results saved at: ", save_location)
 
 
