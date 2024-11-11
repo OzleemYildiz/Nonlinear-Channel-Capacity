@@ -13,7 +13,7 @@ module purge
 singularity exec \
 	    --overlay /scratch/zy2043/pytorch-example/my_pytorch.ext3:ro \
 	    /scratch/work/public/singularity/cuda12.1.1-cudnn8.9.0-devel-ubuntu22.04.2.sif\
-	    /bin/bash -c "source /ext3/env.sh; python main.py --config=arguments$SLURM_ARRAY_TASK_ID.yaml"
+	    /bin/bash -c "source /ext3/env.sh; python main.py --config=arguments$SLURM_ARRAY_TASK_ID.yml"
 
 
 
