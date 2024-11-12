@@ -87,7 +87,6 @@ def gaussian_interference_capacity(
 
 def find_best_gaussian(regime_class):
     max_power = regime_class.power
-
     power_range = torch.arange(max_power, 0, -1)
     best_cap = 0
     best_power = 0

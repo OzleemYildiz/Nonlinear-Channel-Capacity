@@ -200,7 +200,7 @@ def main():
                         low_sdnr.append(lower_bound_with_sdnr(power, config))
                     # if config["regime"] == 3:
                     #     low_tarokh_third.append(
-                    #         lower_bound_tarIokh_third_regime_with_pw(power, config)
+                    #         lower_bound_tarokh_third_regime_with_pw(power, config)
                     #     )
 
                 # Gaussian Capacity

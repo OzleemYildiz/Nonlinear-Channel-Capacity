@@ -314,12 +314,14 @@ def generate_alphabet_x_y(config, power):
 
     # FIXME: Make sure that the delta change does not affect the rest of the code
     sample_num_g = math.ceil(2 * max_x / config["delta_y"]) + 1
-    if (
-        sample_num_g < config["min_samples"]
-    ):  # This is to make sure that the number of samples is at least some minimum number
-        delta_y = 2 * max_x / config["min_samples"]
-    else:
-        delta_y = config["delta_y"]
+    # if (
+    #     sample_num_g < config["min_samples"]
+    # ):  # This is to make sure that the number of samples is at least some minimum number
+
+    # Keep the number of samples fixed instead of delta
+    delta_y = 2 * max_x / config["min_samples"]
+    # else:
+    #     delta_y = config["delta_y"]
 
     max_y = max_y + (delta_y - (max_y % delta_y))
     max_x = max_x + (delta_y - (max_x % delta_y))
@@ -412,11 +414,13 @@ def get_interference_alphabet_x_y(config, power):
         max_x2 = config["stop_sd"] * config["power_2"]
 
     if config["int_ratio"] > 0 and config["int_ratio"] <= 1:
-        delta_x2 = config["delta_y"]
-        delta_x1 = config["int_ratio"] * config["delta_y"]
+        delta_y = 2 * max_x2 / config["min_samples"]  # !!! Changed this
+        delta_x2 = delta_y
+        delta_x1 = config["int_ratio"] * delta_x2
     elif config["int_ratio"] > 1:
-        delta_x1 = config["delta_y"]
-        delta_x2 = config["delta_y"] / config["int_ratio"]
+        delta_y = 2 * max_x / config["min_samples"]  # !!! Changed this
+        delta_x1 = delta_y
+        delta_x2 = delta_x1 / config["int_ratio"]
     else:
         raise ValueError("Interference ratio must be positive")
 

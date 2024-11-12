@@ -87,6 +87,7 @@ def lower_bound_tarokh(config):
     return lower, snr
 
 
+# Regime=1
 def upper_bound_tarokh(power, config):
     nonlinear_func = return_nonlinear_fn(config)
     upper_bound = (
@@ -393,7 +394,7 @@ def sdnr_new_with_erf(power, config):
     return cap
 
 
-#This is a bound for 
+# This is a bound for
 def sundeep_upper_bound_third_regime():
     pass
 
