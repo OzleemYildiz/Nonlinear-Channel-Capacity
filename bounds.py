@@ -8,9 +8,12 @@ from scipy.integrate import dblquad
 from scipy.optimize import fsolve
 from scipy.integrate import quad
 from matplotlib import pyplot as plt
-from utils import regime_dependent_snr, read_config
+from utils import regime_dependent_snr, read_config, get_alphabet_x_y
 import math
-from scipy.special import erfc, erf
+from scipy.special import erfc, erf, comb
+import torch
+import numdifftools as nd
+from sympy import Matrix, linsolve, symbols
 
 
 def bounds_l1_norm(power, sigma, config):
@@ -251,6 +254,10 @@ def main():
     for snr in snr_change:
         print("--------", snr, "------------")
         power = (10 ** (snr / 10)) * noise_power
+        find_lambda1_lambda2_for_dist(power, config)
+        upper_bound_tarokh_third_regime(power, config)
+        sundeep_upper_bound_third_regime(power, config)
+
         calc = lower_bound_tarokh_third_regime_with_pw(power, config)
         if calc > earlier_calc:
             earlier_calc = calc
@@ -325,6 +332,20 @@ def sdnr_new(power, config):
             lambda x: 1 / np.sqrt(2 * np.pi * Omega) * np.exp(-0.5 * x**2 / Omega)
         )  # Gaussian pdf with variance Omega
 
+        # psi_x = lambda x: 1 / np.sqrt(2 * np.pi) * np.exp(-0.5 * x**2)
+        # phi_x = lambda x: 1 / 2 * (1 + erf(x / np.sqrt(2)))
+        # gaus_pdf = lambda x: (
+        #     1
+        #     / np.sqrt(Omega)
+        #     * psi_x(x / np.sqrt(Omega))
+        #     / (
+        #         phi_x(config["clipping_limit_x"] / np.sqrt(Omega))
+        #         - phi_x(-config["clipping_limit_x"] / np.sqrt(Omega))
+        #     )
+        #     if x <= config["clipping_limit_x"] and x >= -config["clipping_limit_x"]
+        #     else 0
+        # )
+
         b_calc = (
             lambda x: config["clipping_limit_y"]
             / config["clipping_limit_x"]
@@ -348,13 +369,18 @@ def sdnr_new(power, config):
         e_z2 += quad(z_calc, config["clipping_limit_x"], np.inf)[0]
         # print("Ez2:", e_z2)
         sigma_d_2 = e_z2 - B**2 * power
-        cap = 1 / 2 * np.log(1 + B**2 * power / (sigma_d_2 + config["sigma_2"] ** 2))
+        if sigma_d_2 > 0:
+            cap = (
+                1 / 2 * np.log(1 + B**2 * power / (sigma_d_2 + config["sigma_2"] ** 2))
+            )
+            if np.isnan(cap):
+                breakpoint()
 
-        if cap >= best_cap:
-            best_cap = cap
-        else:
-            break
-    return cap
+            if cap >= best_cap:
+                best_cap = cap
+            else:
+                break
+    return best_cap
 
 
 def sdnr_new_with_erf(power, config):
@@ -394,8 +420,201 @@ def sdnr_new_with_erf(power, config):
     return cap
 
 
-# This is a bound for
-def sundeep_upper_bound_third_regime():
+# This is a bound for the third regime - At least as a first try
+# First is to try with the clip function
+# I will take X - Clipped Gaussian
+#             W_1 -Gaussian
+
+# Y = phi(X+W_1)+W_2
+
+
+def sundeep_upper_bound_third_regime(power, config):
+    func = return_nonlinear_fn(config)
+    expectation_X = 0
+    alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
+    delta_x = alphabet_x[1] - alphabet_x[0]
+    max_W_1 = config["sigma_1"] * config["stop_sd"]
+    alphabet_w1 = torch.arange(-max_W_1, max_W_1 + delta_x / 2, delta_x)
+    pdf_w1 = (
+        1
+        / (torch.sqrt(torch.tensor([2 * torch.pi * config["sigma_1"] ** 2])))
+        * torch.exp(-0.5 * ((alphabet_w1) ** 2) / config["sigma_1"] ** 2).float()
+    )
+    pdf_w1 = (pdf_w1 / torch.sum(pdf_w1)).to(torch.float32)
+
+    pdf_x = (
+        1
+        / (torch.sqrt(torch.tensor([2 * torch.pi * power])))
+        * torch.exp(-0.5 * ((alphabet_x) ** 2) / power).float()
+    )
+    pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
+    inside = (
+        func(alphabet_x.reshape(-1, 1) + alphabet_w1.reshape(1, -1))
+        - func(expectation_X + alphabet_w1.reshape(1, -1))
+    ) ** 2 / (alphabet_x.reshape(-1, 1) - expectation_X) ** 2
+    c_a = pdf_x @ inside
+
+    # print("+Power:", power)
+    # print("E_x:", (alphabet_x**2) @ pdf_x)
+
+    E_x = (alphabet_x**2) @ pdf_x  # energy per symbol
+    mut_info_a = torch.log(1 + c_a * E_x / (config["sigma_2"] ** 2))
+    cap = mut_info_a @ pdf_w1
+    print("Sundeep Upper Bound:", cap)
+    return cap
+
+
+def upper_bound_tarokh_third_regime(power, config):
+    func = return_nonlinear_fn(config)
+    d_func = return_derivative_of_nonlinear_fn(config)
+    alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
+    alphabet_x = alphabet_x.numpy()
+    sum_bottom = 0
+    pdf_x = (
+        1 / (np.sqrt(2 * torch.pi * power)) * np.exp(-0.5 * ((alphabet_x) ** 2) / power)
+    )
+    pdf_x = (pdf_x / np.sum(pdf_x)).astype(np.float32)
+
+    for ind, x in enumerate(alphabet_x):
+        f_z = (
+            lambda z: 1
+            / np.sqrt(2 * np.pi * config["sigma_1"] ** 2)
+            * np.exp(-0.5 * (z - x) ** 2 / config["sigma_1"] ** 2)
+        )
+        func = lambda z: f_z(z) * np.log(d_func(z) + 1e-20)
+        int1 = quad(func, -np.inf, np.inf)[0]
+        sum_bottom += (
+            config["sigma_1"] ** 2 * np.exp(2 * int1) + config["sigma_2"] ** 2
+        ) * pdf_x[ind]
+    # breakpoint()
+
+    not_stop = True
+    k = 1
+    sum_top = 0
+    while not_stop:
+        earlier_top = sum_top
+        for i in range(0, 2 * k + 1):
+            # breakpoint()
+            phi_i = nd.Derivative(func, n=i)
+            phi_ki = nd.Derivative(func, n=2 * k - i)
+            sum_top += (
+                comb(2 * k, i)
+                * phi_i(np.sqrt(power))
+                * phi_ki(np.sqrt(power))
+                * config["sigma_1"] ** (2 * k)
+                / (2 * k)
+            )
+        k += 1
+        if abs(sum_top - earlier_top) < 1e-5:
+            not_stop = False
+        # if k > 4:  # FIXME: better method is needed
+        #     not_stop = False
+
+    upper_cap = (
+        1
+        / 2
+        * np.log(
+            1
+            + (func(np.sqrt(power)) ** 2 + sum_top + config["sigma_2"] ** 2)
+            / sum_bottom
+        )
+    )
+    print("Tarokh Upper Bound:", upper_cap)
+    return upper_cap
+
+
+def lower_bound_by_mmse(power, config):
+    func = return_nonlinear_fn(config)
+    max_lower_bound = 0
+
+    # power decrease might be necessary (similar to SDNR)
+    power_range = np.linspace(power, 0.01, 100)
+    for p in power_range:
+        pdf_x = lambda x: (1 / (np.sqrt(2 * np.pi * p)) * np.exp(-0.5 * (x**2) / p))
+        E_Y_f = lambda x: func(x) * pdf_x(x)
+        E_Y = quad(E_Y_f, -np.inf, np.inf)[0]
+        E_Y2_f = lambda x: func(x) ** 2 * pdf_x(x)
+        E_Y2 = quad(E_Y2_f, -np.inf, np.inf)[0] + config["sigma_2"] ** 2
+        var_Y = E_Y2 - E_Y**2
+        var_X = p
+        E_X = 0
+        E_XY_f = lambda x: x * func(x) * pdf_x(x)
+        E_XY = quad(E_XY_f, -np.inf, np.inf)[0]
+        cov_XY = E_XY - E_X * E_Y
+        correlation = cov_XY / (np.sqrt(var_X) * np.sqrt(var_Y))
+        lower_bound = -0.5 * np.log(1 - correlation**2)
+        if max_lower_bound < lower_bound:
+            max_lower_bound = lower_bound
+        else:
+            break
+    return max_lower_bound
+
+
+def lower_bound_by_mmse_with_truncated_gaussian(power, config):
+    func = return_nonlinear_fn(config)
+    max_lower_bound = 0
+
+    # power decrease might be necessary (similar to SDNR)
+    power_range = np.linspace(power, 0.01, 100)
+    for p in power_range:
+        psi_x = lambda x: 1 / np.sqrt(2 * np.pi) * np.exp(-0.5 * x**2)
+        phi_x = lambda x: 1 / 2 * (1 + erf(x / np.sqrt(2)))
+        pdf_x = lambda x: (
+            1
+            / np.sqrt(p)
+            * psi_x(x / np.sqrt(p))
+            / (
+                phi_x(config["clipping_limit_x"] / np.sqrt(p))
+                - phi_x(-config["clipping_limit_x"] / np.sqrt(p))
+            )
+            if x < config["clipping_limit_x"] and x > -config["clipping_limit_x"]
+            else 0
+        )
+
+        # what they describe in the SDNR paper
+        # f_rayleigh = lambda r: r / p * np.exp(-(r**2) / (2 * p)) if r >= 0 else 0
+        # # uniform distribution over [0, 2pi]
+        # f_costheta = lambda y: (
+        #     1 / (np.pi * np.sin(np.arccos(y))) if y >= -1 and y <= 1 else 0
+        # )
+        # # inside = lambda x, y: f_costheta(y) * f_rayleigh(x / y) * 1 / (abs(y))
+        # inside = lambda x, r: f_rayleigh(r) * f_costheta(x / r) * 1 / (abs(r))
+        # pdf_x = lambda x: quad(lambda r: inside(x, r), 1e-5, np.inf)[0]
+
+        # print("Sum pdf:", quad(pdf_x, -np.inf, np.inf)[0])
+        # print("Energy per symbol:", quad(lambda x: x**2 * pdf_x(x), -np.inf, np.inf)[0])
+        # pdf_x_list = [pdf_x(x) for x in np.linspace(-15, 15, 1000)]
+        # plt.plot(np.linspace(-15, 15, 1000), pdf_x_list)
+        # plt.show()
+        # breakpoint()
+
+        E_Y_f = lambda x: func(x) * pdf_x(x)
+        E_Y = quad(E_Y_f, -np.inf, np.inf)[0]
+        E_Y2_f = lambda x: func(x) ** 2 * pdf_x(x)
+        E_Y2 = quad(E_Y2_f, -np.inf, np.inf)[0] + config["sigma_2"] ** 2
+        var_Y = E_Y2 - E_Y**2
+        var_X = p
+        E_X = 0
+        E_XY_f = lambda x: x * func(x) * pdf_x(x)
+        E_XY = quad(E_XY_f, -np.inf, np.inf)[0]
+        cov_XY = E_XY - E_X * E_Y
+        correlation = cov_XY / (np.sqrt(var_X) * np.sqrt(var_Y))
+        lower_bound = -0.5 * np.log(1 - correlation**2)
+        if max_lower_bound < lower_bound:
+            max_lower_bound = lower_bound
+
+        else:
+            break
+
+    return max_lower_bound
+
+
+# Prob. Distribution f_x(x) = lambda_1*phi_d(x)*exp(-x^2*lambda_2)
+def find_lambda1_lambda2_for_dist(power, config):
+    phi = return_nonlinear_fn(config)
+    phi_d = nd.Derivative(phi, n=1)
+    breakpoint()
+
     pass
 
 

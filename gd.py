@@ -5,7 +5,7 @@ from utils import (
     return_regime_class,
     get_interference_alphabet_x_y,
     loss_interference,
-    generate_alphabet_x_y,
+    get_alphabet_x_y,
     check_pdf_x_region,
 )
 import numpy as np
@@ -33,7 +33,7 @@ def gd_capacity(max_x, config, power, regime_class):
             # mass_points = i * 100 + config["mass_points"][0]
 
             # alphabet_x = torch.linspace(-max_x, max_x, mass_points)
-            alphabet_x, alphabet_y, max_x, max_y = generate_alphabet_x_y(config, power)
+            alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
             # alphabet_x = torch.linspace(-max_x, max_x, mass_points)
             regime_class.set_alphabet_x(alphabet_x)
             # FIXME: remove this -unnecessary now

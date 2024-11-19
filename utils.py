@@ -267,7 +267,7 @@ def plot_pdf_vs_change(
         plt.close()
 
 
-def generate_alphabet_x_y(config, power):
+def get_alphabet_x_y(config, power):
     nonlinear_func = return_nonlinear_fn(config)
     if config["cons_type"] == 0:  # peak power
         peak_power = power
@@ -313,13 +313,16 @@ def generate_alphabet_x_y(config, power):
     # alphabet_x = torch.linspace(-max_x, max_x, sample_num_g)
 
     # FIXME: Make sure that the delta change does not affect the rest of the code
-    sample_num_g = math.ceil(2 * max_x / config["delta_y"]) + 1
+    # sample_num_g = math.ceil(2 * max_x / config["delta_y"]) + 1
     # if (
     #     sample_num_g < config["min_samples"]
     # ):  # This is to make sure that the number of samples is at least some minimum number
 
     # Keep the number of samples fixed instead of delta
     delta_y = 2 * max_x / config["min_samples"]
+    if delta_y > config["delta_y"]:
+        delta_y = config["delta_y"]
+
     # else:
     #     delta_y = config["delta_y"]
 
@@ -415,10 +418,14 @@ def get_interference_alphabet_x_y(config, power):
 
     if config["int_ratio"] > 0 and config["int_ratio"] <= 1:
         delta_y = 2 * max_x2 / config["min_samples"]  # !!! Changed this
+        if delta_y > config["delta_y"]:
+            delta_y = config["delta_y"]
         delta_x2 = delta_y
         delta_x1 = config["int_ratio"] * delta_x2
     elif config["int_ratio"] > 1:
         delta_y = 2 * max_x / config["min_samples"]  # !!! Changed this
+        if delta_y > config["delta_y"]:
+            delta_y = config["delta_y"]
         delta_x1 = delta_y
         delta_x2 = delta_x1 / config["int_ratio"]
     else:
@@ -478,7 +485,13 @@ def make_gifs_of_pdfs():
     pass
 
 
-def plot_R1_R2_curve(res, power, save_location, res_gaus=None):
+def plot_R1_R2_curve(
+    res,
+    power,
+    save_location,
+    config,
+    res_gaus=None,
+):
     figure = plt.figure(figsize=(5, 4))
     # See how many plot we need to do
     hold_keys = []
@@ -489,10 +502,12 @@ def plot_R1_R2_curve(res, power, save_location, res_gaus=None):
         plt.plot(res["R1"][keys], res["R2"][keys], label=keys)
 
     if res_gaus is not None:
-        plt.scatter(res_gaus[0], res_gaus[1], label="Gaussian", marker="x")
+        for keys in res_gaus.keys():
+            plt.scatter(res_gaus[keys][0], res_gaus[keys][1], label=keys)
+
     plt.xlabel("Rate 1")
     plt.ylabel("Rate 2")
-    plt.title("Power = " + str(int(power)))
+    plt.title("Power User 1 = " + str(int(power)), " Power User 2: " + str(int(config["power_2"])))
     plt.legend()
     plt.grid()
     plt.savefig(save_location + "/R1_R2_pow=" + str(int(power)) + ".png")
@@ -571,3 +586,16 @@ def check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
     else:
         cond3 = True
     return cond1 and cond2 and cond3
+
+
+def get_PP_complex_alphabet_x_y(config, power):
+    _, _, max_x, max_y = get_alphabet_x_y(config, power)
+    alphabet_x = torch.linspace(-max_x, max_x, config["qam_k"])
+    delta = alphabet_x[1] - alphabet_x[0]
+    real_x, imag_x = torch.meshgrid([alphabet_x, alphabet_x])
+
+    # FIXME: Not sure if avoiding zero is a good idea -- Check this
+    alphabet_y = torch.arange(-max_y - delta / 2, max_y + delta / 2, delta)
+    real_y, imag_y = torch.meshgrid([alphabet_y, alphabet_y])
+
+    return real_x, imag_x, real_y, imag_y

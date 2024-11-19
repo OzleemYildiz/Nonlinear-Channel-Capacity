@@ -10,7 +10,7 @@ from gaussian_capacity import (
 )
 from gd import gd_capacity, gd_on_alphabet_capacity
 from utils import (
-    generate_alphabet_x_y,
+    get_alphabet_x_y,
     plot_vs_change,
     plot_pdf_vs_change,
     project_pdf,
@@ -32,6 +32,10 @@ from bounds import (
     updated_sdnr_bound_regime_1_tarokh_ref7,
     sdnr_new,
     sdnr_new_with_erf,
+    sundeep_upper_bound_third_regime,
+    upper_bound_tarokh_third_regime,
+    lower_bound_by_mmse,
+    lower_bound_by_mmse_with_truncated_gaussian,
 )
 from scipy import io
 import time
@@ -139,6 +143,9 @@ def main():
     low_tarokh_third = []
     sdnr_tarokh_low = []
     my_new_bound = []
+    sundeep_upper = []
+    tarokh_upper = []
+    mmse_bound = []
 
     if config["time_division_active"]:
         tau_list = np.linspace(0.01, 0.99, config["n_time_division"])
@@ -174,9 +181,7 @@ def main():
                     calc_logsnr.append(np.log(1 + power / (noise_power)) / 2)
                 print("log(1+SNR)/2 :", calc_logsnr[-1])
 
-                alphabet_x, alphabet_y, max_x, max_y = generate_alphabet_x_y(
-                    config, power
-                )
+                alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
 
                 regime_class = return_regime_class(
                     config, alphabet_x, alphabet_y, power
@@ -191,14 +196,24 @@ def main():
                                 # sdnr_bound_regime_1_tarokh_ref7(power, config)
                                 updated_sdnr_bound_regime_1_tarokh_ref7(power, config)
                             )
-                            # my_new_bound.append(sdnr_new(power, config))
-                            my_new_bound.append(sdnr_new_with_erf(power, config))
+                            my_new_bound.append(sdnr_new(power, config))
+                            # my_new_bound.append(sdnr_new_with_erf(power, config))
+                        mmse_bound.append(lower_bound_by_mmse(power, config))
+                        # mmse_bound.append(
+                        #     lower_bound_by_mmse_with_truncated_gaussian(power, config)
+                        # )
                     if (
                         config["regime"] == 2 and config["cons_type"] == 1
                     ):  # average power
                         # up_tarokh.append((calc_logsnr[-1]))
                         low_sdnr.append(lower_bound_with_sdnr(power, config))
-                    # if config["regime"] == 3:
+                    if config["regime"] == 3:
+                        sundeep_upper.append(
+                            sundeep_upper_bound_third_regime(power, config)
+                        )
+                        tarokh_upper.append(
+                            upper_bound_tarokh_third_regime(power, config)
+                        )
                     #     low_tarokh_third.append(
                     #         lower_bound_tarokh_third_regime_with_pw(power, config)
                     #     )
@@ -367,16 +382,20 @@ def main():
             if config["nonlinearity"] == 5:
                 res["Lower_Bound_by_SDNR"] = sdnr_tarokh_low
                 res["My_New_Bound"] = my_new_bound
+            res["MMSE_Bound"] = mmse_bound
         if config["regime"] == 2 and config["cons_type"] == 1:  # average power bound
             res["Lower_Bound_with_SDNR"] = low_sdnr
         if config["regime"] == 3 and config["cons_type"] == 1:
             # res["Lower_Bound_by_Tarokh"] = low_tarokh_third
-            low, snr_tarokh = lower_bound_tarokh_third_regime(config)
-            low_tarokh = {"SNR": snr_tarokh, "Lower_Bound": low}
-            io.savemat(
-                define_save_location(config) + "/low_tarokh.mat",
-                low_tarokh,
-            )
+            if config["nonlinearity"] != 5:
+                low, snr_tarokh = lower_bound_tarokh_third_regime(config)
+                low_tarokh = {"SNR": snr_tarokh, "Lower_Bound": low}
+                io.savemat(
+                    define_save_location(config) + "/low_tarokh.mat",
+                    low_tarokh,
+                )
+            res["Tarokh Upper Bound"] = tarokh_upper
+            res["Sundeep_Upper_Bound"] = sundeep_upper
 
     if config["cons_type"] == 2:
         res["Gaussian_Capacity_with_L1_Norm"] = capacity_ruth

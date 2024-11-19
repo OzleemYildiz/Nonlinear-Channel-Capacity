@@ -11,7 +11,7 @@ import numpy as np
 from utils import (
     project_pdf,
     read_config,
-    generate_alphabet_x_y,
+    get_alphabet_x_y,
     return_regime_class,
     regime_dependent_snr,
     plot_pdf_vs_change,
@@ -171,7 +171,7 @@ def main_ba():
     power = config["max_power_cons"]
 
     # give the biggest alphabet for maximum snr
-    alphabet_x, alphabet_y, _, _ = generate_alphabet_x_y(config, power)
+    alphabet_x, alphabet_y, _, _ = get_alphabet_x_y(config, power)
     regime_class = return_regime_class(config, alphabet_x, alphabet_y, power)
     pdf_y_given_x = return_pdf_y_x_for_ba(config, regime_class)
 

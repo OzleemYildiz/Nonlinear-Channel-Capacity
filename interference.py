@@ -7,7 +7,11 @@ from utils import (
     plot_R1_R2_curve,
 )
 import numpy as np
-from gaussian_capacity import gaussian_interference_capacity
+from gaussian_capacity import (
+    gaussian_interference_capacity,
+    gaus_interference_R1_R2_curve,
+    agc_gaussian_capacity_interference,
+)
 import os
 from scipy import io
 from gd import (
@@ -92,7 +96,8 @@ def main():
         alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
             get_interference_alphabet_x_y(config, power)
         )
-        cap1, cap2 = gaussian_interference_capacity(
+        res_gaus = {}
+        cap1_g, cap2_g = gaussian_interference_capacity(
             power,
             power,
             config,
@@ -101,10 +106,18 @@ def main():
             alphabet_x_RX2,
             alphabet_y_RX2,
         )
-        cap_gaus_RX1.append(cap1)
-        cap_gaus_RX2.append(cap2)
+        res_gaus["Gaussian"] = [cap1_g, cap2_g]
+        cap1_agc, cap2_agc = agc_gaussian_capacity_interference(config, power)
+        res_gaus["AGC"] = [cap1_agc, cap2_agc]
 
-        res_gaus = [cap1, cap2]
+        cap1, cap2 = gaus_interference_R1_R2_curve(config, power)
+
+        # cap_gaus_RX1.append(cap1)
+        # cap_gaus_RX2.append(cap2)
+
+        res = {"R1": {}, "R2": {}}
+        res["R1"]["Gaussian"] = cap1
+        res["R2"]["Gaussian"] = cap2
 
         if config["gd_active"]:
             lambda_sweep = np.linspace(0.01, 0.99, config["n_lmbd"])
@@ -121,44 +134,40 @@ def main():
             #     config, power, lambda_sweep
             # )
 
-        res_gd = {"R1": {}, "R2": {}}
-        res_gd["R1"]["Learned"] = max_cap_RX1
-        res_gd["R2"]["Learned"] = max_cap_RX2
+            res["R1"]["Learned"] = max_cap_RX1
+            res["R2"]["Learned"] = max_cap_RX2
+            res_pdf = {
+                "RX1_pdf": max_pdf_x_RX1,
+                "RX1_alph": alphabet_x_RX1,
+                "RX2_pdf": max_pdf_x_RX2,
+                "RX2_alph": alphabet_x_RX2,
+            }
+            io.savemat(
+                save_location + "pdf_pow=" + str(int(power)) + ".mat",
+                res_pdf,
+            )
+            plot_res(
+                max_sum_cap,
+                save_opt_sum_capacity,
+                max_pdf_x_RX1,
+                max_pdf_x_RX2,
+                alphabet_x_RX1,
+                alphabet_x_RX2,
+                power,
+                save_location + "power=" + str(int(power)) + "/",
+                lambda_sweep,
+            )
+        plot_R1_R2_curve(res, power, save_location, config=config, res_gaus=res_gaus)
 
-        plot_R1_R2_curve(res_gd, power, save_location, res_gaus=res_gaus)
-
-        io.savemat(save_location + "res_gd_pow=" + str(int(power)) + ".mat", res_gd)
-
-        res_pdf = {
-            "RX1_pdf": max_pdf_x_RX1,
-            "RX1_alph": alphabet_x_RX1,
-            "RX2_pdf": max_pdf_x_RX2,
-            "RX2_alph": alphabet_x_RX2,
-        }
-        io.savemat(
-            save_location + "pdf_pow=" + str(int(power)) + ".mat",
-            res_pdf,
-        )
-
-        plot_res(
-            max_sum_cap,
-            save_opt_sum_capacity,
-            max_pdf_x_RX1,
-            max_pdf_x_RX2,
-            alphabet_x_RX1,
-            alphabet_x_RX2,
-            power,
-            save_location + "power=" + str(int(power)) + "/",
-            lambda_sweep,
-        )
+        io.savemat(save_location + "res_pow=" + str(int(power)) + ".mat", res)
 
         del alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2
 
     res = {
         "Capacity_without_Interference_Nonlinearity_RX1": cap_RX1_no_int_no_nonlinearity,
         "Capacity_without_Nonlinearity_RX2": cap_RX2_no_nonlinearity,
-        "Capacity_Gaussian_RX1": cap_gaus_RX1,
-        "Capacity_Gaussian_RX2": cap_gaus_RX2,
+        # "Capacity_Gaussian_RX1": ,
+        # "Capacity_Gaussian_RX2": cap_gaus_RX2,
     }
     io.savemat(save_location + "/res.mat", res)
     io.savemat(save_location + "/config.mat", config)

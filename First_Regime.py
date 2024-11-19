@@ -321,3 +321,5 @@ class First_Regime:
         py = pdf_y_given_x @ pdf_x
         s_term = torch.sum(py * torch.log(py + 1e-20))
         return f_term - s_term
+
+    

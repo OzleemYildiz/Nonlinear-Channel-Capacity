@@ -12,6 +12,8 @@ import os
 from scipy import io
 import matplotlib.pyplot as plt
 
+from gaussian_capacity import gaus_interference_R1_R2_curve
+
 
 def define_save_location(config):
     save_location = (
@@ -69,34 +71,9 @@ def main():
     os.makedirs(save_location, exist_ok=True)
     print("Save Location: ", save_location)
 
-    cap_gaus_RX1 = []
-    cap_gaus_RX2 = []
-    lambda_power = np.linspace(0.01, 0.99, 60)
-    for power in np.logspace(
-        np.log10(config["min_power_cons"]),
-        np.log10(config["max_power_cons"]),
-        config["n_snr"],
-    ):
-        for lmbd in lambda_power:
-            power1 = power
-            power2 = lmbd * power
-
-            print("-----------Power: ", power, "when lambda=", lmbd, "-----------")
-            snr1, snr2, inr1 = interference_dependent_snr(config, power)
-            alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
-                get_interference_alphabet_x_y(config, power)
-            )
-            cap1, cap2 = gaussian_interference_capacity(
-                power1,
-                power2,
-                config,
-                alphabet_x_RX1,
-                alphabet_y_RX1,
-                alphabet_x_RX2,
-                alphabet_y_RX2,
-            )
-            cap_gaus_RX1.append(cap1)
-            cap_gaus_RX2.append(cap2)
+    power = config["min_power_cons"] #
+    
+    cap_gaus_RX1, cap_gaus_RX2 = gaus_interference_R1_R2_curve(config, power)#
     io.savemat(save_location + "cap_gaus_RX1.mat", {"cap_gaus_RX1": cap_gaus_RX1})
     io.savemat(save_location + "cap_gaus_RX2.mat", {"cap_gaus_RX2": cap_gaus_RX2})
     plt.figure()
