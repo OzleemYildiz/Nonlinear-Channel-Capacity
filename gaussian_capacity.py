@@ -78,7 +78,7 @@ def gaussian_interference_capacity(
     pdf_x_1 = (pdf_x_1 / torch.sum(pdf_x_1)).to(torch.float32)
     config["sigma_2"] = config["sigma_12"]
     f_reg_RX1 = First_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power1)  # 1st user
-    cap_RX1 = f_reg_RX1.capacity_of_interference(
+    cap_RX1 = f_reg_RX1.capacity_with_interference(
         pdf_x_1,
         pdf_x_2,
         f_reg_RX2.alphabet_x,

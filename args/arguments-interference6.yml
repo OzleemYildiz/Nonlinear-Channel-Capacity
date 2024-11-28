@@ -1,6 +1,6 @@
-min_power_cons : 5
-max_power_cons : 5
-power_2 : 5
+min_power_cons : 100
+max_power_cons : 100
+power_2 : 10
 sigma_11 : 1 
 sigma_12 : 1
 sigma_21 : 1

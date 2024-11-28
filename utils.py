@@ -102,10 +102,32 @@ def loss(
 
     # cap = regime_class.capacity_like_ba(pdf_x)
     # cap = regime_class.capacity(pdf_x)
-    if regime_class.config["regime"] == 1:
+    if regime_class.config["regime"] == 1 or regime_class.config["regime"] == 3:
         cap = regime_class.new_capacity(pdf_x)
+    # elif regime_class.config["regime"] == 3:
+    #     max_z1 = regime_class.config["stop_sd"] * regime_class.config["sigma_1"] ** 2
+    #     delta_z1 = regime_class.alphabet_x[1] - regime_class.alphabet_x[0]
+    #     max_z1 = delta_z1 - (max_z1 % delta_z1)
+    #     alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
+
+    #     pdf_z1 = (
+    #         1
+    #         / (
+    #             torch.sqrt(torch.tensor([2 * torch.pi]))
+    #             * regime_class.config["sigma_1"]
+    #         )
+    #         * torch.exp(-0.5 * (alphabet_z1) ** 2 / regime_class.config["sigma_1"] ** 2)
+    #     )
+    #     pdf_z1 = pdf_z1 / (torch.sum(pdf_z1) + 1e-30)
+    #     f_reg = First_Regime(
+    #         regime_class.alphabet_x,
+    #         regime_class.alphabet_y,
+    #         regime_class.config,
+    #         regime_class.power,
+    #     )
+    #     cap = f_reg.capacity_with_interference(pdf_x, pdf_z1, alphabet_z1)
     else:
-        cap = regime_class.capacity_like_ba(pdf_x)
+        cap = regime_class.capacity(pdf_x)
     # print("What they did", cap)
     loss = -cap
     return loss
@@ -282,8 +304,8 @@ def get_alphabet_x_y(config, power):
         # max_x = stop_s*avg_power
 
         # If it's clipped after this value, it does not matter to put values outside
-        if config["nonlinearity"] == 5:
-            max_x = config["clipping_limit_x"]
+        # if config["nonlinearity"] == 5:
+        #     max_x = config["clipping_limit_x"]
 
     else:  # first moment
         first_moment = power  # E[|X|] < P
@@ -304,24 +326,17 @@ def get_alphabet_x_y(config, power):
             + config["sigma_2"] * config["stop_sd"]
         )
 
-    # sample_num = math.ceil(2 * max_y / config["delta_y"]) + 1
-    # alphabet_y = torch.linspace(-max_y, max_y, sample_num)
-
-    # Gaussian Result
-    # alphabet_x
-    # sample_num_g = math.ceil(2 * max_x / config["delta_y"]) + 1
-    # alphabet_x = torch.linspace(-max_x, max_x, sample_num_g)
-
-    # FIXME: Make sure that the delta change does not affect the rest of the code
-    # sample_num_g = math.ceil(2 * max_x / config["delta_y"]) + 1
-    # if (
-    #     sample_num_g < config["min_samples"]
-    # ):  # This is to make sure that the number of samples is at least some minimum number
-
     # Keep the number of samples fixed instead of delta
     delta_y = 2 * max_x / config["min_samples"]
     if delta_y > config["delta_y"]:
         delta_y = config["delta_y"]
+
+    # Check if Z1 will have enough samples - It gets included only for 3rd Regime
+    if config["regime"] == 3:
+        max_z1 = config["stop_sd"] * config["sigma_1"] ** 2
+        sample_num = math.ceil(2 * max_z1 / delta_y) + 1
+        if sample_num < config["min_samples"]:
+            delta_y = 2 * max_z1 / config["min_samples"]
 
     # else:
     #     delta_y = config["delta_y"]
@@ -507,9 +522,19 @@ def plot_R1_R2_curve(
 
     plt.xlabel("Rate 1")
     plt.ylabel("Rate 2")
-    plt.title("Power User 1 = " + str(int(power)), " Power User 2: " + str(int(config["power_2"])))
+
+    if config.get("power_2") is not None:
+        plt.title(
+            "Power User 1 = "
+            + str(int(power))
+            + " Power User 2 = "
+            + str(config["power_2"])
+        )
+    else:
+        plt.title("Power = " + str(int(power)))
+
     plt.legend()
-    plt.grid()
+
     plt.savefig(save_location + "/R1_R2_pow=" + str(int(power)) + ".png")
     plt.close()
 
@@ -562,7 +587,7 @@ def loss_interference(
     # Calculate the capacity for RX1 and RX2
     #
 
-    cap_RX1 = f_reg_RX1.capacity_of_interference(
+    cap_RX1 = f_reg_RX1.capacity_with_interference(
         pdf_x_RX1,
         pdf_x_RX2,
         f_reg_RX2.alphabet_x,

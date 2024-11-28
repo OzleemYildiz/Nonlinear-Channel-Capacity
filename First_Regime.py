@@ -241,7 +241,7 @@ class First_Regime:
             torch.tensor(self.pdf_u) / torch.sum(torch.tensor(self.pdf_u))
         ).to(torch.float32)
 
-    def capacity_of_interference(self, pdf_x_RX1, pdf_x_RX2, alphabet_x_RX2):
+    def capacity_with_interference(self, pdf_x_RX1, pdf_x_RX2, alphabet_x_RX2):
 
         # max_y = (
         #     self.nonlinear_func(max(self.alphabet_x) + max(alphabet_x_RX2))

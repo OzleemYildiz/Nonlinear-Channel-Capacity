@@ -134,7 +134,6 @@ def blahut_arimoto_torch(
 
 
 def return_pdf_y_x_for_ba(config, regime_class):
-
     if regime_class.config["regime"] == 1:
         pdf_y_given_x = regime_class.pdf_y_given_v
     elif regime_class.config["regime"] == 2:

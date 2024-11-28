@@ -4,7 +4,7 @@ from nonlinearity_utils import (
     return_derivative_of_nonlinear_fn,
     return_nonlinear_fn_numpy,
 )
-from scipy.integrate import dblquad
+from scipy.integrate import dblquad, nquad
 from scipy.optimize import fsolve
 from scipy.integrate import quad
 from matplotlib import pyplot as plt
@@ -278,6 +278,7 @@ def main():
 
 # clipping function - regime 1 - average power constraint
 # call in the for loop for every power value
+# - This does not make sense if it's real signal
 def sdnr_bound_regime_1_tarokh_ref7(power, config):
     A = config["clipping_limit_x"]
 
@@ -290,25 +291,21 @@ def sdnr_bound_regime_1_tarokh_ref7(power, config):
 
 
 # The following checks if lowering the power increases the capacity
+# - This does not make sense if it's real signal
 def updated_sdnr_bound_regime_1_tarokh_ref7(power, config):
     A = config["clipping_limit_x"]
     max_pow = power
     list_pow = np.linspace(max_pow, 0.01, 1000)
     best_cap = 0
-
+    list_pow = [power]
     for power in list_pow:
 
         Omega = power  # average power
         gamma = A / np.sqrt(Omega)
         alpha = 1 - np.exp(-(gamma**2)) + np.sqrt(np.pi) / 2 * gamma * erfc(gamma)
         alpha = alpha
-        # alpha = alpha * config["clipping_limit_y"] / config["clipping_limit_x"]
         sigma_d_2 = Omega * (1 - np.exp(-(gamma**2)) - alpha**2)
-        # sigma_d_2 = (
-        #     sigma_d_2
-        #     * config["clipping_limit_y"] ** 2
-        #     / config["clipping_limit_x"] ** 2
-        # )
+
         cap = (
             1 / 2 * np.log(1 + alpha**2 * Omega / (sigma_d_2 + config["sigma_2"] ** 2))
         )
@@ -325,26 +322,11 @@ def sdnr_new(power, config):
     max_pow = power
     list_pow = np.linspace(max_pow, 0.01, 1000)
     best_cap = 0
-
     for power in list_pow:
         Omega = power  # average power
         gaus_pdf = (
             lambda x: 1 / np.sqrt(2 * np.pi * Omega) * np.exp(-0.5 * x**2 / Omega)
         )  # Gaussian pdf with variance Omega
-
-        # psi_x = lambda x: 1 / np.sqrt(2 * np.pi) * np.exp(-0.5 * x**2)
-        # phi_x = lambda x: 1 / 2 * (1 + erf(x / np.sqrt(2)))
-        # gaus_pdf = lambda x: (
-        #     1
-        #     / np.sqrt(Omega)
-        #     * psi_x(x / np.sqrt(Omega))
-        #     / (
-        #         phi_x(config["clipping_limit_x"] / np.sqrt(Omega))
-        #         - phi_x(-config["clipping_limit_x"] / np.sqrt(Omega))
-        #     )
-        #     if x <= config["clipping_limit_x"] and x >= -config["clipping_limit_x"]
-        #     else 0
-        # )
 
         b_calc = (
             lambda x: config["clipping_limit_y"]
@@ -356,6 +338,7 @@ def sdnr_new(power, config):
             -config["clipping_limit_x"],
             config["clipping_limit_x"],
         )[0]
+
         # print("B:", B)
         nonlin_fn = return_nonlinear_fn(config)
         z_calc = lambda x: (nonlin_fn(x)) ** 2 * gaus_pdf(x)
@@ -364,9 +347,11 @@ def sdnr_new(power, config):
             -config["clipping_limit_x"],
             config["clipping_limit_x"],
         )[0]
+
         z_calc = lambda x: (config["clipping_limit_y"]) ** 2 * gaus_pdf(x)
         e_z2 += quad(z_calc, -np.inf, -config["clipping_limit_x"])[0]
         e_z2 += quad(z_calc, config["clipping_limit_x"], np.inf)[0]
+
         # print("Ez2:", e_z2)
         sigma_d_2 = e_z2 - B**2 * power
         if sigma_d_2 > 0:
@@ -417,7 +402,106 @@ def sdnr_new_with_erf(power, config):
             best_cap = cap
         else:
             break
+    return best_cap
+
+
+def sdnr_new_with_erf_nopowchange(power, config):
+
+    Omega = power  # average power
+    gaus_pdf = (
+        lambda x: 1 / np.sqrt(2 * np.pi * Omega) * np.exp(-0.5 * x**2 / Omega)
+    )  # Gaussian pdf with variance Omega
+
+    B = (
+        config["clipping_limit_y"]
+        / config["clipping_limit_x"]
+        * erf(config["clipping_limit_x"] / np.sqrt(2 * Omega))
+    )
+
+    z_calc = lambda x: x**2 * gaus_pdf(x)
+    A = quad(z_calc, 0, config["clipping_limit_x"])[0]
+    C_z = 2 * (
+        config["clipping_limit_y"] / config["clipping_limit_x"]
+    ) ** 2 * A + config["clipping_limit_y"] ** 2 * (
+        1 - erf(config["clipping_limit_x"] / np.sqrt(2 * Omega))
+    )
+
+    sigma_d_2 = C_z - B**2 * power
+    cap = 1 / 2 * np.log(1 + B**2 * power / (sigma_d_2 + config["sigma_2"] ** 2))
+    if np.isnan(cap):
+        breakpoint()
     return cap
+
+
+def sdnr_new_rayleigh(power, config):
+
+    max_pow = power
+    list_pow = np.linspace(max_pow, 0.01, 1000)
+    best_cap = 0
+    func = return_nonlinear_fn(config)
+    for power in list_pow:
+        # f_r = lambda r: (  # <- Full Power
+        #     2 * r / (power * 2) * np.exp(-(r**2) / (power * 2)) if r >= 0 else 0
+        # )
+        # # f_r = lambda r: (
+        # #     2 * r / power * np.exp(-(r**2) / power) if r >= 0 else 0
+        # # )  # <- Half Power
+
+        # # # uniform distribution over [0, 2pi]
+        # f_theta = lambda th: 1 / (2 * np.pi) if th >= 0 and th <= 2 * np.pi else 0
+        # hold = lambda r, th: r * func(r) * np.cos(th) ** 2 * f_r(r) * f_theta(th)
+        # E_XY = nquad(
+        #     lambda r, th: r * func(r) * np.cos(th) ** 2 * f_r(r) * f_theta(th),
+        #     [[0, np.inf], [0, 2 * np.pi]],
+        # )[0]
+
+        # E_XX = nquad(
+        #     lambda r, th: r**2 * np.cos(th) ** 2 * f_r(r) * f_theta(th),
+        #     [[0, np.inf], [0, 2 * np.pi]],
+        # )[0]
+
+        # alpha = E_XY / (E_XX)
+
+        # gamma = config["clipping_limit_x"] / np.sqrt(power)
+        gamma = config["clipping_limit_x"] / np.sqrt(
+            power * 2
+        )  # <- Correct Power in Real
+        alpha2 = 1 - np.exp(-(gamma**2)) + np.sqrt(np.pi) / 2 * gamma * erfc(gamma)
+
+        # E_YY = nquad(
+        #     lambda r, th: func(r) ** 2 * np.cos(th) ** 2 * f_r(r) * f_theta(th),
+        #     [[0, np.inf], [0, 2 * np.pi]],
+        # )[0]
+
+        # E_DD = E_YY - alpha**2 * E_XX
+        # cap = 1 / 2 * np.log(1 + alpha**2 * power / (E_DD + config["sigma_2"] ** 2))
+
+        sigma_d_2 = power * (1 - np.exp(-(gamma**2)) - alpha2**2)
+        cap = (
+            1 / 2 * np.log(1 + alpha2**2 * power / (sigma_d_2 + config["sigma_2"] ** 2))
+        )
+        # breakpoint()
+        # breakpoint()
+        # r_list = np.linspace(0, 20, 1000)
+        # f_gr_list = [f_gr(r) for r in r_list]
+        # theta = np.linspace(0, 2 * np.pi, 1000)
+        # f_theta_list = [f_theta(th) for th in theta]
+        # f_theta_list = np.array(f_theta_list)
+        # alph = np.array([])
+        # pdf = np.array([])
+        # for r in r_list:
+        #     alph = np.append(alph, func(r) * np.sin(theta))
+        #     pdf = np.append(pdf, f_gr(r) * f_theta_list)
+        # plt.scatter(alph, pdf)
+        # plt.show()
+        # breakpoint()
+        if best_cap < cap:
+            best_cap = cap
+        else:
+            break
+    return best_cap
+
+    # return best_cap
 
 
 # This is a bound for the third regime - At least as a first try
@@ -425,9 +509,8 @@ def sdnr_new_with_erf(power, config):
 # I will take X - Clipped Gaussian
 #             W_1 -Gaussian
 
+
 # Y = phi(X+W_1)+W_2
-
-
 def sundeep_upper_bound_third_regime(power, config):
     func = return_nonlinear_fn(config)
     expectation_X = 0
@@ -519,35 +602,126 @@ def upper_bound_tarokh_third_regime(power, config):
             / sum_bottom
         )
     )
+
+    # Updated because it does not work well for low SNR
+    # upper_cap = min(
+    #     upper_cap,
+    #     0.5 * np.log(1 + power / (config["sigma_2"] ** 2 + config["sigma_1"] ** 2)),
+    # )
+
     print("Tarokh Upper Bound:", upper_cap)
     return upper_cap
 
 
-def lower_bound_by_mmse(power, config):
+def lower_bound_by_mmse_correlation(power, config):
     func = return_nonlinear_fn(config)
-    max_lower_bound = 0
 
-    # power decrease might be necessary (similar to SDNR)
-    power_range = np.linspace(power, 0.01, 100)
-    for p in power_range:
-        pdf_x = lambda x: (1 / (np.sqrt(2 * np.pi * p)) * np.exp(-0.5 * (x**2) / p))
-        E_Y_f = lambda x: func(x) * pdf_x(x)
-        E_Y = quad(E_Y_f, -np.inf, np.inf)[0]
-        E_Y2_f = lambda x: func(x) ** 2 * pdf_x(x)
-        E_Y2 = quad(E_Y2_f, -np.inf, np.inf)[0] + config["sigma_2"] ** 2
-        var_Y = E_Y2 - E_Y**2
-        var_X = p
-        E_X = 0
-        E_XY_f = lambda x: x * func(x) * pdf_x(x)
-        E_XY = quad(E_XY_f, -np.inf, np.inf)[0]
-        cov_XY = E_XY - E_X * E_Y
-        correlation = cov_XY / (np.sqrt(var_X) * np.sqrt(var_Y))
-        lower_bound = -0.5 * np.log(1 - correlation**2)
-        if max_lower_bound < lower_bound:
-            max_lower_bound = lower_bound
-        else:
-            break
-    return max_lower_bound
+    pdf_x = lambda x: (1 / (np.sqrt(2 * np.pi * power)) * np.exp(-0.5 * (x**2) / power))
+    E_Y_f = lambda x: func(x) * pdf_x(x)
+    E_Y = quad(E_Y_f, -np.inf, np.inf)[0]
+    E_Y2_f = lambda x: func(x) ** 2 * pdf_x(x)
+    E_Y2 = quad(E_Y2_f, -np.inf, np.inf)[0] + config["sigma_2"] ** 2
+    var_Y = E_Y2 - E_Y**2
+    var_X = power
+    E_X = 0
+    E_XY_f = lambda x: x * func(x) * pdf_x(x)
+    E_XY = quad(E_XY_f, -np.inf, np.inf)[0]
+    cov_XY = E_XY - E_X * E_Y
+    correlation = cov_XY / (np.sqrt(var_X) * np.sqrt(var_Y))
+    lower_bound = -0.5 * np.log(1 - correlation**2)
+
+    return lower_bound
+
+
+def lower_bound_by_mmse_correlation_numerical(power, config):
+    func = return_nonlinear_fn_numpy(config)
+
+    alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
+
+    alphabet_x = alphabet_x.numpy()
+    alphabet_y = alphabet_y.numpy()
+    pdf_x = 1 / np.sqrt(2 * np.pi * power) * np.exp(-0.5 * (alphabet_x**2) / power)
+    pdf_x = pdf_x / np.sum(pdf_x)
+    E_Y = func(alphabet_x) @ pdf_x
+    E_Y2 = (func(alphabet_x) ** 2) @ pdf_x + config["sigma_2"] ** 2
+
+    var_Y = E_Y2 - E_Y**2
+    var_X = power
+    E_X = 0
+
+    E_XY = (alphabet_x * func(alphabet_x)) @ pdf_x
+
+    cov_XY = E_XY - E_X * E_Y
+    correlation = cov_XY / (np.sqrt(var_X) * np.sqrt(var_Y))
+    lower_bound = -0.5 * np.log(1 - correlation**2)
+    if np.isnan(lower_bound):
+        breakpoint()
+
+    return lower_bound
+
+
+def lower_bound_by_mmse(power, config):
+    func = return_nonlinear_fn_numpy(config)
+
+    alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
+    alphabet_x = alphabet_x.numpy()
+    alphabet_y = alphabet_y.numpy()
+
+    pdf_x = 1 / (np.sqrt(2 * np.pi * power)) * np.exp(-0.5 * (alphabet_x**2) / power)
+    pdf_x = pdf_x / np.sum(pdf_x)
+    pdf_y_given_x = (
+        1
+        / (np.sqrt(2 * np.pi * config["sigma_2"] ** 2))
+        * np.exp(
+            -0.5
+            * (alphabet_y.reshape(-1, 1) - func(alphabet_x).reshape(1, -1)) ** 2
+            / config["sigma_2"] ** 2
+        )
+    )
+    pdf_y_given_x = pdf_y_given_x / (np.sum(pdf_y_given_x, axis=0) + 1e-30)
+
+    pdf_y = pdf_y_given_x @ pdf_x
+    pdf_y = pdf_y / np.sum(pdf_y)
+
+    pdf_x_given_y = (
+        pdf_y_given_x * pdf_x.reshape(1, -1) / (pdf_y.reshape(-1, 1) + 1e-30)
+    )
+    pdf_x_given_y = pdf_x_given_y.transpose()
+    pdf_x_given_y = pdf_x_given_y / (np.sum(pdf_x_given_y, axis=0) + 1e-30)
+
+    E_X_given_Y = alphabet_x @ pdf_x_given_y
+
+    E_X2_given_y = (alphabet_x**2) @ pdf_x_given_y
+
+    E_Y = func(alphabet_x) @ pdf_x
+    E_Y2 = (func(alphabet_x) ** 2) @ pdf_x + config["sigma_2"] ** 2
+    var_Y = E_Y2 - E_Y**2
+    var_X = power
+    E_X = 0
+    E_XY = (alphabet_x * func(alphabet_x)) @ pdf_x
+
+    cov_XY = E_XY - E_X * E_Y
+    alpha = cov_XY / var_Y
+    distortion = E_X - alpha * E_Y
+
+    sigma_y_2 = (
+        E_X2_given_y
+        - 2 * E_X_given_Y * (alpha * alphabet_y + distortion)
+        + (alpha * alphabet_y + distortion) ** 2
+    )
+
+    upper_H_X_given_Y = 0.5 * np.log(2 * np.pi * np.exp(1) * sigma_y_2) @ pdf_y
+
+    # H(X) = 1/2*ln(2*pi*e*sigma_x^2)
+    # H(X|Y) = 1/2*E[ln(2*pi*e*sigma_y^2)]
+    # H(X) - H(X|Y) = I(X;Y)
+    lower_bound = 0.5 * np.log(2 * np.pi * np.exp(1) * power) - upper_H_X_given_Y
+
+    # phi(X)+N =Y
+    if np.isnan(lower_bound):
+        breakpoint()
+
+    return lower_bound
 
 
 def lower_bound_by_mmse_with_truncated_gaussian(power, config):
@@ -556,47 +730,53 @@ def lower_bound_by_mmse_with_truncated_gaussian(power, config):
 
     # power decrease might be necessary (similar to SDNR)
     power_range = np.linspace(power, 0.01, 100)
+    power_range = [power]
     for p in power_range:
-        psi_x = lambda x: 1 / np.sqrt(2 * np.pi) * np.exp(-0.5 * x**2)
-        phi_x = lambda x: 1 / 2 * (1 + erf(x / np.sqrt(2)))
-        pdf_x = lambda x: (
-            1
-            / np.sqrt(p)
-            * psi_x(x / np.sqrt(p))
-            / (
-                phi_x(config["clipping_limit_x"] / np.sqrt(p))
-                - phi_x(-config["clipping_limit_x"] / np.sqrt(p))
-            )
-            if x < config["clipping_limit_x"] and x > -config["clipping_limit_x"]
-            else 0
-        )
-
-        # what they describe in the SDNR paper
-        # f_rayleigh = lambda r: r / p * np.exp(-(r**2) / (2 * p)) if r >= 0 else 0
-        # # uniform distribution over [0, 2pi]
-        # f_costheta = lambda y: (
-        #     1 / (np.pi * np.sin(np.arccos(y))) if y >= -1 and y <= 1 else 0
+        # psi_x = lambda x: 1 / np.sqrt(2 * np.pi) * np.exp(-0.5 * x**2)
+        # phi_x = lambda x: 1 / 2 * (1 + erf(x / np.sqrt(2)))
+        # pdf_x = lambda x: (
+        #     1
+        #     / np.sqrt(p)
+        #     * psi_x(x / np.sqrt(p))
+        #     / (
+        #         phi_x(config["clipping_limit_x"] / np.sqrt(p))
+        #         - phi_x(-config["clipping_limit_x"] / np.sqrt(p))
+        #     )
+        #     if x < config["clipping_limit_x"] and x > -config["clipping_limit_x"]
+        #     else 0
         # )
-        # # inside = lambda x, y: f_costheta(y) * f_rayleigh(x / y) * 1 / (abs(y))
-        # inside = lambda x, r: f_rayleigh(r) * f_costheta(x / r) * 1 / (abs(r))
-        # pdf_x = lambda x: quad(lambda r: inside(x, r), 1e-5, np.inf)[0]
-
-        # print("Sum pdf:", quad(pdf_x, -np.inf, np.inf)[0])
-        # print("Energy per symbol:", quad(lambda x: x**2 * pdf_x(x), -np.inf, np.inf)[0])
-        # pdf_x_list = [pdf_x(x) for x in np.linspace(-15, 15, 1000)]
-        # plt.plot(np.linspace(-15, 15, 1000), pdf_x_list)
-        # plt.show()
-        # breakpoint()
-
+        # p = 100
+        remaining = 1 / 2 * (1 - erf(config["clipping_limit_x"] / np.sqrt(2 * p)))
+        pdf_x = lambda x: (
+            1 / (np.sqrt(2 * np.pi * p)) * np.exp(-0.5 * (x**2) / p)
+            if x < config["clipping_limit_x"] and x > -config["clipping_limit_x"]
+            else (
+                remaining
+                if x == config["clipping_limit_x"] or x == -config["clipping_limit_x"]
+                else 0
+            )
+        )
+        # xxx = np.linspace(-20, 20, 1000)
+        # xxx = np.append(xxx, [10, -10])
+        # tt = [pdf_x(x) for x in xxx]
+        #
         E_Y_f = lambda x: func(x) * pdf_x(x)
         E_Y = quad(E_Y_f, -np.inf, np.inf)[0]
+        E_Y += E_Y_f(config["clipping_limit_x"]) + E_Y_f(
+            -config["clipping_limit_x"]
+        )  # The limit points are discrete distributions
+
         E_Y2_f = lambda x: func(x) ** 2 * pdf_x(x)
         E_Y2 = quad(E_Y2_f, -np.inf, np.inf)[0] + config["sigma_2"] ** 2
+        E_Y2 += E_Y2_f(config["clipping_limit_x"]) + E_Y2_f(-config["clipping_limit_x"])
+
         var_Y = E_Y2 - E_Y**2
         var_X = p
         E_X = 0
         E_XY_f = lambda x: x * func(x) * pdf_x(x)
         E_XY = quad(E_XY_f, -np.inf, np.inf)[0]
+        E_XY += E_XY_f(config["clipping_limit_x"]) + E_XY_f(-config["clipping_limit_x"])
+
         cov_XY = E_XY - E_X * E_Y
         correlation = cov_XY / (np.sqrt(var_X) * np.sqrt(var_Y))
         lower_bound = -0.5 * np.log(1 - correlation**2)
@@ -616,6 +796,151 @@ def find_lambda1_lambda2_for_dist(power, config):
     breakpoint()
 
     pass
+
+
+# def reg_mmse_bound(power, config):
+#     func = return_nonlinear_fn(config)
+#     max_lower_bound = 0
+
+#     # power decrease might be necessary (similar to SDNR)
+#     # power_range = np.linspace(power, 0.01, 100)
+#     power_range = [power]
+#     for p in power_range:
+#         # I need to calculate EX_given_Y
+#         pdf_x = lambda x: (1 / (np.sqrt(2 * np.pi * p)) * np.exp(-0.5 * (x**2) / p))
+
+#         pdf_y_given_x = lambda y, x: (
+#             1
+#             / (np.sqrt(2 * np.pi * config["sigma_2"] ** 2))
+#             * np.exp(-0.5 * (y - func(x)) ** 2 / config["sigma_2"] ** 2)
+#         )
+#         pdf_y = lambda y: quad(
+#             lambda x: pdf_y_given_x(y, x) * pdf_x(x), -np.inf, np.inf
+#         )[0]
+#         pdf_x_given_y = lambda x, y: pdf_y_given_x(y, x) * pdf_x(x) / pdf_y(y)
+#         # breakpoint()
+#         E_X_given_Y = lambda y: quad(
+#             lambda x: x * pdf_x_given_y(x, y), -np.inf, np.inf
+#         )[0]
+#         # E_X_hat = quad(lambda y: E_X_given_Y(y) * pdf_y(y), -np.inf, np.inf)[0]
+#         # breakpoint()
+#         E_X_Xhat = nquad(
+#             lambda x, y: x * E_X_given_Y(y) * pdf_x(x) * pdf_y(y),
+#             [[-np.inf, np.inf], [-np.inf, np.inf]],
+#         )[0]
+#         # breakpoint()
+#         E_Xhat_2 = quad(lambda y: E_X_given_Y(y) ** 2 * pdf_y(y), -np.inf, np.inf)[0]
+
+#         mse = p - 2 * E_X_Xhat + E_Xhat_2
+#         # breakpoint()
+
+#         lower_bound = -0.5 * np.log(1 - E_Xhat_2 / (mse + config["sigma_2"] ** 2))
+
+#         # phi(X)+N =Y
+#         # X' = E[X|Y]
+
+#         print("&&&--MSE:", lower_bound)
+#         if max_lower_bound < lower_bound:
+#             max_lower_bound = lower_bound
+
+#         else:
+#             break
+
+#     return max_lower_bound
+
+
+def reg_mmse_bound_numerical(power, config):
+    func = return_nonlinear_fn_numpy(config)
+
+    alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
+
+    alphabet_x = alphabet_x.numpy()
+    alphabet_y = alphabet_y.numpy()
+
+    pdf_x = 1 / (np.sqrt(2 * np.pi * power)) * np.exp(-0.5 * (alphabet_x**2) / power)
+    # breakpoint()
+    pdf_x = pdf_x / np.sum(pdf_x)
+    pdf_y_given_x = (
+        1
+        / (np.sqrt(2 * np.pi * config["sigma_2"] ** 2))
+        * np.exp(
+            -0.5
+            * (alphabet_y.reshape(-1, 1) - func(alphabet_x).reshape(1, -1)) ** 2
+            / config["sigma_2"] ** 2
+        )
+    )
+    pdf_y_given_x = pdf_y_given_x / (np.sum(pdf_y_given_x, axis=0) + 1e-30)
+
+    pdf_y = pdf_y_given_x @ pdf_x
+    pdf_y = pdf_y / np.sum(pdf_y)
+
+    pdf_x_given_y = (
+        pdf_y_given_x * pdf_x.reshape(1, -1) / (pdf_y.reshape(-1, 1) + 1e-30)
+    )
+    pdf_x_given_y = pdf_x_given_y.transpose()
+    pdf_x_given_y = pdf_x_given_y / (np.sum(pdf_x_given_y, axis=0) + 1e-30)
+    # breakpoint()
+    E_X_given_Y = alphabet_x @ pdf_x_given_y
+
+    E_X2_given_y = (alphabet_x**2) @ pdf_x_given_y
+
+    # sigma_y_2 = E_X2_given_y - 2 * E_X_Xhat_given_y + E_Xhat_2_given_y
+    sigma_y_2 = E_X2_given_y - E_X_given_Y**2
+
+    upper_H_X_given_Y = 0.5 * np.log(2 * np.pi * np.exp(1) * sigma_y_2) @ pdf_y
+
+    # mse = p - 2 * E_X_Xhat + E_Xhat_2
+    # H(X) = E[ln(2*pi*e*sigma_x^2)]
+    # H(X|Y) = E[ln(2*pi*e*sigma_y^2)]
+    # H(X) - H(X|Y) = I(X;Y)
+    lower_bound = 0.5 * np.log(2 * np.pi * np.exp(1) * power) - upper_H_X_given_Y
+    # phi(X)+N =Y
+    # X' = E[X|Y]
+    if np.isnan(lower_bound):
+        breakpoint()
+
+    return lower_bound
+
+
+def upper_bound_peak(power, config):
+    if not config["nonlinearity"] == 5:
+        raise ValueError("Nonlinearity should be 5")
+    if config["regime"] == 3:
+        # While it's before clip: Y = X+Z_1+Z_2
+        snr = power / (config["sigma_2"] ** 2 + config["sigma_1"] ** 2)
+    elif config["regime"] == 1:  # Y= X+Z_2
+        snr = power / config["sigma_2"] ** 2
+    else:
+        raise ValueError("Regime not defined")
+
+    peak_cap = np.log(
+        1
+        + np.sqrt(
+            2
+            * (config["clipping_limit_x"] / config["sigma_2"]) ** 2
+            / (np.pi * np.exp(1))
+        )
+    )
+    linear_cap = 1 / 2 * np.log(1 + snr)
+    cap = min(peak_cap, linear_cap)
+    # breakpoint()
+    return cap
+
+
+def upper_bound_peak_power(x_c):
+    return 2 * x_c**2 / (np.pi * np.exp(1)) + 2 * x_c * np.sqrt(2) / np.sqrt(
+        np.pi * np.exp(1)
+    )
+
+
+def bound_backtracing_check(earlier_list, new_input):
+    if len(earlier_list) == 0:
+        earlier_list.append(new_input)
+    elif new_input > earlier_list[-1]:
+        earlier_list.append(new_input)
+    else:
+        earlier_list.append(earlier_list[-1])
+    return earlier_list
 
 
 if __name__ == "__main__":

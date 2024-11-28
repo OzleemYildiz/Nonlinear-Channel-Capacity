@@ -31,11 +31,18 @@ from bounds import (
     sdnr_bound_regime_1_tarokh_ref7,
     updated_sdnr_bound_regime_1_tarokh_ref7,
     sdnr_new,
+    sdnr_new_rayleigh,
     sdnr_new_with_erf,
     sundeep_upper_bound_third_regime,
     upper_bound_tarokh_third_regime,
     lower_bound_by_mmse,
     lower_bound_by_mmse_with_truncated_gaussian,
+    reg_mmse_bound_numerical,
+    upper_bound_peak,
+    bound_backtracing_check,
+    sdnr_new_with_erf_nopowchange,
+    lower_bound_by_mmse_correlation,
+    lower_bound_by_mmse_correlation_numerical,
 )
 from scipy import io
 import time
@@ -46,6 +53,8 @@ def define_save_location(config):
     save_location = config["output_dir"]
     if config["time_division_active"]:
         save_location = save_location + "-TDM"
+        if config["power_change_active"]:
+            save_location = save_location + "-PB"
 
     save_location = save_location + (
         "/"
@@ -145,7 +154,11 @@ def main():
     my_new_bound = []
     sundeep_upper = []
     tarokh_upper = []
+    linear_mmse_bound = []
     mmse_bound = []
+    mmse_minimum = []
+    mmse_correlation = []
+    up_peak = []
 
     if config["time_division_active"]:
         tau_list = np.linspace(0.01, 0.99, config["n_time_division"])
@@ -192,38 +205,48 @@ def main():
                     if config["regime"] == 1 and config["cons_type"] == 1:
                         up_tarokh.append(upper_bound_tarokh(power, config))
                         if config["nonlinearity"] == 5:
-                            sdnr_tarokh_low.append(
-                                # sdnr_bound_regime_1_tarokh_ref7(power, config)
-                                updated_sdnr_bound_regime_1_tarokh_ref7(power, config)
+
+                            my_new_bound = bound_backtracing_check(
+                                my_new_bound,
+                                sdnr_new_with_erf_nopowchange(power, config),
                             )
-                            my_new_bound.append(sdnr_new(power, config))
-                            # my_new_bound.append(sdnr_new_with_erf(power, config))
-                        mmse_bound.append(lower_bound_by_mmse(power, config))
-                        # mmse_bound.append(
-                        #     lower_bound_by_mmse_with_truncated_gaussian(power, config)
+
+                        # mmse_correlation = bound_backtracing_check(
+                        #     mmse_correlation,
+                        #     lower_bound_by_mmse_correlation(power, config),
                         # )
+
+                        # linear_mmse_bound = bound_backtracing_check(
+                        #     linear_mmse_bound, lower_bound_by_mmse(power, config)
+                        # )
+                        mmse_minimum = bound_backtracing_check(
+                            mmse_minimum, reg_mmse_bound_numerical(power, config)
+                        )
                     if (
                         config["regime"] == 2 and config["cons_type"] == 1
                     ):  # average power
                         # up_tarokh.append((calc_logsnr[-1]))
                         low_sdnr.append(lower_bound_with_sdnr(power, config))
                     if config["regime"] == 3:
-                        sundeep_upper.append(
-                            sundeep_upper_bound_third_regime(power, config)
-                        )
-                        tarokh_upper.append(
-                            upper_bound_tarokh_third_regime(power, config)
-                        )
-                    #     low_tarokh_third.append(
-                    #         lower_bound_tarokh_third_regime_with_pw(power, config)
-                    #     )
+                        # sundeep_upper.append(
+                        #     sundeep_upper_bound_third_regime(power, config)
+                        # )
+                        if config["nonlinearity"] != 5:
+                            tarokh_upper.append(
+                                upper_bound_tarokh_third_regime(power, config)
+                            )
+                    if config["nonlinearity"] == 5:
+                        up_peak.append(upper_bound_peak(power, config))
 
                 # Gaussian Capacity
                 # cap_g = gaussian_capacity(regime_class)
-                power_g, cap_g = find_best_gaussian(regime_class)
+                # power_g, cap_g = find_best_gaussian(regime_class)
                 if ind == 0:  # keeping record of only tau results for demonstration
-                    capacity_gaussian.append(cap_g)
-                    power_gaussian.append(power_g)
+                    capacity_gaussian = bound_backtracing_check(
+                        capacity_gaussian, gaussian_capacity(regime_class, power)
+                    )
+                    # capacity_gaussian.append(cap_g)
+                    # power_gaussian.append(power_g)
 
                 if config["ba_active"] and config["cons_type"] == 0:
                     (cap, input_dist) = apply_blahut_arimoto(regime_class, config)
@@ -336,7 +359,9 @@ def main():
             res_tau["R2"]["Learned"] = rate_2_tau_learned
 
             pow_original = (10 ** (snr / 10)) * noise_power
-            plot_R1_R2_curve(res_tau, pow_original, save_location=save_location)
+            plot_R1_R2_curve(
+                res_tau, pow_original, config=config, save_location=save_location
+            )
             io.savemat(save_location + "/res_tau.mat", res_tau)
 
         # print("Time taken for SNR: ", snr, " is ", end - start)
@@ -380,9 +405,13 @@ def main():
         if config["regime"] == 1 and config["cons_type"] == 1:
             res["Upper_Bound_by_Tarokh"] = up_tarokh
             if config["nonlinearity"] == 5:
-                res["Lower_Bound_by_SDNR"] = sdnr_tarokh_low
-                res["My_New_Bound"] = my_new_bound
-            res["MMSE_Bound"] = mmse_bound
+                # res["Lower_Bound_by_SDNR"] = sdnr_tarokh_low
+                res["SDNR_with_Gaussian"] = my_new_bound
+            # res["MMSE_Bound"] = mmse_bound
+            res["Linear_MMSE_Bound"] = linear_mmse_bound
+            res["MMSE_Bound_Regular"] = mmse_minimum
+            res["MMSE_Bound_Correlation"] = mmse_correlation
+            # res["MMSE_Bound_Correlation_Numerical"] = mmse_correlation_numerical
         if config["regime"] == 2 and config["cons_type"] == 1:  # average power bound
             res["Lower_Bound_with_SDNR"] = low_sdnr
         if config["regime"] == 3 and config["cons_type"] == 1:
@@ -394,8 +423,10 @@ def main():
                     define_save_location(config) + "/low_tarokh.mat",
                     low_tarokh,
                 )
-            res["Tarokh Upper Bound"] = tarokh_upper
-            res["Sundeep_Upper_Bound"] = sundeep_upper
+            if config["nonlinearity"] != 5:
+                res["Tarokh Upper Bound"] = tarokh_upper
+        if config["nonlinearity"] == 5:
+            res["Upper_Bound_Peak"] = up_peak
 
     if config["cons_type"] == 2:
         res["Gaussian_Capacity_with_L1_Norm"] = capacity_ruth

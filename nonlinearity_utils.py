@@ -66,6 +66,13 @@ def return_derivative_of_nonlinear_fn(config):
     # 4:nonlinear x4: x/(1 + x^4)^1/4
     elif config["nonlinearity"] == 4:
         nonlinear_fn = lambda x: 1 / (1 + x**4) ** (5 / 4)
+    elif config["nonlinearity"] == 5:
+        nonlinear_fn = lambda x: (
+            config["clipping_limit_y"] / config["clipping_limit_x"]
+            if -config["clipping_limit_x"] < x < config["clipping_limit_x"]
+            else 0
+        )
+
     else:
         raise ValueError("Derivative is not supported")
 
@@ -88,6 +95,10 @@ def return_nonlinear_fn_numpy(config):
     # 4:nonlinear x4: x/(1 + x^4)^1/4
     elif config["nonlinearity"] == 4:
         nonlinear_fn = lambda x: x / ((1 + x**4) ** (1 / 4))
+    elif config["nonlinearity"] == 5:
+        nonlinear_fn = lambda x: np.clip(
+            x, -config["clipping_limit_x"], config["clipping_limit_x"]
+        )
     else:
         raise ValueError("Nonlinearity not defined")
 
