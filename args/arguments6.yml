@@ -1,7 +1,7 @@
 min_power_cons : 10
 max_power_cons : 900
-sigma_1 : 0.5
-sigma_2 : 1.5
+sigma_1 : 1.5
+sigma_2 : 0.5
 max_mass_points : 1
 epsilon : 0.000000000005 #convergence criteria
 lr : [0.00001] # learning rate
@@ -10,10 +10,10 @@ delta_y : 0.1
 min_samples: 200 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment
 max_k_nochange : 5 # When to stop if the k change does not improve
-n_snr : 15 # number of SNRs
-nonlinearity : 3 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C2 (sgn(X)abs(X)^{0.9}), 3:nonlinear tanh(X), 4:nonlinear x4: x/(1 + x^4)^1/4 # 5: nonlinear clip
-clipping_limit_x : 10 # the limit in x for the clipping if nonlinear is clip  (x_c)
-clipping_limit_y : 10 # the limit in y for the clipping if nonlinear is clip  (x_c)
+n_snr : 20 # number of SNRs
+nonlinearity : 5 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C2 (sgn(X)abs(X)^{0.9}), 3:nonlinear tanh(X), 4:nonlinear x4: x/(1 + x^4)^1/4 # 5: nonlinear clip
+clipping_limit_x : 3 # the limit in x for the clipping if nonlinear is clip  (x_c)
+clipping_limit_y : 3 # the limit in y for the clipping if nonlinear is clip  (x_c)
 output_dir : 'Res-PP' # file name to save the results
 tanh_factor : 1 # k when the nonlinearity is tanh(x/k)
 regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
@@ -22,9 +22,9 @@ gd_active : True # the gradient descent is active
 gd_alphabet_active : False # the gradient descent is active for the alphabet
 mass_points : [1000] # the mass points for the gradient descent over the alphabet
 gd_initial_ba : False # It has to be peak power constraint
-bound_active: True
+bound_active: False
 ba_active : False # Blahut Arimoto - only works with the peak power constraint
-n_samples: 5000000
+n_samples: 20000
 time_division_active: False # When this is active, I have only one SNR is active - forced in the code
 n_time_division: 10
 power_change_active: False # R1 and R2 boosts their power according to the time allocated to them to use the same power for the total duration

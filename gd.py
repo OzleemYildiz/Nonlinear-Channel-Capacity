@@ -56,6 +56,8 @@ def gd_capacity(max_x, config, power, regime_class):
                 # pdf_x = torch.ones_like(alphabet_x) * 1 / mass_points
                 pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
                 # breakpoint()
+            if len(alphabet_x) == 0:
+                breakpoint()
             pdf_x = project_pdf(pdf_x, config["cons_type"], alphabet_x, power)
             pdf_x.requires_grad = True
 

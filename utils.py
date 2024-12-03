@@ -28,6 +28,7 @@ def project_pdf(pdf_x, cons_type, alphabet_x, power):
 
     n, m = len(alphabet_x), 1
     if n == 0:
+        breakpoint()
         raise ValueError("Alphabet_x is empty")
     p_hat = cp.Variable(n)
     p = cp.Parameter(n)
@@ -347,6 +348,9 @@ def get_alphabet_x_y(config, power):
     # Create the alphabet with the fixed delta
     alphabet_x = torch.arange(-max_x, max_x + delta_y / 2, delta_y)
     alphabet_y = torch.arange(-max_y, max_y + delta_y / 2, delta_y)
+
+    if len(alphabet_x) == 0:
+        breakpoint()
     return alphabet_x, alphabet_y, max_x, max_y
 
 

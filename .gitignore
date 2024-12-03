@@ -1,4 +1,5 @@
 __pycache__/
+Cut_Figs/
 blahut_arimoto/
 .DS_Store
 Results/
@@ -9,4 +10,4 @@ TDM/
 *.jpg
 HPC
 *.mlx
-Cut_Figs/
+
