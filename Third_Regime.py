@@ -13,18 +13,19 @@ class Third_Regime:
         self.nonlinear_fn = return_nonlinear_fn(self.config)
         self.alphabet_y = alphabet_y
 
-        self.s_regime = Second_Regime(alphabet_x, config, power)
-        self.alphabet_v = self.nonlinear_fn(self.s_regime.alphabet_u)
-        self.pdf_u_given_x = self.s_regime.calculate_pdf_u_given_x()
+        # self.s_regime = Second_Regime(alphabet_x, config, power)
+        # self.alphabet_v = self.nonlinear_fn(self.s_regime.alphabet_u)
+        # self.pdf_u_given_x = self.s_regime.calculate_pdf_u_given_x()
 
-        self.f_regime = First_Regime(alphabet_x, alphabet_y, config, power)
-        self.f_regime.set_alphabet_v(
-            self.alphabet_v
-        )  # since Z_1 is not 0, we define new U and V
-        self.pdf_y_given_v = self.f_regime.calculate_pdf_y_given_v()
-        self.pdf_y_given_u = self.pdf_y_given_v
-        self.update_after_indices()
+        # self.f_regime = First_Regime(alphabet_x, alphabet_y, config, power)
+        # self.f_regime.set_alphabet_v(
+        #     self.alphabet_v
+        # )  # since Z_1 is not 0, we define new U and V
+        # self.pdf_y_given_v = self.f_regime.calculate_pdf_y_given_v()
+        # self.pdf_y_given_u = self.pdf_y_given_v
+        # self.update_after_indices()
         self.pdf_y_given_x = None
+        self.pdf_y_given_x_int = None
 
     def set_alphabet_x(self, alphabet_x):
         self.alphabet_x = alphabet_x
@@ -145,8 +146,22 @@ class Third_Regime:
         # breakpoint()
         return cap
 
-    def capacity_with_interference():
-        pass
+    def capacity_with_interference(self, pdf_x, pdf_x2, alphabet_x2, x2_fixed=False):
+        if x2_fixed and self.pdf_y_given_x_int is not None:
+            pdf_y_given_x = self.pdf_y_given_x_int
+        else:
+            pdf_y_given_x = self.get_pdf_y_given_x_with_interference(
+                pdf_x2, alphabet_x2
+            )
+
+        entropy_y_given_x = torch.sum(
+            (pdf_y_given_x * torch.log(pdf_y_given_x + 1e-20)) @ pdf_x
+        )
+        pdf_y = pdf_y_given_x @ pdf_x
+        pdf_y = pdf_y / (torch.sum(pdf_y) + 1e-30)
+        cap = entropy_y_given_x - torch.sum(pdf_y * torch.log(pdf_y + 1e-20))
+
+        return cap
 
     def get_pdf_y_given_x(self):
         if self.pdf_y_given_x is None:
@@ -200,3 +215,58 @@ class Third_Regime:
             return pdf_y_given_x
         else:
             return self.pdf_y_given_x
+
+    def get_pdf_y_given_x_with_interference(self, pdf_x2, alphabet_x2):
+        pdf_y_given_x = torch.zeros(
+            (self.alphabet_y.shape[0], self.alphabet_x.shape[0])
+        )
+        # Z1 <- Gaussian noise with variance sigma_1^2
+        # X2 <- given by the user
+
+        max_z1 = self.config["stop_sd"] * self.config["sigma_11"] ** 2
+        delta_z1 = self.alphabet_x[1] - self.alphabet_x[0]
+        max_z1 = max_z1 + (delta_z1 - (max_z1 % delta_z1))
+        alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
+
+        pdf_z1 = (
+            1
+            / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_11"])
+            * torch.exp(-0.5 * (alphabet_z1) ** 2 / self.config["sigma_11"] ** 2)
+        )
+        pdf_z1 = pdf_z1 / (torch.sum(pdf_z1) + 1e-30)
+
+        # Z_1 and X_2 are independent
+        # Make sure that the pdf_x2 is normalized
+
+        pdf_x2_and_z1 = pdf_x2[:, None] * pdf_z1[None, :]
+
+        for ind, x in enumerate(self.alphabet_x):
+            # U = X + Z_1 + X_2
+            alphabet_u = alphabet_z1[None, :] + x + alphabet_x2[:, None]
+            # V = phi(U)
+
+            alphabet_v = self.nonlinear_fn(alphabet_u)
+            pdf_y_given_x_z1_x2 = (
+                1
+                / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_2"])
+                * torch.exp(
+                    -0.5
+                    * (
+                        (self.alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1))
+                        ** 2
+                    )
+                    / self.config["sigma_2"] ** 2
+                )
+            )
+            pdf_y_given_x_z1_x2 = pdf_y_given_x_z1_x2 / (
+                torch.sum(pdf_y_given_x_z1_x2, axis=0) + 1e-30
+            )
+            pdf_y_given_x_temp = (pdf_y_given_x_z1_x2 @ pdf_x2_and_z1.reshape(-1, 1))[
+                :, 0
+            ]
+            pdf_y_given_x[:, ind] = pdf_y_given_x_temp / (
+                torch.sum(pdf_y_given_x_temp) + 1e-30
+            )
+
+        self.pdf_y_given_x_int = pdf_y_given_x
+        return pdf_y_given_x

@@ -460,6 +460,19 @@ def get_interference_alphabet_x_y(config, power):
             + config["sigma_12"] * config["stop_sd"]
         )
         max_y_2 = nonlinear_func(max_x_2) + config["sigma_22"] * config["stop_sd"]
+    elif config["regime"] == 3:
+        max_y_1 = (
+            nonlinear_func(
+                max_x_1
+                + config["int_ratio"] * max_x_2
+                + config["sigma_11"] * config["stop_sd"]
+            )
+            + config["sigma_12"] * config["stop_sd"]
+        )
+        max_y_2 = (
+            nonlinear_func(max_x_2 + config["sigma_21"] * config["stop_sd"])
+            + config["sigma_22"] * config["stop_sd"]
+        )
     else:
         raise ValueError("Regime not defined")
 
@@ -544,7 +557,7 @@ def plot_R1_R2_curve(
 
 
 def loss_interference(
-    pdf_x_RX1, pdf_x_RX2, f_reg_RX1, f_reg_RX2, lmbd, upd_RX1=True, upd_RX2=True
+    pdf_x_RX1, pdf_x_RX2, reg_RX1, reg_RX2, lmbd, upd_RX1=True, upd_RX2=True
 ):
     # Interference loss function for GD
     if torch.sum(pdf_x_RX1.isnan()) > 0 or torch.sum(pdf_x_RX2.isnan()) > 0:
@@ -552,16 +565,16 @@ def loss_interference(
     if upd_RX1:
         pdf_x_RX1 = project_pdf(
             pdf_x_RX1,
-            f_reg_RX1.config["cons_type"],
-            f_reg_RX1.alphabet_x,
-            f_reg_RX1.power,
+            reg_RX1.config["cons_type"],
+            reg_RX1.alphabet_x,
+            reg_RX1.power,
         )
     if upd_RX2:
         pdf_x_RX2 = project_pdf(
             pdf_x_RX2,
-            f_reg_RX2.config["cons_type"],
-            f_reg_RX2.alphabet_x,
-            f_reg_RX2.power,
+            reg_RX2.config["cons_type"],
+            reg_RX2.alphabet_x,
+            reg_RX2.power,
         )
 
     # FIXME: Better write
@@ -569,14 +582,6 @@ def loss_interference(
         # pdf_x_RX1 = torch.abs(pdf_x_RX1)
         # pdf_x_RX1 = torch.relu(pdf_x_RX1) + 1e-20
         pdf_x_RX1 = pdf_x_RX1 - torch.min(pdf_x_RX1[pdf_x_RX1 < 0]) + 1e-20
-        # for ind, i in enumerate(pdf_x_RX1[np.where((pdf_x_RX1 < 0))]):
-        #     if pdf_x_RX1[ind] <= 1e-5:
-        #         pdf_x_RX1[ind] = abs(pdf_x_RX1[ind])
-        #     else:
-        #         raise ValueError(
-        #             "pdf_x has negative values "
-        #             + str(pdf_x_RX1[np.where((pdf_x_RX1 < 0))].detach().numpy())
-        #         )
     if torch.sum(pdf_x_RX2 < 0) > 0:
         # Just RELU and make it positive
         # pdf_x_RX2 = torch.abs(pdf_x_RX2)
@@ -584,21 +589,13 @@ def loss_interference(
         pdf_x_RX2 = pdf_x_RX2 - torch.min(pdf_x_RX2[pdf_x_RX2 < 0]) + 1e-20
         # breakpoint()
 
-    # After the distribution for RX2 is found, we can calculate the capacity of RX1
-    # f_reg_RX1.set_interference_active(f_reg_RX2.alphabet_x, pdf_x_RX2)
-    # cap_RX1 = f_reg_RX1.capacity(pdf_x_RX1)
-
-    # Calculate the capacity for RX1 and RX2
-    #
-
-    cap_RX1 = f_reg_RX1.capacity_with_interference(
+    cap_RX1 = reg_RX1.capacity_with_interference(
         pdf_x_RX1,
         pdf_x_RX2,
-        f_reg_RX2.alphabet_x,
+        reg_RX2.alphabet_x,
     )
 
-    cap_RX2 = f_reg_RX2.capacity_like_ba(pdf_x_RX2)
-
+    cap_RX2 = reg_RX2.new_capacity(pdf_x_RX2)
     if torch.isnan(cap_RX1) or torch.isnan(cap_RX2):
         breakpoint()
 
@@ -628,3 +625,30 @@ def get_PP_complex_alphabet_x_y(config, power):
     real_y, imag_y = torch.meshgrid([alphabet_y, alphabet_y])
 
     return real_x, imag_x, real_y, imag_y
+
+
+def get_regime_class_interference(
+    alphabet_x_RX1, alphabet_x_RX2, alphabet_y_RX1, alphabet_y_RX2, config, power
+):
+
+    if config["regime"] == 1:
+        config["sigma_2"] = config["sigma_22"]
+
+        f_reg_RX2 = First_Regime(
+            alphabet_x_RX2, alphabet_y_RX2, config, config["power_2"]
+        )
+        config["sigma_2"] = config["sigma_12"]
+        f_reg_RX1 = First_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power)
+        return f_reg_RX1, f_reg_RX2
+    elif config["regime"] == 3:
+        config["sigma_2"] = config["sigma_22"]
+        config["sigma_1"] = config["sigma_21"]
+        t_reg_RX2 = Third_Regime(
+            alphabet_x_RX2, alphabet_y_RX2, config, config["power_2"]
+        )
+        config["sigma_2"] = config["sigma_12"]
+        config["sigma_1"] = config["sigma_11"]
+        t_reg_RX1 = Third_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power)
+        return t_reg_RX1, t_reg_RX2
+    else:
+        raise ValueError("Regime not defined")

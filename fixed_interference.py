@@ -18,12 +18,14 @@ from gd import (
     gradient_descent_on_interference,
     sequential_gradient_descent_on_interference,
     gradient_descent_projection_with_learning_rate,
+    gradient_descent_on_interference_x2fixed,
 )
 
 
 def define_save_location(config):
     save_location = (
         config["output_dir"]
+        + "-Fixed_Interference"
         + "/"
         + config["cons_str"]
         + "_phi="
@@ -64,7 +66,7 @@ def define_save_location(config):
 def main():
     # First and Third regime implementation
     # ----System Model--- Z channel
-    # Y1 = Phi(X1 + AX2 +N11)+ N12
+    # Y1 = Phi(X1 + AX2 + N11)+ N12
     # Y2 = Phi(X2  + N21)+ N22
 
     config = read_config()
@@ -129,7 +131,7 @@ def main():
                 max_cap_RX2,
                 save_opt_sum_capacity,
                 # ) = sequential_gradient_descent_on_interference(config, power, lambda_sweep)
-            ) = gradient_descent_on_interference(config, power, lambda_sweep)
+            ) = gradient_descent_on_interference_x2fixed(config, power, lambda_sweep)
             # ) = gradient_descent_projection_with_learning_rate(
             #     config, power, lambda_sweep
             # )
@@ -163,16 +165,7 @@ def main():
 
         del alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2
 
-    # res = {
-    #     "Capacity_without_Interference_Nonlinearity_RX1": cap_RX1_no_int_no_nonlinearity,
-    #     "Capacity_without_Nonlinearity_RX2": cap_RX2_no_nonlinearity,
-    #     # "Capacity_Gaussian_RX1": ,
-    #     # "Capacity_Gaussian_RX2": cap_gaus_RX2,
-    # }
-    # io.savemat(save_location + "/res.mat", res)
     io.savemat(save_location + "/config.mat", config)
-
-    # plot_interference(res, config, save_location)
 
     print("Saved in ", save_location)
 

@@ -1,25 +1,26 @@
-min_power_cons : 5
-max_power_cons : 5
-power_2 : 5
+min_power_cons : 15
+max_power_cons : 15
+power_2 : 15
 sigma_11 : 1 
 sigma_12 : 1
 sigma_21 : 1
 sigma_22 : 1
-int_ratio : 0.8 # interference ratio >0, k*delta_y for an integer k
-delta_y : 1
+int_ratio : 0.5 # interference ratio >0, k*delta_y for an integer k
+delta_y : 0.1
 min_samples: 50 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment
 n_snr : 1 # number of SNRs
-nonlinearity : 0 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C2 (sgn(X)abs(X)^{0.9}), 3:nonlinear tanh(X), 4:nonlinear x4: x/(1 + x^4)^1/4 # 5: nonlinear clip
-clipping_limit_x : 10 # the limit for the clipping if nonlinear is clip (5)
-clipping_limit_y : 10 # the limit for the clipping if nonlinear is clip (5)
-output_dir : 'Res-Int' # file name to save the results
+nonlinearity : 5 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C2 (sgn(X)abs(X)^{0.9}), 3:nonlinear tanh(X), 4:nonlinear x4: x/(1 + x^4)^1/4 # 5: nonlinear clip
+clipping_limit_x : 3 # the limit for the clipping if nonlinear is clip (5)
+clipping_limit_y : 3 # the limit for the clipping if nonlinear is clip (5)
+output_dir : 'Res-Int-Upd' # file name to save the results
 tanh_factor : 1 # k when the nonlinearity is tanh(x/k)
-regime : 1 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
+regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
-gd_active : True
-epsilon : 0.000000000000005 #convergence criteria
+gd_active : False
+epsilon : 0.0000000000005 #convergence criteria
 lr : [0.000005] # learning rate
-max_iter : 100000 # maximum number of iterations
+max_iter : 50000 # maximum number of iterations
 max_seq_iter : 20 # px1 and px2 are updated alternatively, this is the maximum number of iterations for each update I
 n_lmbd : 5 # number of lambdas
+x2_type : 1 # 0: Gaussian, 1: Optimized

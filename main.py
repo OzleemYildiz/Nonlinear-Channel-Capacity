@@ -275,7 +275,7 @@ def main():
                 # Gradient Descent
                 if config["gd_active"]:
                     cap_learned, max_pdf_x, max_alphabet_x, opt_capacity = gd_capacity(
-                        max_x, config, power, regime_class
+                        config, power, regime_class
                     )
 
                     # FIXME: Messy

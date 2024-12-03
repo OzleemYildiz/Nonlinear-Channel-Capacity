@@ -7,6 +7,7 @@ from utils import (
     loss_interference,
     get_alphabet_x_y,
     check_pdf_x_region,
+    get_regime_class_interference,
 )
 import numpy as np
 import copy
@@ -19,7 +20,7 @@ from blahut_arimoto_capacity import (
 from First_Regime import First_Regime
 
 
-def gd_capacity(max_x, config, power, regime_class):
+def gd_capacity(config, power, regime_class):
     print("------GD Capacity Calculation--------")
     max_capacity = 0
     max_dict = {}
@@ -262,18 +263,16 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
     # FIXME: Currently only works for regime 1 -- So I directly assume instead of getting it as an input
     print("---Gradient Descent on Interference Channel ----")
 
-    if config["regime"] != 1:
-        raise ValueError("This function only works for regime 1")
+    if config["regime"] != 1 and config["regime"] != 3:
+        raise ValueError("This function only works for regime 1 or regime 3")
 
     alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
         get_interference_alphabet_x_y(config, power)
     )
 
-    # FIXME : This is not clean
-    config["sigma_2"] = config["sigma_22"]
-    f_reg_RX2 = First_Regime(alphabet_x_RX2, alphabet_y_RX2, config, config["power_2"])
-    config["sigma_2"] = config["sigma_12"]
-    f_reg_RX1 = First_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power)
+    reg_RX1, reg_RX2 = get_regime_class_interference(
+        alphabet_x_RX1, alphabet_x_RX2, alphabet_y_RX1, alphabet_y_RX2, config, power
+    )
 
     # Initializations
     max_sum_cap = []
@@ -288,34 +287,19 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
         print("++++++++ Lambda: ", lmbd, " ++++++++")
 
         for lr in config["lr"]:
-            # Both RX1 and RX2 will have the same delta separation between points - number of mass points dont matter
-            # FIXME: Change the current implementation to this as well- it makes more sense I think
 
             # Initial distributions are uniform for peak power constraint
             # if config["cons_type"] == 0:
             pdf_x_RX1 = torch.ones_like(alphabet_x_RX1) * 1 / len(alphabet_x_RX1)
             pdf_x_RX2 = torch.ones_like(alphabet_x_RX2) * 1 / len(alphabet_x_RX2)
-            # elif config["cons_type"] == 1:
-            #     # # Initial distributions are gaussian for average power constraint
-            #     pdf_x_RX1 = (
-            #         1
-            #         / (torch.sqrt(torch.tensor([2 * torch.pi]) * power))
-            #         * torch.exp(-0.5 * ((alphabet_x_RX1) ** 2) / power)
-            #     )
+
             pdf_x_RX1 = project_pdf(
                 pdf_x_RX1, config["cons_type"], alphabet_x_RX1, power
             )
 
-            #     pdf_x_RX2 = (
-            #         1
-            #         / (torch.sqrt(torch.tensor([2 * torch.pi]) * power))
-            #         * torch.exp(-0.5 * ((alphabet_x_RX2) ** 2) / power)
-            #     )
             pdf_x_RX2 = project_pdf(
                 pdf_x_RX2, config["cons_type"], alphabet_x_RX2, config["power_2"]
             )
-            # else:
-            #     raise ValueError("Constraint type not supported")
 
             pdf_x_RX1.requires_grad = True
             pdf_x_RX2.requires_grad = True
@@ -323,13 +307,15 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
             optimizer = torch.optim.Adam([pdf_x_RX1, pdf_x_RX2], lr=lr)
             opt_sum_capacity = []
             max_sum_cap_h = 0
+
+            
             for i in range(config["max_iter"]):
                 optimizer.zero_grad()
                 if torch.sum(pdf_x_RX1.isnan()) > 0 or torch.sum(pdf_x_RX2.isnan()) > 0:
                     breakpoint()
 
                 loss, cap_RX1, cap_RX2 = loss_interference(
-                    pdf_x_RX1, pdf_x_RX2, f_reg_RX1, f_reg_RX2, lmbd
+                    pdf_x_RX1, pdf_x_RX2, reg_RX1, reg_RX2, lmbd
                 )
 
                 loss.backward()
@@ -400,14 +386,14 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
     )
 
 
+# !! CANCELED
 def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
     # It should return R1 and R2 pairs for different lambda values
     # The loss function is lambda*Rate1 + (1-lambda)*Rate2
 
     # In the main loop, we can plot R1-R2 pairs by marking the gaussian for that power level in the graph
 
-    # FIXME: Currently only works for regime 1 -- So I directly assume instead of getting it as an input
-    print("---Sequential Gradient Descent on Interference Channel ----")
+    print("---Sequential Gradient Descent on Interference Channel  ----")
 
     if config["regime"] != 1:
         raise ValueError("This function only works for regime 1")
@@ -418,6 +404,7 @@ def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
 
     # FIXME : This is not clean
     config["sigma_2"] = config["sigma_22"]
+
     f_reg_RX2 = First_Regime(alphabet_x_RX2, alphabet_y_RX2, config, power)
     config["sigma_2"] = config["sigma_12"]
     f_reg_RX1 = First_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power)
@@ -606,8 +593,9 @@ def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
     )
 
 
+# DID NOT FINISH
 def gradient_descent_projection_with_learning_rate(config, power, lambda_sweep):
-    print("---Gradient Descent on Interference Channel ----")
+    print("---Gradient Descent on Interference Channel While X2 is fixed----")
 
     if config["regime"] != 1:
         raise ValueError("This function only works for regime 1")
@@ -765,6 +753,152 @@ def gradient_descent_projection_with_learning_rate(config, power, lambda_sweep):
         max_cap_RX2,
         save_opt_sum_capacity,
     )
+
+
+# TODO: Could just be combined with the earlier function
+def gradient_descent_on_interference_x2fixed(config, power, lambda_sweep):
+
+    print(
+        "---Gradient Descent on Interference Channel While X2 Distribution is Fixed----"
+    )
+
+    if config["regime"] != 1 and config["regime"] != 3:
+        raise ValueError("This function only works for regime 1 or regime 3")
+
+    alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
+        get_interference_alphabet_x_y(config, power)
+    )
+
+    reg_RX1, reg_RX2 = get_regime_class_interference(
+        alphabet_x_RX1, alphabet_x_RX2, alphabet_y_RX1, alphabet_y_RX2, config, power
+    )
+
+    # Initializations
+    max_sum_cap = []
+    max_pdf_x_RX1 = []
+    max_pdf_x_RX2 = []
+    max_cap_RX1 = []
+    max_cap_RX2 = []
+    save_opt_sum_capacity = []
+
+    pdf_x_RX2 = get_fixed_interferer(config, alphabet_x_RX2)
+
+    for ind, lmbd in enumerate(lambda_sweep):
+        # FIXME: currently different learning rate comparison is not supported
+        print("++++++++ Lambda: ", lmbd, " ++++++++")
+
+        for lr in config["lr"]:
+
+            pdf_x_RX1 = torch.ones_like(alphabet_x_RX1) * 1 / len(alphabet_x_RX1)
+
+            pdf_x_RX1 = project_pdf(
+                pdf_x_RX1, config["cons_type"], alphabet_x_RX1, power
+            )
+
+            pdf_x_RX1.requires_grad = True
+
+            optimizer = torch.optim.Adam([pdf_x_RX1], lr=lr)
+            opt_sum_capacity = []
+            max_sum_cap_h = 0
+            for i in range(config["max_iter"]):
+                optimizer.zero_grad()
+                if torch.sum(pdf_x_RX1.isnan()) > 0 or torch.sum(pdf_x_RX2.isnan()) > 0:
+                    breakpoint()
+
+                loss, cap_RX1, cap_RX2 = loss_interference(
+                    pdf_x_RX1, pdf_x_RX2, reg_RX1, reg_RX2, lmbd
+                )
+
+                loss.backward()
+                optimizer.step()
+                sum_capacity = loss.detach().clone()
+                opt_sum_capacity.append(-sum_capacity.detach().numpy())
+
+                if i % 100 == 0:
+                    print(
+                        "Iter:",
+                        i,
+                        " Sum Capacity:",
+                        opt_sum_capacity[-1],
+                        " R1:",
+                        cap_RX1,
+                        " R2:",
+                        cap_RX2,
+                    )
+                if opt_sum_capacity[-1] > max_sum_cap_h:
+                    max_sum_cap_h = opt_sum_capacity[-1]
+                    max_pdf_x_RX1_h = pdf_x_RX1.clone().detach()
+                    max_pdf_x_RX2_h = pdf_x_RX2.clone().detach()
+                    max_cap_RX1_h = cap_RX1.clone().detach().numpy()
+                    max_cap_RX2_h = cap_RX2.clone().detach().numpy()
+
+                if (
+                    i > 100
+                    and np.abs(
+                        np.mean(opt_sum_capacity[-50:])
+                        - np.mean(opt_sum_capacity[-100:-50])
+                    )
+                    < config["epsilon"]
+                ):
+                    break
+
+            save_opt_sum_capacity.append(opt_sum_capacity)
+            max_sum_cap.append(max_sum_cap_h)
+            max_cap_RX1.append(max_cap_RX1_h)
+            max_cap_RX2.append(max_cap_RX2_h)
+
+            # save the pdfs after projection
+            pdf_x_RX1 = project_pdf(
+                max_pdf_x_RX1_h, config["cons_type"], alphabet_x_RX1, power
+            )
+            pdf_x_RX2 = project_pdf(
+                max_pdf_x_RX2_h, config["cons_type"], alphabet_x_RX2, config["power_2"]
+            )
+            max_pdf_x_RX1.append(pdf_x_RX1.detach().clone().numpy())
+            max_pdf_x_RX2.append(pdf_x_RX2.detach().clone().numpy())
+
+            print(
+                "*****Max Capacity:",
+                max_sum_cap_h,
+                "R1:",
+                max_cap_RX1_h,
+                "R2:",
+                max_cap_RX2_h,
+                "*****",
+            )
+    # breakpoint()
+    return (
+        max_sum_cap,
+        max_pdf_x_RX1,
+        max_pdf_x_RX2,
+        max_cap_RX1,
+        max_cap_RX2,
+        save_opt_sum_capacity,
+    )
+
+
+def get_fixed_interferer(config, alphabet_x_RX2):
+    if config["x2_type"] == 0:
+        print(" +++----- X2 Distribution is Gaussian ------ +++")
+        pdf_x_RX2 = (
+            1
+            / (torch.sqrt(torch.tensor([2 * torch.pi * config["power_2"]])))
+            * torch.exp(-0.5 * ((alphabet_x_RX2) ** 2) / config["power_2"]).float()
+        )
+    elif config["x2_type"] == 1:
+        print(" +++----- X2 Distribution is calculated ------ +++")
+        config["sigma_1"] = config["sigma_21"]
+        config["sigma_2"] = config["sigma_22"]
+        regime_class = return_regime_class(config, config["power_2"])
+        _, pdf_x_RX2, _, _ = gd_capacity(config, config["power_2"], regime_class)
+
+    else:
+        raise ValueError("Interferer type not defined")
+
+    pdf_x_RX2 = project_pdf(
+        pdf_x_RX2, config["cons_type"], alphabet_x_RX2, config["power_2"]
+    )
+    return pdf_x_RX2
 
 
 def main():
