@@ -5,7 +5,7 @@ sigma_2 : 1
 max_mass_points : 1
 epsilon : 0.000000000005 #convergence criteria
 lr : [0.00001] # learning rate
-max_iter : 10 # maximum number of iterations
+max_iter : 50000 # maximum number of iterations
 delta_y : 0.1
 min_samples: 200 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment
