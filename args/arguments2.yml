@@ -1,5 +1,5 @@
 min_power_cons : 10
-max_power_cons : 900
+max_power_cons : 300
 sigma_1 : 0.5
 sigma_2 : 1.5
 max_mass_points : 1
