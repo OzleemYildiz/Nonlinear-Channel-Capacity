@@ -29,89 +29,71 @@ def gd_capacity(config, power, regime_class):
     max_alphabet_x = torch.tensor([])
     count_no_impr = 0
 
-    for i in range(config["max_mass_points"]):
-        for lr in config["lr"]:
-            # mass_points = i * 100 + config["mass_points"][0]
+    for lr in config["lr"]:
 
-            # alphabet_x = torch.linspace(-max_x, max_x, mass_points)
-            alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
-            # alphabet_x = torch.linspace(-max_x, max_x, mass_points)
-            regime_class.set_alphabet_x(alphabet_x)
-            # FIXME: remove this -unnecessary now
-            mass_points = len(alphabet_x)
-            print("Number of Mass Points:", mass_points)
-            if config["cons_type"] == 0 and config["gd_initial_ba"]:
-                _, pdf_x = apply_blahut_arimoto(regime_class, config)
-                # breakpoint()
-                pdf_x = torch.tensor(pdf_x).float()
-            else:  # uniform distribution if no initial distribution
-                # if config["cons_type"] == 0:
-                pdf_x = torch.ones_like(alphabet_x) * 1 / mass_points
-                # else:
-                # pdf_x = (
-                #     1  # gaussian distribution for average power constraint
-                #     / (torch.sqrt(torch.tensor([2 * torch.pi]) * power))
-                #     * torch.exp(-0.5 * ((alphabet_x) ** 2) / power)
-                # )
-                # pdf_x = torch.rand(alphabet_x.shape[0])
-                # pdf_x = torch.ones_like(alphabet_x) * 1 / mass_points
-                pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
-                # breakpoint()
-            if len(alphabet_x) == 0:
-                breakpoint()
-            pdf_x = project_pdf(pdf_x, config["cons_type"], alphabet_x, power)
-            pdf_x.requires_grad = True
+        # alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
+        alphabet_x = regime_class.alphabet_x
 
-            # optimizer = torch.optim.Adam([pdf_x], lr=lr)
-            optimizer = torch.optim.AdamW([pdf_x], lr=lr, weight_decay=1e-5)
-            opt_capacity = []
+        print("Number of Mass Points:", len(alphabet_x))
+        if config["cons_type"] == 0 and config["gd_initial_ba"]:
+            _, pdf_x = apply_blahut_arimoto(regime_class, config)
+            # breakpoint()
+            pdf_x = torch.tensor(pdf_x).float()
+        else:  # uniform distribution if no initial distribution
+            pdf_x = torch.ones_like(alphabet_x) * 1 / len(alphabet_x)
 
-            for i in range(config["max_iter"]):
-                # breakpoint()
-                # project back
-                optimizer.zero_grad()
+            pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
+        if len(alphabet_x) == 0:
+            breakpoint()
+        pdf_x = project_pdf(pdf_x, config["cons_type"], alphabet_x, power)
+        pdf_x.requires_grad = True
 
-                loss_it = loss(pdf_x, regime_class, project_active=True)
-                # breakpoint()
-                loss_it.backward()
-                optimizer.step()
+        # optimizer = torch.optim.Adam([pdf_x], lr=lr)
+        optimizer = torch.optim.AdamW([pdf_x], lr=lr, weight_decay=1e-5)
+        opt_capacity = []
 
-                cap = loss_it.detach().clone()
-                opt_capacity.append(-cap.detach().numpy())
+        for i in range(config["max_iter"]):
+            # breakpoint()
+            # project back
+            optimizer.zero_grad()
 
-                if i % 100 == 0:
-                    print("Iter:", i, "Capacity:", opt_capacity[-1])
+            loss_it = loss(pdf_x, regime_class, project_active=True)
+            # breakpoint()
+            loss_it.backward()
+            optimizer.step()
 
-                # moving average of capacity between last 100 iterations did not improve, stop
-                if not config["gd_nostop_cond"]:
-                    if (
-                        i > 100
-                        and np.abs(
-                            np.mean(opt_capacity[-50:])
-                            - np.mean(opt_capacity[-100:-50])
-                        )
-                        < config["epsilon"]
-                    ):
-                        break
+            cap = loss_it.detach().clone()
+            opt_capacity.append(-cap.detach().numpy())
 
-            # is it enough mass point check?
-            if opt_capacity[-1] > max_capacity:
-                count_no_impr = 0  # improvement happened
+            if i % 100 == 0:
+                print("Iter:", i, "Capacity:", opt_capacity[-1])
 
-                # p_pdf_x = project_pdf(pdf_x, cons_type, max_alphabet_x, power)
-
-                max_opt_capacity = opt_capacity
-                max_pdf_x = pdf_x
-                max_alphabet_x = alphabet_x
-
-                if np.abs(opt_capacity[-1] - max_capacity) < config["epsilon"]:
+            # moving average of capacity between last 100 iterations did not improve, stop
+            if not config["gd_nostop_cond"]:
+                if (
+                    i > 100
+                    and np.abs(
+                        np.mean(opt_capacity[-50:]) - np.mean(opt_capacity[-100:-50])
+                    )
+                    < config["epsilon"]
+                ):
                     break
-                max_capacity = opt_capacity[-1]
-            else:
-                count_no_impr += 1
 
-            if count_no_impr > config["max_k_nochange"]:
+        # is it enough mass point check?
+        if opt_capacity[-1] > max_capacity:
+            count_no_impr = 0  # improvement happened
+
+            # p_pdf_x = project_pdf(pdf_x, cons_type, max_alphabet_x, power)
+
+            max_opt_capacity = opt_capacity
+            max_pdf_x = pdf_x
+            max_alphabet_x = alphabet_x
+
+            if np.abs(opt_capacity[-1] - max_capacity) < config["epsilon"]:
                 break
+            max_capacity = opt_capacity[-1]
+        else:
+            count_no_impr += 1
 
     max_pdf_x = project_pdf(max_pdf_x, config["cons_type"], max_alphabet_x, power)
 
@@ -308,7 +290,6 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
             opt_sum_capacity = []
             max_sum_cap_h = 0
 
-            
             for i in range(config["max_iter"]):
                 optimizer.zero_grad()
                 if torch.sum(pdf_x_RX1.isnan()) > 0 or torch.sum(pdf_x_RX2.isnan()) > 0:
@@ -781,7 +762,7 @@ def gradient_descent_on_interference_x2fixed(config, power, lambda_sweep):
     max_cap_RX2 = []
     save_opt_sum_capacity = []
 
-    pdf_x_RX2 = get_fixed_interferer(config, alphabet_x_RX2)
+    pdf_x_RX2 = get_fixed_interferer(config, alphabet_x_RX2, alphabet_y_RX2)
 
     for ind, lmbd in enumerate(lambda_sweep):
         # FIXME: currently different learning rate comparison is not supported
@@ -877,7 +858,7 @@ def gradient_descent_on_interference_x2fixed(config, power, lambda_sweep):
     )
 
 
-def get_fixed_interferer(config, alphabet_x_RX2):
+def get_fixed_interferer(config, alphabet_x_RX2, alphabet_y_RX2):
     if config["x2_type"] == 0:
         print(" +++----- X2 Distribution is Gaussian ------ +++")
         pdf_x_RX2 = (
@@ -889,12 +870,15 @@ def get_fixed_interferer(config, alphabet_x_RX2):
         print(" +++----- X2 Distribution is calculated ------ +++")
         config["sigma_1"] = config["sigma_21"]
         config["sigma_2"] = config["sigma_22"]
-        regime_class = return_regime_class(config, config["power_2"])
+
+        regime_class = return_regime_class(
+            config, alphabet_x_RX2, alphabet_y_RX2, config["power_2"]
+        )
+        config["gd_nostop_cond"] = True
         _, pdf_x_RX2, _, _ = gd_capacity(config, config["power_2"], regime_class)
 
     else:
         raise ValueError("Interferer type not defined")
-
     pdf_x_RX2 = project_pdf(
         pdf_x_RX2, config["cons_type"], alphabet_x_RX2, config["power_2"]
     )
