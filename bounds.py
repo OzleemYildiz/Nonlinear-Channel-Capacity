@@ -852,7 +852,7 @@ def find_lambda1_lambda2_for_dist(power, config):
 def reg_mmse_bound_numerical(power, config):
     func = return_nonlinear_fn_numpy(config)
 
-    alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
+    alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power, bound=True)
 
     alphabet_x = alphabet_x.numpy()
     alphabet_y = alphabet_y.numpy()

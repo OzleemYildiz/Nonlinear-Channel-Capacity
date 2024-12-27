@@ -122,7 +122,7 @@ def main():
         res["R2"]["Gaussian"] = cap2
 
         if config["gd_active"]:
-            lambda_sweep = np.linspace(0.01, 0.99, config["n_lmbd"])
+            # lambda_sweep = np.linspace(0.01, 0.99, config["n_lmbd"])
             (
                 max_sum_cap,
                 max_pdf_x_RX1,
@@ -131,7 +131,7 @@ def main():
                 max_cap_RX2,
                 save_opt_sum_capacity,
                 # ) = sequential_gradient_descent_on_interference(config, power, lambda_sweep)
-            ) = gradient_descent_on_interference_x2fixed(config, power, lambda_sweep)
+            ) = gradient_descent_on_interference_x2fixed(config, power)
             # ) = gradient_descent_projection_with_learning_rate(
             #     config, power, lambda_sweep
             # )
@@ -148,6 +148,7 @@ def main():
                 save_location + "pdf_pow=" + str(int(power)) + ".mat",
                 res_pdf,
             )
+            lambda_sweep = [1]
             plot_res(
                 max_sum_cap,
                 save_opt_sum_capacity,

@@ -28,7 +28,9 @@ def return_nonlinear_fn(config):
         )
     # 3:nonlinear tanh(X)
     elif config["nonlinearity"] == 3:
-        nonlinear_fn = lambda x: torch.tanh(torch.tensor(x / config["tanh_factor"]))
+        nonlinear_fn = lambda x: config["tanh_factor"] * torch.tanh(
+            torch.tensor(x / config["tanh_factor"])
+        )
     # 4:nonlinear x4: x/(1 + x^4)^1/4
     elif config["nonlinearity"] == 4:
         nonlinear_fn = lambda x: torch.tensor(x / ((1 + x**4) ** (1 / 4)))
@@ -59,10 +61,7 @@ def return_derivative_of_nonlinear_fn(config):
         )
     # 3:nonlinear tanh(X)
     elif config["nonlinearity"] == 3:
-        nonlinear_fn = (
-            lambda x: (1 / np.cosh(x / config["tanh_factor"])) ** 2
-            / config["tanh_factor"]
-        )
+        nonlinear_fn = lambda x: (1 / np.cosh(x / config["tanh_factor"])) ** 2
     # 4:nonlinear x4: x/(1 + x^4)^1/4
     elif config["nonlinearity"] == 4:
         nonlinear_fn = lambda x: 1 / (1 + x**4) ** (5 / 4)
@@ -91,7 +90,9 @@ def return_nonlinear_fn_numpy(config):
         nonlinear_fn = lambda x: np.sign(x) * np.abs(x) ** 0.9
     # 3:nonlinear tanh(X)
     elif config["nonlinearity"] == 3:
-        nonlinear_fn = lambda x: np.tanh(x / config["tanh_factor"])
+        nonlinear_fn = lambda x: config["tanh_factor"] * np.tanh(
+            x / config["tanh_factor"]
+        )
     # 4:nonlinear x4: x/(1 + x^4)^1/4
     elif config["nonlinearity"] == 4:
         nonlinear_fn = lambda x: x / ((1 + x**4) ** (1 / 4))

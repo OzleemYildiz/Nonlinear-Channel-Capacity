@@ -290,7 +290,7 @@ def plot_pdf_vs_change(
         plt.close()
 
 
-def get_alphabet_x_y(config, power):
+def get_alphabet_x_y(config, power, bound=False):
     nonlinear_func = return_nonlinear_fn(config)
     if config["cons_type"] == 0:  # peak power
         peak_power = power
@@ -305,8 +305,8 @@ def get_alphabet_x_y(config, power):
         # max_x = stop_s*avg_power
 
         # If it's clipped after this value, it does not matter to put values outside
-        # if config["nonlinearity"] == 5:
-        #     max_x = config["clipping_limit_x"]
+        if config["nonlinearity"] == 5 and not bound:
+            max_x = config["clipping_limit_x"]
 
     else:  # first moment
         first_moment = power  # E[|X|] < P
@@ -557,7 +557,7 @@ def plot_R1_R2_curve(
 
 
 def loss_interference(
-    pdf_x_RX1, pdf_x_RX2, reg_RX1, reg_RX2, lmbd, upd_RX1=True, upd_RX2=True
+    pdf_x_RX1, pdf_x_RX2, reg_RX1, reg_RX2, lmbd=0.5, upd_RX1=True, upd_RX2=True
 ):
     # Interference loss function for GD
     if torch.sum(pdf_x_RX1.isnan()) > 0 or torch.sum(pdf_x_RX2.isnan()) > 0:
