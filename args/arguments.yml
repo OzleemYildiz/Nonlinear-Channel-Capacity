@@ -15,14 +15,14 @@ nonlinearity : 3 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C
 clipping_limit_x : 2 # the limit in x for the clipping if nonlinear is clip  (x_c)
 clipping_limit_y : 2 # the limit in y for the clipping if nonlinear is clip  (x_c)
 output_dir : 'Res-PP-tanh' # file name to save the results
-tanh_factor : 1 # k when the nonlinearity is tanh(x/k)
+tanh_factor : 3 # k when the nonlinearity is tanh(x/k)
 regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : False # the gradient descent is active
 gd_alphabet_active : False # the gradient descent is active for the alphabet
 mass_points : [1000] # the mass points for the gradient descent over the alphabet
 gd_initial_ba : False # It has to be peak power constraint
-bound_active: True
+bound_active: False
 ba_active : False # Blahut Arimoto - only works with the peak power constraint
 n_samples: 5000000
 time_division_active: False # When this is active, I have only one SNR is active - forced in the code

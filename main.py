@@ -105,7 +105,14 @@ def define_save_location(config):
             + str(config["clipping_limit_y"])
         )
     elif config["nonlinearity"] == 3:
-        save_location = save_location + "_tanh" + str(config["tanh_factor"]) + "x"
+        save_location = (
+            save_location
+            + "_"
+            + str(config["tanh_factor"])
+            + "tanh"
+            + "x/"
+            + str(config["tanh_factor"])
+        )
     save_location = save_location + "/"
     os.makedirs(
         save_location,

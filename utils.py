@@ -589,13 +589,21 @@ def loss_interference(
         pdf_x_RX2 = pdf_x_RX2 - torch.min(pdf_x_RX2[pdf_x_RX2 < 0]) + 1e-20
         # breakpoint()
 
-    cap_RX1 = reg_RX1.capacity_with_interference(
-        pdf_x_RX1,
-        pdf_x_RX2,
-        reg_RX2.alphabet_x,
-    )
-
+    if reg_RX1.config["x1_update_scheme"] == 0:
+        cap_RX1 = reg_RX1.capacity_with_interference(
+            pdf_x_RX1,
+            pdf_x_RX2,
+            reg_RX2.alphabet_x,
+        )
+    elif reg_RX1.config["x1_update_scheme"] == 1:  # Known interference
+        cap_RX1 = reg_RX1.capacity_with_known_interference(
+            pdf_x_RX1,
+            pdf_x_RX2,
+            reg_RX2.alphabet_x,
+        )
+    breakpoint()
     cap_RX2 = reg_RX2.new_capacity(pdf_x_RX2)
+
     if torch.isnan(cap_RX1) or torch.isnan(cap_RX2):
         breakpoint()
 

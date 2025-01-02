@@ -241,8 +241,12 @@ class Third_Regime:
         pdf_x2_and_z1 = pdf_x2[:, None] * pdf_z1[None, :]
 
         for ind, x in enumerate(self.alphabet_x):
-            # U = X + Z_1 + X_2
-            alphabet_u = alphabet_z1[None, :] + x + alphabet_x2[:, None]
+            # U = X + Z_1 + aX_2
+            alphabet_u = (
+                alphabet_z1[None, :]
+                + x
+                + self.config["int_ratio"] * alphabet_x2[:, None]
+            )
             # V = phi(U)
 
             alphabet_v = self.nonlinear_fn(alphabet_u)
@@ -270,3 +274,57 @@ class Third_Regime:
 
         self.pdf_y_given_x_int = pdf_y_given_x
         return pdf_y_given_x
+
+    def capacity_with_known_interference(self, pdf_x, pdf_x2, alphabet_x2):
+
+        pdf_y_given_x2_and_x1, pdf_y_given_x2 = self.get_pdfs_for_known_interference(
+            pdf_x, pdf_x2, alphabet_x2
+        )
+        # I(X1,Y1 | X2) = H(Y1|X2) - H(Y1|X1,X2)
+
+        entropy_y_given_x2 = torch.sum(
+            (pdf_y_given_x2 * torch.log(pdf_y_given_x2 + 1e-20)) @ pdf_x2
+        )
+
+        entropy_y_given_x1_and_x2 = torch.sum(
+            ((pdf_y_given_x2_and_x1 * torch.log(pdf_y_given_x2_and_x1 + 1e-20)) @ pdf_x)
+            @ pdf_x2
+        )
+
+        cap = entropy_y_given_x2 - entropy_y_given_x1_and_x2
+        return cap
+
+    def get_pdfs_for_known_interference(self, pdf_x, pdf_x2, alphabet_x2):
+
+        max_z1 = self.config["stop_sd"] * self.config["sigma_11"] ** 2
+        delta_z1 = self.alphabet_x[1] - self.alphabet_x[0]
+        max_z1 = max_z1 + (delta_z1 - (max_z1 % delta_z1))
+        alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
+        pdf_z1 = (
+            1
+            / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_11"])
+            * torch.exp(-0.5 * (alphabet_z1) ** 2 / self.config["sigma_11"] ** 2)
+        )
+        pdf_z1 = pdf_z1 / (torch.sum(pdf_z1) + 1e-30)
+
+        mean_random_x2_x1_z1 = self.nonlinear_fn(
+            alphabet_x2[None, :, None, None]
+            + self.alphabet_x[None, None, :, None]
+            + alphabet_z1[None, None, None, :]
+        )
+        pdf_y_given_x2_x1_z1 = (
+            1
+            / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_21"])
+            * torch.exp(
+                -0.5
+                * ((self.alphabet_y.reshape(-1, 1, 1, 1) - mean_random_x2_x1_z1) ** 2)
+                / self.config["sigma_21"] ** 2
+            )
+        )
+        pdf_y_given_x2_and_x1 = pdf_y_given_x2_x1_z1 @ pdf_z1
+        pdf_y_given_x2 = pdf_y_given_x2_and_x1 @ pdf_x
+        pdf_y_given_x2 = pdf_y_given_x2 / (torch.sum(pdf_y_given_x2, axis=0) + 1e-30)
+        pdf_y_given_x2_and_x1 = pdf_y_given_x2_and_x1 / (
+            torch.sum(pdf_y_given_x2_and_x1, axis=0) + 1e-30
+        )
+        return pdf_y_given_x2_and_x1, pdf_y_given_x2

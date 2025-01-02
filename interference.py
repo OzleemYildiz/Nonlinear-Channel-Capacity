@@ -56,6 +56,12 @@ def define_save_location(config):
 
     if config["gd_active"]:
         save_location = save_location + "_gd_" + str(config["gd_active"])
+        if config["x2_fixed"]:
+            save_location = save_location + "_x2_fixed"
+            save_location = save_location + "_x2=" + str(config["x2_type"])
+            save_location = (
+                save_location + "_x1update=" + str(config["x1_update_scheme"])
+            )
 
     save_location = save_location + "/"
     return save_location
@@ -107,8 +113,8 @@ def main():
             alphabet_y_RX2,
         )
         res_gaus["Gaussian"] = [cap1_g, cap2_g]
-        cap1_agc, cap2_agc = agc_gaussian_capacity_interference(config, power)
-        res_gaus["AGC"] = [cap1_agc, cap2_agc]
+        # cap1_agc, cap2_agc = agc_gaussian_capacity_interference(config, power)
+        # res_gaus["AGC"] = [cap1_agc, cap2_agc]
 
         cap1, cap2 = gaus_interference_R1_R2_curve(config, power)
 
@@ -120,7 +126,12 @@ def main():
         res["R2"]["Gaussian"] = cap2
 
         if config["gd_active"]:
-            lambda_sweep = np.linspace(0.01, 0.99, config["n_lmbd"])
+            if config["x2_fixed"]:
+                lambda_sweep = [
+                    1
+                ]  # There will be only one lambda solution since x2 is fixed
+            else:
+                lambda_sweep = np.linspace(0.01, 0.99, config["n_lmbd"])
             (
                 max_sum_cap,
                 max_pdf_x_RX1,
@@ -128,11 +139,7 @@ def main():
                 max_cap_RX1,
                 max_cap_RX2,
                 save_opt_sum_capacity,
-                # ) = sequential_gradient_descent_on_interference(config, power, lambda_sweep)
             ) = gradient_descent_on_interference(config, power, lambda_sweep)
-            # ) = gradient_descent_projection_with_learning_rate(
-            #     config, power, lambda_sweep
-            # )
 
             res["R1"]["Learned"] = max_cap_RX1
             res["R2"]["Learned"] = max_cap_RX2
