@@ -112,9 +112,9 @@ class Second_Regime:
         return cap
 
     def capacity_like_ba(self, pdf_x):
-        # breakpoint()
+
         self.pdf_u = self.calculate_pdf_u(pdf_x)
-        breakpoint()
+       
         eps = 1e-35
         self.calculate_delta_y(eps)
         pdf_y_given_x = self.pdf_u_given_x

@@ -601,7 +601,6 @@ def loss_interference(
             pdf_x_RX2,
             reg_RX2.alphabet_x,
         )
-    breakpoint()
     cap_RX2 = reg_RX2.new_capacity(pdf_x_RX2)
 
     if torch.isnan(cap_RX1) or torch.isnan(cap_RX2):

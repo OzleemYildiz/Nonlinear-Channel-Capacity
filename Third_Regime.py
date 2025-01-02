@@ -143,7 +143,7 @@ class Third_Regime:
         pdf_y = pdf_y / (torch.sum(pdf_y) + 1e-30)
         cap = entropy_y_given_x - torch.sum(pdf_y * torch.log(pdf_y + 1e-20))
 
-        # breakpoint()
+       
         return cap
 
     def capacity_with_interference(self, pdf_x, pdf_x2, alphabet_x2, x2_fixed=False):
