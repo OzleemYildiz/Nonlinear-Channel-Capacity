@@ -5,7 +5,7 @@ sigma_11 : 1
 sigma_12 : 1
 sigma_21 : 1
 sigma_22 : 1
-int_ratio : 0.5 # interference ratio >0, k*delta_y for an integer k
+int_ratio : 2 # interference ratio >0, k*delta_y for an integer k
 delta_y : 0.1
 min_samples: 50 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment

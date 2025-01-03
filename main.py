@@ -316,7 +316,7 @@ def main():
                                 max_alphabet_x.detach().numpy(),
                             ]
                     else:
-                        map_pdf["Chng" + str(int(snr * 100))] = [
+                        map_pdf["Chng" + str(int(abs(snr * 100)))] = [
                             max_pdf_x.detach().numpy(),
                             max_alphabet_x.detach().numpy(),
                         ]
