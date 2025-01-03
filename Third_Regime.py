@@ -150,7 +150,7 @@ class Third_Regime:
         if x2_fixed and self.pdf_y_given_x_int is not None:
             pdf_y_given_x = self.pdf_y_given_x_int
         else:
-            pdf_y_given_x1 = self.get_pdf_y_given_x_with_interference_nofor(
+            pdf_y_given_x = self.get_pdf_y_given_x_with_interference_nofor(
                 pdf_x2, alphabet_x2
             )
 
@@ -305,6 +305,7 @@ class Third_Regime:
         pdf_y_given_x1_x2 = pdf_y_given_x1_x2_z1 @ pdf_z1
         pdf_y_given_x1 = pdf_y_given_x1_x2 @ pdf_x2
         pdf_y_given_x1 = pdf_y_given_x1 / (torch.sum(pdf_y_given_x1, axis=0) + 1e-30)
+        self.pdf_y_given_x_int = pdf_y_given_x1
         return pdf_y_given_x1
 
     def capacity_with_known_interference(self, pdf_x, pdf_x2, alphabet_x2):
