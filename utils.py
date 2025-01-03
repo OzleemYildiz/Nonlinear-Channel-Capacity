@@ -329,8 +329,8 @@ def get_alphabet_x_y(config, power, bound=False):
 
     # Keep the number of samples fixed instead of delta
     delta_y = 2 * max_x / config["min_samples"]
-    if delta_y > config["delta_y"]:
-        delta_y = config["delta_y"]
+    # if delta_y > config["delta_y"]:
+    #     delta_y = config["delta_y"]
 
     # Check if Z1 will have enough samples - It gets included only for 3rd Regime
     if config["regime"] == 3:
