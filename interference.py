@@ -109,7 +109,6 @@ def main():
             get_interference_alphabet_x_y(config, power)
         )
         res_gaus = {}
-        breakpoint()
         cap1_g, cap2_g = gaussian_interference_capacity(
             power,
             power,
@@ -119,7 +118,7 @@ def main():
             alphabet_x_RX2,
             alphabet_y_RX2,
         )
-        breakpoint()
+
         res_gaus["Gaussian"] = [cap1_g, cap2_g]
         # cap1_agc, cap2_agc = agc_gaussian_capacity_interference(config, power)
         # res_gaus["AGC"] = [cap1_agc, cap2_agc]
@@ -132,7 +131,6 @@ def main():
         res = {"R1": {}, "R2": {}}
         res["R1"]["Gaussian"] = cap1
         res["R2"]["Gaussian"] = cap2
-        breakpoint()
         if config["gd_active"]:
             if config["x2_fixed"]:
                 lambda_sweep = [
