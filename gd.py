@@ -40,7 +40,13 @@ def gd_capacity(config, power, regime_class):
             # breakpoint()
             pdf_x = torch.tensor(pdf_x).float()
         else:  # uniform distribution if no initial distribution
-            pdf_x = torch.ones_like(alphabet_x) * 1 / len(alphabet_x)
+            # pdf_x = torch.ones_like(alphabet_x) * 1 / len(alphabet_x)
+            # Gaussian distribution
+            pdf_x = (
+                1
+                / (torch.sqrt(torch.tensor([2 * torch.pi * power])))
+                * torch.exp(-0.5 * ((alphabet_x) ** 2) / power).float()
+            )
 
             pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
         if len(alphabet_x) == 0:
