@@ -58,7 +58,7 @@ def define_save_location(config):
 
     save_location = save_location + (
         "/"
-        +G
+        + "G"
         + config["cons_str"]
         + "_phi="
         + str(config["nonlinearity"])

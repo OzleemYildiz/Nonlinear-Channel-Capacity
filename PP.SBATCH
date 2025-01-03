@@ -6,7 +6,7 @@
 #SBATCH --mem=10GB
 #SBATCH --job-name=pp
 #SBATCH --account=pr_215_general
-#SBATCH --output=int_%A_%a.out
+#SBATCH --output=outs/int_%A_%a.out
 
 module purge
 
