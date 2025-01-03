@@ -110,8 +110,8 @@ def define_save_location(config):
             + "_"
             + str(config["tanh_factor"])
             + "tanh"
-            + "x/"
-            + str(config["tanh_factor"])
+            + str(1 / config["tanh_factor"])
+            + "x"
         )
     save_location = save_location + "/"
     os.makedirs(

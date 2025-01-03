@@ -143,7 +143,6 @@ class Third_Regime:
         pdf_y = pdf_y / (torch.sum(pdf_y) + 1e-30)
         cap = entropy_y_given_x - torch.sum(pdf_y * torch.log(pdf_y + 1e-20))
 
-       
         return cap
 
     def capacity_with_interference(self, pdf_x, pdf_x2, alphabet_x2, x2_fixed=False):
@@ -292,6 +291,7 @@ class Third_Regime:
         )
 
         cap = entropy_y_given_x2 - entropy_y_given_x1_and_x2
+
         return cap
 
     def get_pdfs_for_known_interference(self, pdf_x, pdf_x2, alphabet_x2):
@@ -314,13 +314,17 @@ class Third_Regime:
         )
         pdf_y_given_x2_x1_z1 = (
             1
-            / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_21"])
+            / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_12"])
             * torch.exp(
                 -0.5
                 * ((self.alphabet_y.reshape(-1, 1, 1, 1) - mean_random_x2_x1_z1) ** 2)
-                / self.config["sigma_21"] ** 2
+                / self.config["sigma_12"] ** 2
             )
         )
+        pdf_y_given_x2_x1_z1 = pdf_y_given_x2_x1_z1 / (
+            torch.sum(pdf_y_given_x2_x1_z1, axis=0) + 1e-30
+        )
+
         pdf_y_given_x2_and_x1 = pdf_y_given_x2_x1_z1 @ pdf_z1
         pdf_y_given_x2 = pdf_y_given_x2_and_x1 @ pdf_x
         pdf_y_given_x2 = pdf_y_given_x2 / (torch.sum(pdf_y_given_x2, axis=0) + 1e-30)

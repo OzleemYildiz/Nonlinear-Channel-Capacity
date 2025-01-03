@@ -28,6 +28,12 @@ def define_save_location(config):
         + config["cons_str"]
         + "_phi="
         + str(config["nonlinearity"])
+    )
+    if config["nonlinearity"] == 3:
+        save_location = save_location + "_tanh=" + str(config["tanh_factor"])
+
+    save_location = (
+        save_location
         + "_regime="
         + str(config["regime"])
         # + "_int_ratio="
