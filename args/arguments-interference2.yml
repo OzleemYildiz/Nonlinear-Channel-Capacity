@@ -20,7 +20,7 @@ stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as sto
 gd_active : True
 epsilon : 0.0000000000005 #convergence criteria
 lr : [0.000005] # learning rate
-max_iter : 50000 # maximum number of iterations
+max_iter : 5000 # maximum number of iterations
 max_seq_iter : 20 # px1 and px2 are updated alternatively, this is the maximum number of iterations for each update I
 n_lmbd : 5 # number of lambdas
 x2_fixed : True # if True, px2 is fixed and px1 is updated

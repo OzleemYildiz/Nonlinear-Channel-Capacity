@@ -437,14 +437,14 @@ def get_interference_alphabet_x_y(config, power):
 
     if config["int_ratio"] > 0 and config["int_ratio"] <= 1:
         delta_y = 2 * max_x2 / config["min_samples"]  # !!! Changed this
-        if delta_y > config["delta_y"]:
-            delta_y = config["delta_y"]
+        # if delta_y > config["delta_y"]:
+        #     delta_y = config["delta_y"]
         delta_x2 = delta_y
         delta_x1 = config["int_ratio"] * delta_x2
     elif config["int_ratio"] > 1:
         delta_y = 2 * max_x / config["min_samples"]  # !!! Changed this
-        if delta_y > config["delta_y"]:
-            delta_y = config["delta_y"]
+        # if delta_y > config["delta_y"]:
+        #     delta_y = config["delta_y"]
         delta_x1 = delta_y
         delta_x2 = delta_x1 / config["int_ratio"]
     else:

@@ -14,15 +14,15 @@ nonlinearity : 3 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C
 clipping_limit_x : 3 # the limit for the clipping if nonlinear is clip (5)
 clipping_limit_y : 3 # the limit for the clipping if nonlinear is clip (5)
 output_dir : 'Res-Int' # file name to save the results
-tanh_factor : 3 # k when the nonlinearity is ktanh(x/k)
+tanh_factor : 1 # k when the nonlinearity is ktanh(x/k)
 regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : True
 epsilon : 0.0000000000005 #convergence criteria
 lr : [0.000005] # learning rate
-max_iter : 50000 # maximum number of iterations
+max_iter : 5000 # maximum number of iterations
 max_seq_iter : 20 # px1 and px2 are updated alternatively, this is the maximum number of iterations for each update I
 n_lmbd : 5 # number of lambdas
 x2_fixed : True # if True, px2 is fixed and px1 is updated
-x1_update_scheme : 0 # 0: gd is over I(X1;Y1), 1: gd is over I(X1;Y1|X2) (Known Interference) - For this, x2_fixed should be True
+x1_update_scheme : 1 # 0: gd is over I(X1;Y1), 1: gd is over I(X1;Y1|X2) (Known Interference) - For this, x2_fixed should be True
 x2_type : 1 # 0: Gaussian, 1: Optimized

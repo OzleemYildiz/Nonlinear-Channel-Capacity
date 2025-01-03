@@ -272,7 +272,7 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
 
     if config["x2_fixed"]:
         pdf_x_RX2 = get_fixed_interferer(config, alphabet_x_RX2, alphabet_y_RX2)
-
+    breakpoint()
     for ind, lmbd in enumerate(lambda_sweep):
         # FIXME: currently different learning rate comparison is not supported
         print("++++++++ Lambda: ", lmbd, " ++++++++")
