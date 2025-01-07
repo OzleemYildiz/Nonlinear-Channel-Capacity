@@ -670,3 +670,16 @@ def get_regime_class_interference(
         return t_reg_RX1, t_reg_RX2
     else:
         raise ValueError("Regime not defined")
+
+
+def plot_R1_vs_change(res_change, change_range, config, save_location):
+    plt.figure(figsize=(5, 4))
+    plt.plot(change_range, res_change["R1"], label="R1")
+    plt.plot(change_range, res_change["linear_tin"], label="TIN- Linear")
+    plt.plot(change_range, res_change["linear_ki"], label="KI- Linear")
+    plt.legend()
+    plt.xlabel(str(config["change"]))
+    plt.ylabel("R1")
+    plt.grid()
+    plt.savefig(save_location + "/Comp" + ".png")
+    plt.close()

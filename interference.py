@@ -5,6 +5,7 @@ from utils import (
     interference_dependent_snr,
     plot_res,
     plot_R1_R2_curve,
+    plot_R1_vs_change,
 )
 import numpy as np
 from gaussian_capacity import (
@@ -18,6 +19,7 @@ from gd import (
     gradient_descent_on_interference,
     gradient_descent_projection_with_learning_rate,
 )
+import time
 
 
 def define_save_location(config):
@@ -137,7 +139,7 @@ def main():
     # ----System Model--- Z channel
     # Y1 = Phi(X1 + AX2 +N11)+ N12
     # Y2 = Phi(X2  + N21)+ N22
-
+    st = time.time()
     config = read_config()
     print(
         "**** AWGN Interference Channel with Nonlinearity: ",
@@ -156,9 +158,29 @@ def main():
     cap_gaus_RX2 = []
 
     change_range = change_parameters_range(config)
+    res_change = {"R1": [], "linear_tin": [], "linear_ki": []}
 
-    for chng in change_range:
+    for ind, chng in enumerate(change_range):
         power1, power2, int_ratio, tanh_factor = get_run_parameters(config, chng)
+        res_change["linear_tin"].append(
+            1
+            / 2
+            * np.log(
+                1
+                + power1
+                / (
+                    config["int_ratio"] ** 2 * power2
+                    + config["sigma_12"] ** 2
+                    + config["sigma_11"] ** 2
+                )
+            )
+        )
+        res_change["linear_ki"].append(
+            1
+            / 2
+            * np.log(1 + power1 / (config["sigma_12"] ** 2 + config["sigma_11"] ** 2))
+        )
+
         update_save_location = (
             save_location
             + "power1="
@@ -199,15 +221,14 @@ def main():
         res_gaus["Gaussian"] = [cap1_g, cap2_g]
         # cap1_agc, cap2_agc = agc_gaussian_capacity_interference(config, power)
         # res_gaus["AGC"] = [cap1_agc, cap2_agc]
+        # breakpoint()
 
-        cap1, cap2 = gaus_interference_R1_R2_curve(config, power1, power2)
-
-        # cap_gaus_RX1.append(cap1)
-        # cap_gaus_RX2.append(cap2)
+        # FIXME: This takes long time
+        # cap1, cap2 = gaus_interference_R1_R2_curve(config, power1, power2)
 
         res = {"R1": {}, "R2": {}}
-        res["R1"]["Gaussian"] = cap1
-        res["R2"]["Gaussian"] = cap2
+        # res["R1"]["Gaussian"] = cap1
+        # res["R2"]["Gaussian"] = cap2
         if config["gd_active"]:
             if config["x2_fixed"]:
                 lambda_sweep = [
@@ -226,6 +247,8 @@ def main():
             ) = gradient_descent_on_interference(config, power1, power2, lambda_sweep)
 
             res["R1"]["Learned"] = max_cap_RX1
+            res_change["R1"].append(max_cap_RX1)
+
             res["R2"]["Learned"] = max_cap_RX2
             res_pdf = {
                 "RX1_pdf": max_pdf_x_RX1,
@@ -259,6 +282,9 @@ def main():
 
         del alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2
 
+    if config["x2_fixed"]:
+        plot_R1_vs_change(res_change, change_range, config, save_location)
+    print("Time taken: ", time.time() - st)
     # res = {
     #     "Capacity_without_Interference_Nonlinearity_RX1": cap_RX1_no_int_no_nonlinearity,
     #     "Capacity_without_Nonlinearity_RX2": cap_RX2_no_nonlinearity,

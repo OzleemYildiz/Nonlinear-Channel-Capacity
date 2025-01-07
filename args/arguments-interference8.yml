@@ -1,10 +1,10 @@
 min_power1 : 1
 max_power1 : 100
-min_power2 : 5
+min_power2 : 1
 max_power2 : 100
-min_tanh_factor : 1 # k when the nonlinearity is ktanh(x/k)
+min_tanh_factor : 5 # k when the nonlinearity is ktanh(x/k)
 max_tanh_factor : 10 # k when the nonlinearity is ktanh(x/k)
-min_int_ratio : 0.2
+min_int_ratio : 0.5
 max_int_ratio : 4
 change : 'pw2' # pw1: change the power1, pw2: change the power2, k: change the tanh factor, a:int_ratio # Not changed one is minimum
 sigma_11 : 1 
