@@ -158,7 +158,13 @@ def main():
     cap_gaus_RX2 = []
 
     change_range = change_parameters_range(config)
-    res_change = {"R1": [], "linear_tin": [], "linear_ki": []}
+    res_change = {
+        "R1": [],
+        "linear_tin": [],
+        "linear_ki": [],
+        "change": change_range,
+        "chng_over": config["change"],
+    }
 
     for ind, chng in enumerate(change_range):
         power1, power2, int_ratio, tanh_factor = get_run_parameters(config, chng)
@@ -184,16 +190,16 @@ def main():
         update_save_location = (
             save_location
             + "power1="
-            + str(power1)
+            + str(float(power1))
             + "/"
             + "power2="
-            + str(power2)
+            + str(float(power2))
             + "/"
             + "int_ratio="
-            + str(int_ratio)
+            + str(float(int_ratio))
             + "/"
             + "tanh_factor="
-            + str(tanh_factor)
+            + str(float(tanh_factor))
             + "/"
         )
 
@@ -284,6 +290,9 @@ def main():
 
     if config["x2_fixed"]:
         plot_R1_vs_change(res_change, change_range, config, save_location)
+        io.savemat(
+            save_location + "res_change" + str(config["change"]) + ".mat", res_change
+        )
     print("Time taken: ", time.time() - st)
     # res = {
     #     "Capacity_without_Interference_Nonlinearity_RX1": cap_RX1_no_int_no_nonlinearity,

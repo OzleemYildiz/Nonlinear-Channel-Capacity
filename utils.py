@@ -681,5 +681,5 @@ def plot_R1_vs_change(res_change, change_range, config, save_location):
     plt.xlabel(str(config["change"]))
     plt.ylabel("R1")
     plt.grid()
-    plt.savefig(save_location + "/Comp" + ".png")
+    plt.savefig(save_location + "/Comp" + str(config["change"]) + ".png")
     plt.close()
