@@ -237,7 +237,7 @@ def main_ba():
 def main_interference():
     config = read_config(args_name="arguments-interference.yml")
     power = config["max_power_cons"]
-
+    power2 = config["power_2"]
     # Check if the power constraint is average
     if config["cons_type"] == 1:
         average_power = True
@@ -245,7 +245,7 @@ def main_interference():
         average_power = False
 
     alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
-        get_interference_alphabet_x_y(config, power)
+        get_interference_alphabet_x_y(config, power, power2)
     )
     file_name = (
         "blahut_arimoto-interference/"
@@ -326,7 +326,7 @@ def main_interference():
         res_plot = {"R1": {}, "R2": {}}
         res_plot["R1"]["BA"] = cap_RX1
         res_plot["R2"]["BA"] = cap_RX2
-        plot_R1_R2_curve(res_plot, power, file_name)
+        plot_R1_R2_curve(res_plot, power, power2, file_name)
     else:
         print("HOW DO WE PLOT R1 AND R2 FOR AVERAGE POWER CONSTRAINT?")
     print("Results saved at: ", file_name)

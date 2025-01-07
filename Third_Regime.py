@@ -276,6 +276,7 @@ class Third_Regime:
         return pdf_y_given_x
 
     def get_pdf_y_given_x_with_interference_nofor(self, pdf_x2, alphabet_x2):
+
         max_z1 = self.config["stop_sd"] * self.config["sigma_11"] ** 2
         delta_z1 = self.alphabet_x[1] - self.alphabet_x[0]
         max_z1 = max_z1 + (delta_z1 - (max_z1 % delta_z1))
@@ -287,12 +288,12 @@ class Third_Regime:
             * torch.exp(-0.5 * (alphabet_z1) ** 2 / self.config["sigma_11"] ** 2)
         )
         pdf_z1 = pdf_z1 / (torch.sum(pdf_z1) + 1e-30)
-
         mean_random_x1_x2_z1 = self.nonlinear_fn(
             self.alphabet_x[None, :, None, None]
             + self.config["int_ratio"] * alphabet_x2[None, None, :, None]
             + alphabet_z1[None, None, None, :]
         )
+        # FIXME!!! : These could be really big
         pdf_y_given_x1_x2_z1 = (
             1
             / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_12"])
@@ -309,7 +310,6 @@ class Third_Regime:
         return pdf_y_given_x1
 
     def capacity_with_known_interference(self, pdf_x, pdf_x2, alphabet_x2):
-
         pdf_y_given_x2_and_x1, pdf_y_given_x2 = self.get_pdfs_for_known_interference(
             pdf_x, pdf_x2, alphabet_x2
         )

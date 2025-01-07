@@ -77,9 +77,14 @@ def gaussian_interference_capacity(
     pdf_x_1 = (pdf_x_1 / torch.sum(pdf_x_1)).to(torch.float32)
 
     reg_RX1, reg_RX2 = get_regime_class_interference(
-        alphabet_x_RX1, alphabet_x_RX2, alphabet_y_RX1, alphabet_y_RX2, config, power1
+        alphabet_x_RX1,
+        alphabet_x_RX2,
+        alphabet_y_RX1,
+        alphabet_y_RX2,
+        config,
+        power1,
+        power2,
     )
-
     loss, cap_RX1, cap_RX2 = loss_interference(
         pdf_x_1, pdf_x_2, reg_RX1, reg_RX2, lmbd=0.5
     )
@@ -118,7 +123,7 @@ def agc_gaussian_capacity_interference(config, power):
     # Now we change this to Y = phi(alpha*(X_1+X_2))+N_2
 
     alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
-        get_interference_alphabet_x_y(config, power)
+        get_interference_alphabet_x_y(config, power, power2)
     )
     alphabet_x_RX1 = alpha * alphabet_x_RX1
     alphabet_x_RX2 = alpha * alphabet_x_RX2
@@ -140,21 +145,21 @@ def update_nonlinear_function(config, alpha):
     pass
 
 
-def gaus_interference_R1_R2_curve(config, power):
+def gaus_interference_R1_R2_curve(config, power, power2):
     cap_gaus_RX1 = []
     cap_gaus_RX2 = []
-    lambda_power = np.linspace(0.01, 0.99, 20)
-    for lmbd in lambda_power:
+    ratio_pw = np.linspace(0.01, 0.99, 20)
+    for ratio in ratio_pw:
         power1 = power
-        power2 = lmbd * power
+        power2_upd = ratio * power2
 
         # print("-----------Power: ", power, "when lambda=", lmbd, "-----------")
         alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
-            get_interference_alphabet_x_y(config, power)
+            get_interference_alphabet_x_y(config, power, power2_upd)
         )
         cap1, cap2 = gaussian_interference_capacity(
             power1,
-            power2,
+            power2_upd,
             config,
             alphabet_x_RX1,
             alphabet_y_RX1,

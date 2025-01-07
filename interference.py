@@ -16,7 +16,6 @@ import os
 from scipy import io
 from gd import (
     gradient_descent_on_interference,
-    sequential_gradient_descent_on_interference,
     gradient_descent_projection_with_learning_rate,
 )
 
@@ -29,21 +28,13 @@ def define_save_location(config):
         + "_phi="
         + str(config["nonlinearity"])
     )
-    if config["nonlinearity"] == 3:
-        save_location = save_location + "_tanh=" + str(config["tanh_factor"])
+    if config["nonlinearity"] == 5:
+        save_location = save_location + "_clip=" + str(config["clipping_limit_x"])
 
     save_location = (
         save_location
         + "_regime="
         + str(config["regime"])
-        # + "_int_ratio="
-        # + str(config["int_ratio"])
-        + "_min_pow_1="
-        + str(config["min_power_cons"])
-        + "_power_2="
-        + str(config["power_2"])
-        + "_int_ratio="
-        + str(config["int_ratio"])
         + "_delta_y="
         + str(config["delta_y"])
         + "_max_iter="
@@ -59,6 +50,18 @@ def define_save_location(config):
             + "_sigma12="
             + str(config["sigma_12"])
         )
+    elif config["regime"] == 3:
+        save_location = (
+            save_location
+            + "_sigma11="
+            + str(config["sigma_11"])
+            + "_sigma12="
+            + str(config["sigma_12"])
+            + "_sigma21="
+            + str(config["sigma_21"])
+            + "_sigma22="
+            + str(config["sigma_22"])
+        )
 
     if config["gd_active"]:
         save_location = save_location + "_gd_" + str(config["gd_active"])
@@ -71,6 +74,62 @@ def define_save_location(config):
 
     save_location = save_location + "/"
     return save_location
+
+
+def change_parameters_range(config):
+    if config["change"] == "pw1":
+        change_range = np.logspace(
+            np.log10(config["min_power1"]),
+            np.log10(config["max_power1"]),
+            config["n_change"],
+        )
+        print("-------------Change is Power1-------------")
+    elif config["change"] == "pw2":
+        change_range = np.logspace(
+            np.log10(config["min_power2"]),
+            np.log10(config["max_power2"]),
+            config["n_change"],
+        )
+        print("-------------Change is Power2-------------")
+    elif config["change"] == "a":
+        change_range = np.linspace(
+            config["min_int_ratio"],
+            config["max_int_ratio"],
+            config["n_change"],
+        )
+        print("-------------Change is Int Ratio-------------")
+    elif config["change"] == "k":
+        if config["nonlinearity"] != 3:
+            raise ValueError("Tanh Factor is only for nonlinearity 3")
+        change_range = np.linspace(
+            config["min_tanh_factor"],
+            config["max_tanh_factor"],
+            config["n_change"],
+        )
+        print("-------------Change is Tanh Factor-------------")
+    else:
+        raise ValueError("Change parameter is not defined")
+    return change_range
+
+
+def get_run_parameters(config, chng):
+    power1 = config["min_power1"]
+    power2 = config["min_power2"]
+    int_ratio = config["min_int_ratio"]
+    tanh_factor = config["min_tanh_factor"]
+    if config["change"] == "pw1":
+        power1 = chng
+    elif config["change"] == "pw2":
+        power2 = chng
+    elif config["change"] == "a":
+        int_ratio = chng
+    elif config["change"] == "k":
+        tanh_factor = chng
+    config["int_ratio"] = int_ratio
+    config["tanh_factor"] = tanh_factor
+    config["power_2"] = power2
+    # TODO: Remove the config requirement for these parameters
+    return power1, power2, int_ratio, tanh_factor
 
 
 def main():
@@ -95,23 +154,41 @@ def main():
     # cap_RX2_no_nonlinearity = []
     cap_gaus_RX1 = []
     cap_gaus_RX2 = []
-    for power in np.logspace(
-        np.log10(config["min_power_cons"]),
-        np.log10(config["max_power_cons"]),
-        config["n_snr"],
-    ):
-        print("-----------Power: ", power, "-----------")
+
+    change_range = change_parameters_range(config)
+
+    for chng in change_range:
+        power1, power2, int_ratio, tanh_factor = get_run_parameters(config, chng)
+        update_save_location = (
+            save_location
+            + "power1="
+            + str(power1)
+            + "/"
+            + "power2="
+            + str(power2)
+            + "/"
+            + "int_ratio="
+            + str(int_ratio)
+            + "/"
+            + "tanh_factor="
+            + str(tanh_factor)
+            + "/"
+        )
+
+        os.makedirs(update_save_location, exist_ok=True)
+        print("----------", str(config["change"]), ":", chng, "-----------")
         # snr1, snr2, inr1 = interference_dependent_snr(config, power)
         # cap_RX1_no_int_no_nonlinearity.append(0.5 * np.log2(1 + snr1))
         # cap_RX2_no_nonlinearity.append(0.5 * np.log2(1 + snr2))
 
         alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
-            get_interference_alphabet_x_y(config, power)
+            get_interference_alphabet_x_y(config, power1, power2)
         )
+
         res_gaus = {}
         cap1_g, cap2_g = gaussian_interference_capacity(
-            power,
-            power,
+            power1,
+            power2,
             config,
             alphabet_x_RX1,
             alphabet_y_RX1,
@@ -123,7 +200,7 @@ def main():
         # cap1_agc, cap2_agc = agc_gaussian_capacity_interference(config, power)
         # res_gaus["AGC"] = [cap1_agc, cap2_agc]
 
-        cap1, cap2 = gaus_interference_R1_R2_curve(config, power)
+        cap1, cap2 = gaus_interference_R1_R2_curve(config, power1, power2)
 
         # cap_gaus_RX1.append(cap1)
         # cap_gaus_RX2.append(cap2)
@@ -138,6 +215,7 @@ def main():
                 ]  # There will be only one lambda solution since x2 is fixed
             else:
                 lambda_sweep = np.linspace(0.01, 0.99, config["n_lmbd"])
+
             (
                 max_sum_cap,
                 max_pdf_x_RX1,
@@ -145,7 +223,7 @@ def main():
                 max_cap_RX1,
                 max_cap_RX2,
                 save_opt_sum_capacity,
-            ) = gradient_descent_on_interference(config, power, lambda_sweep)
+            ) = gradient_descent_on_interference(config, power1, power2, lambda_sweep)
 
             res["R1"]["Learned"] = max_cap_RX1
             res["R2"]["Learned"] = max_cap_RX2
@@ -156,7 +234,7 @@ def main():
                 "RX2_alph": alphabet_x_RX2,
             }
             io.savemat(
-                save_location + "pdf_pow=" + str(int(power)) + ".mat",
+                update_save_location + "pdf.mat",
                 res_pdf,
             )
             plot_res(
@@ -166,13 +244,18 @@ def main():
                 max_pdf_x_RX2,
                 alphabet_x_RX1,
                 alphabet_x_RX2,
-                power,
-                save_location + "power=" + str(int(power)) + "/",
+                power1,
+                update_save_location,
                 lambda_sweep,
             )
-        plot_R1_R2_curve(res, power, save_location, config=config, res_gaus=res_gaus)
+        plot_R1_R2_curve(
+            res, power1, power2, update_save_location, config=config, res_gaus=res_gaus
+        )
 
-        io.savemat(save_location + "res_pow=" + str(int(power)) + ".mat", res)
+        io.savemat(
+            update_save_location + "res.mat",
+            res,
+        )
 
         del alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2
 

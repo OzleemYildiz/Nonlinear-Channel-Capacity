@@ -943,5 +943,41 @@ def bound_backtracing_check(earlier_list, new_input):
     return earlier_list
 
 
+def linear_interference_res(power1, power2, config):
+    # Y1 = X1 +aX2+ Z11 + Z12
+    # Y2 = X2 + Z21 + Z22
+
+    if config["regime"] == 3:
+        # Treat Interference as Noise
+        tin_R1 = (
+            1
+            / 2
+            * np.log(
+                1
+                + power1
+                / (
+                    config["sigma_12"] ** 2
+                    + config["sigma_11"] ** 2
+                    + config["int_ratio"] ** 2 * power2
+                )
+            )
+        )
+
+        # Known Interference
+        ki_R1 = (
+            1
+            / 2
+            * np.log(1 + power1 / (config["sigma_12"] ** 2 + config["sigma_11"] ** 2))
+        )
+        R2 = (
+            1
+            / 2
+            * np.log(1 + power2 / (config["sigma_21"] ** 2 + config["sigma_22"] ** 2))
+        )
+        return tin_R1, ki_R1, R2
+    else:
+        raise ValueError("Regime not defined")
+
+
 if __name__ == "__main__":
     main()

@@ -366,8 +366,12 @@ def main():
             res_tau["R2"]["Learned"] = rate_2_tau_learned
 
             pow_original = (10 ** (snr / 10)) * noise_power
-            plot_R1_R2_curve(
-                res_tau, pow_original, config=config, save_location=save_location
+            plot_R1_R2_curve(  # TODO: Check why this exists
+                res_tau,
+                pow_original,
+                power2=None,
+                config=config,
+                save_location=save_location,
             )
             io.savemat(save_location + "/res_tau.mat", res_tau)
 

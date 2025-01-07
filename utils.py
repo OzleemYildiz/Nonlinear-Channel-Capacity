@@ -416,24 +416,24 @@ def interference_dependent_snr(config, power):
     return snr1, snr2, inr1
 
 
-def get_interference_alphabet_x_y(config, power):
+def get_interference_alphabet_x_y(config, power1, power2):
     nonlinear_func = return_nonlinear_fn(config)
     if config["cons_type"] == 0:  # peak power
-        peak_power = power
+        peak_power = power1
         max_x = np.sqrt(peak_power)
-        max_x2 = np.sqrt(config["power_2"])
+        max_x2 = np.sqrt(power2)
     elif config["cons_type"] == 1:  # average power
-        avg_power = power
+        avg_power = power1
         max_x = config["stop_sd"] * np.sqrt(avg_power)
-        max_x2 = config["stop_sd"] * np.sqrt(config["power_2"])
+        max_x2 = config["stop_sd"] * np.sqrt(power2)
         # If it's clipped after this value, it does not matter to put values outside
         if config["nonlinearity"] == 5:
             max_x = config["clipping_limit_x"]
             max_x2 = config["clipping_limit_x"]
     else:  # first moment
-        first_moment = power  # E[|X|] < P
+        first_moment = power1  # E[|X|] < P
         max_x = config["stop_sd"] * first_moment
-        max_x2 = config["stop_sd"] * config["power_2"]
+        max_x2 = config["stop_sd"] * power2
 
     if config["int_ratio"] > 0 and config["int_ratio"] <= 1:
         delta_y = 2 * max_x2 / config["min_samples"]  # !!! Changed this
@@ -519,11 +519,13 @@ def make_gifs_of_pdfs():
 
 def plot_R1_R2_curve(
     res,
-    power,
+    power1,
+    power2,
     save_location,
     config,
     res_gaus=None,
 ):
+
     figure = plt.figure(figsize=(5, 4))
     # See how many plot we need to do
     hold_keys = []
@@ -540,19 +542,23 @@ def plot_R1_R2_curve(
     plt.xlabel("Rate 1")
     plt.ylabel("Rate 2")
 
-    if config.get("power_2") is not None:
+    if power2 is not None:
         plt.title(
-            "Power User 1 = "
-            + str(int(power))
-            + " Power User 2 = "
-            + str(config["power_2"])
+            "Power User 1 = " + str(int(power1)) + " Power User 2 = " + str(int(power2))
         )
     else:
-        plt.title("Power = " + str(int(power)))
+        plt.title("Power = " + str(int(power1)))
 
     plt.legend()
 
-    plt.savefig(save_location + "/R1_R2_pow=" + str(int(power)) + ".png")
+    plt.savefig(
+        save_location
+        + "/R1_R2_pow1="
+        + str(int(power1))
+        + "_pow2="
+        + str(int(power2))
+        + ".png"
+    )
     plt.close()
 
 
@@ -589,12 +595,15 @@ def loss_interference(
         pdf_x_RX2 = pdf_x_RX2 - torch.min(pdf_x_RX2[pdf_x_RX2 < 0]) + 1e-20
         # breakpoint()
 
-    if reg_RX1.config["x1_update_scheme"] == 0 or reg_RX1.config["x2_fixed"] == False:
+    if (
+        reg_RX1.config["x1_update_scheme"] == 0 and reg_RX1.config["x2_fixed"] == True
+    ) or reg_RX1.config["x2_fixed"] == False:
         cap_RX1 = reg_RX1.capacity_with_interference(
             pdf_x_RX1,
             pdf_x_RX2,
             reg_RX2.alphabet_x,
         )
+
     elif reg_RX1.config["x1_update_scheme"] == 1:  # Known interference
         cap_RX1 = reg_RX1.capacity_with_known_interference(
             pdf_x_RX1,
@@ -635,27 +644,29 @@ def get_PP_complex_alphabet_x_y(config, power):
 
 
 def get_regime_class_interference(
-    alphabet_x_RX1, alphabet_x_RX2, alphabet_y_RX1, alphabet_y_RX2, config, power
+    alphabet_x_RX1,
+    alphabet_x_RX2,
+    alphabet_y_RX1,
+    alphabet_y_RX2,
+    config,
+    power1,
+    power2,
 ):
 
     if config["regime"] == 1:
         config["sigma_2"] = config["sigma_22"]
 
-        f_reg_RX2 = First_Regime(
-            alphabet_x_RX2, alphabet_y_RX2, config, config["power_2"]
-        )
+        f_reg_RX2 = First_Regime(alphabet_x_RX2, alphabet_y_RX2, config, power2)
         config["sigma_2"] = config["sigma_12"]
-        f_reg_RX1 = First_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power)
+        f_reg_RX1 = First_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power1)
         return f_reg_RX1, f_reg_RX2
     elif config["regime"] == 3:
         config["sigma_2"] = config["sigma_22"]
         config["sigma_1"] = config["sigma_21"]
-        t_reg_RX2 = Third_Regime(
-            alphabet_x_RX2, alphabet_y_RX2, config, config["power_2"]
-        )
+        t_reg_RX2 = Third_Regime(alphabet_x_RX2, alphabet_y_RX2, config, power2)
         config["sigma_2"] = config["sigma_12"]
         config["sigma_1"] = config["sigma_11"]
-        t_reg_RX1 = Third_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power)
+        t_reg_RX1 = Third_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power1)
         return t_reg_RX1, t_reg_RX2
     else:
         raise ValueError("Regime not defined")

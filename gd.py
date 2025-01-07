@@ -242,7 +242,7 @@ def gradient_alphabet_lambda_loss():
     pass
 
 
-def gradient_descent_on_interference(config, power, lambda_sweep):
+def gradient_descent_on_interference(config, power, power2, lambda_sweep):
     # It should return R1 and R2 pairs for different lambda values
     # The loss function is lambda*Rate1 + (1-lambda)*Rate2
 
@@ -255,11 +255,17 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
         raise ValueError("This function only works for regime 1 or regime 3")
 
     alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
-        get_interference_alphabet_x_y(config, power)
+        get_interference_alphabet_x_y(config, power, power2)
     )
 
     reg_RX1, reg_RX2 = get_regime_class_interference(
-        alphabet_x_RX1, alphabet_x_RX2, alphabet_y_RX1, alphabet_y_RX2, config, power
+        alphabet_x_RX1,
+        alphabet_x_RX2,
+        alphabet_y_RX1,
+        alphabet_y_RX2,
+        config,
+        power,
+        power2,
     )
 
     # Initializations
@@ -282,6 +288,7 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
             # Initial distributions are uniform for peak power constraint
             # if config["cons_type"] == 0:
             pdf_x_RX1 = torch.ones_like(alphabet_x_RX1) * 1 / len(alphabet_x_RX1)
+            pdf_x_RX1 = pdf_x_RX1 / torch.sum(pdf_x_RX1)
             pdf_x_RX1 = project_pdf(
                 pdf_x_RX1, config["cons_type"], alphabet_x_RX1, power
             )
@@ -289,6 +296,7 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
 
             if not config["x2_fixed"]:
                 pdf_x_RX2 = torch.ones_like(alphabet_x_RX2) * 1 / len(alphabet_x_RX2)
+                pdf_x_RX2 = pdf_x_RX2 / torch.sum(pdf_x_RX2)
                 pdf_x_RX2 = project_pdf(
                     pdf_x_RX2, config["cons_type"], alphabet_x_RX2, config["power_2"]
                 )
@@ -367,7 +375,6 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
                 max_cap_RX2_h,
                 "*****",
             )
-    # breakpoint()
     return (
         max_sum_cap,
         max_pdf_x_RX1,
@@ -379,7 +386,7 @@ def gradient_descent_on_interference(config, power, lambda_sweep):
 
 
 # !! CANCELED
-def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
+def sequential_gradient_descent_on_interference(config, power, power2, lambda_sweep):
     # It should return R1 and R2 pairs for different lambda values
     # The loss function is lambda*Rate1 + (1-lambda)*Rate2
 
@@ -391,7 +398,7 @@ def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
         raise ValueError("This function only works for regime 1")
 
     alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
-        get_interference_alphabet_x_y(config, power)
+        get_interference_alphabet_x_y(config, power, power2)
     )
 
     # FIXME : This is not clean
@@ -428,6 +435,7 @@ def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
                     / (torch.sqrt(torch.tensor([2 * torch.pi]) * power))
                     * torch.exp(-0.5 * ((alphabet_x_RX1) ** 2) / power)
                 )
+
                 pdf_x_RX1 = project_pdf(
                     pdf_x_RX1, config["cons_type"], alphabet_x_RX1, power
                 )
@@ -586,14 +594,14 @@ def sequential_gradient_descent_on_interference(config, power, lambda_sweep):
 
 
 # DID NOT FINISH
-def gradient_descent_projection_with_learning_rate(config, power, lambda_sweep):
+def gradient_descent_projection_with_learning_rate(config, power, power2, lambda_sweep):
     print("---Gradient Descent on Interference Channel While X2 is fixed----")
 
     if config["regime"] != 1:
         raise ValueError("This function only works for regime 1")
 
     alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
-        get_interference_alphabet_x_y(config, power)
+        get_interference_alphabet_x_y(config, power, power2)
     )
 
     # FIXME : This is not clean
@@ -768,9 +776,11 @@ def get_fixed_interferer(config, alphabet_x_RX2, alphabet_y_RX2):
 
     else:
         raise ValueError("Interferer type not defined")
+    pdf_x_RX2 = (pdf_x_RX2 / torch.sum(pdf_x_RX2)).to(torch.float32)
     pdf_x_RX2 = project_pdf(
         pdf_x_RX2, config["cons_type"], alphabet_x_RX2, config["power_2"]
     )
+    # why pdf_x_RX2 decreases after this?????
     return pdf_x_RX2
 
 
