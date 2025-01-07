@@ -121,17 +121,25 @@ def get_run_parameters(config, chng):
     tanh_factor = config["min_tanh_factor"]
     if config["change"] == "pw1":
         power1 = chng
+        res_str = (
+            "pw2=" + str(power2) + " a=" + str(int_ratio) + " k=" + str(tanh_factor)
+        )
     elif config["change"] == "pw2":
         power2 = chng
+        res_str = (
+            "pw1=" + str(power1) + " a=" + str(int_ratio) + " k=" + str(tanh_factor)
+        )
     elif config["change"] == "a":
         int_ratio = chng
+        res_str = "pw1=" + str(power1) + "pw2=" + str(power2) + " k=" + str(tanh_factor)
     elif config["change"] == "k":
         tanh_factor = chng
+        res_str = "pw1=" + str(power1) + "pw2=" + str(power2) + " a=" + str(int_ratio)
     config["int_ratio"] = int_ratio
     config["tanh_factor"] = tanh_factor
     config["power_2"] = power2
     # TODO: Remove the config requirement for these parameters
-    return power1, power2, int_ratio, tanh_factor
+    return power1, power2, int_ratio, tanh_factor, res_str
 
 
 def main():
@@ -139,6 +147,7 @@ def main():
     # ----System Model--- Z channel
     # Y1 = Phi(X1 + AX2 +N11)+ N12
     # Y2 = Phi(X2  + N21)+ N22
+
     st = time.time()
     config = read_config()
     print(
@@ -167,7 +176,9 @@ def main():
     }
 
     for ind, chng in enumerate(change_range):
-        power1, power2, int_ratio, tanh_factor = get_run_parameters(config, chng)
+        power1, power2, int_ratio, tanh_factor, res_str = get_run_parameters(
+            config, chng
+        )
         res_change["linear_tin"].append(
             1
             / 2
@@ -289,9 +300,15 @@ def main():
         del alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2
 
     if config["x2_fixed"]:
-        plot_R1_vs_change(res_change, change_range, config, save_location)
+        plot_R1_vs_change(res_change, change_range, config, save_location, res_str)
         io.savemat(
-            save_location + "res_change" + str(config["change"]) + ".mat", res_change
+            save_location
+            + "res_change-"
+            + str(config["change"])
+            + "_"
+            + res_str
+            + ".mat",
+            res_change,
         )
     print("Time taken: ", time.time() - st)
     # res = {
