@@ -1,6 +1,6 @@
 min_power1 : 1
 max_power1 : 100
-min_power2 : 4
+min_power2 : 16
 max_power2 : 100
 min_tanh_factor : 3 # k when the nonlinearity is ktanh(x/k)
 max_tanh_factor : 10 # k when the nonlinearity is ktanh(x/k)
