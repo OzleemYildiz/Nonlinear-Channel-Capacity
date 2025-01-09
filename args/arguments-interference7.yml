@@ -1,12 +1,13 @@
-min_power1 : 1
+min_power1 : 3
 max_power1 : 100
-min_power2 : 16
+min_power2 : 3
 max_power2 : 100
-min_tanh_factor : 3 # k when the nonlinearity is ktanh(x/k)
+min_tanh_factor : 6 # k when the nonlinearity is ktanh(x/k)
 max_tanh_factor : 10 # k when the nonlinearity is ktanh(x/k)
-min_int_ratio : 1
+tanh_factor_2 : 10 # k when the nonlinearity is ktanh(x/k) for User 2
+min_int_ratio : 0.2
 max_int_ratio : 4
-change : 'pw1' # pw1: change the power1, pw2: change the power2, k: change the tanh factor, a:int_ratio # Not changed one is minimum
+change : 'a' # pw1: change the power1, pw2: change the power2, k: change the tanh factor, a:int_ratio # Not changed one is minimum
 sigma_11 : 1 
 sigma_12 : 1
 sigma_21 : 1
@@ -28,5 +29,5 @@ max_iter : 50000 # maximum number of iterations
 max_seq_iter : 20 # px1 and px2 are updated alternatively, this is the maximum number of iterations for each update I
 n_lmbd : 5 # number of lambdas
 x2_fixed : True # if True, px2 is fixed and px1 is updated
-x1_update_scheme : 0 # 0: gd is over I(X1;Y1), 1: gd is over I(X1;Y1|X2) (Known Interference) - For this, x2_fixed should be True
-x2_type : 0 # 0: Gaussian, 1: Optimized
+x1_update_scheme : 1 # 0: gd is over I(X1;Y1), 1: gd is over I(X1;Y1|X2) (Known Interference) - For this, x2_fixed should be True
+x2_type : 1 # 0: Gaussian, 1: Optimized

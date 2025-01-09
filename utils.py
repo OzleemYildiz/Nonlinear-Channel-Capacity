@@ -128,7 +128,7 @@ def loss(
     #     )
     #     cap = f_reg.capacity_with_interference(pdf_x, pdf_z1, alphabet_z1)
     else:
-        cap = regime_class.capacity(pdf_x)
+        cap = regime_class.new_capacity(pdf_x)
     # print("What they did", cap)
     loss = -cap
     return loss
@@ -354,13 +354,13 @@ def get_alphabet_x_y(config, power, bound=False):
     return alphabet_x, alphabet_y, max_x, max_y
 
 
-def return_regime_class(config, alphabet_x, alphabet_y, power):
+def return_regime_class(config, alphabet_x, alphabet_y, power, tanh_factor):
     if config["regime"] == 1:
         regime_class = First_Regime(alphabet_x, alphabet_y, config, power)
     elif config["regime"] == 2:
         regime_class = Second_Regime(alphabet_x, config, power)
     elif config["regime"] == 3:
-        regime_class = Third_Regime(alphabet_x, alphabet_y, config, power)
+        regime_class = Third_Regime(alphabet_x, alphabet_y, config, power, tanh_factor)
     else:
         raise ValueError("Regime not defined")
     return regime_class
@@ -416,8 +416,11 @@ def interference_dependent_snr(config, power):
     return snr1, snr2, inr1
 
 
-def get_interference_alphabet_x_y(config, power1, power2):
-    nonlinear_func = return_nonlinear_fn(config)
+def get_interference_alphabet_x_y(
+    config, power1, power2, int_ratio, tanh_factor, tanh_factor2
+):
+    nonlinear_func1 = return_nonlinear_fn(config, tanh_factor)
+    nonlinear_func2 = return_nonlinear_fn(config, tanh_factor2)
     if config["cons_type"] == 0:  # peak power
         peak_power = power1
         max_x = np.sqrt(peak_power)
@@ -435,18 +438,18 @@ def get_interference_alphabet_x_y(config, power1, power2):
         max_x = config["stop_sd"] * first_moment
         max_x2 = config["stop_sd"] * power2
 
-    if config["int_ratio"] > 0 and config["int_ratio"] <= 1:
+    if int_ratio > 0 and int_ratio <= 1:
         delta_y = 2 * max_x2 / config["min_samples"]  # !!! Changed this
         # if delta_y > config["delta_y"]:
         #     delta_y = config["delta_y"]
         delta_x2 = delta_y
-        delta_x1 = config["int_ratio"] * delta_x2
-    elif config["int_ratio"] > 1:
+        delta_x1 = int_ratio * delta_x2
+    elif int_ratio > 1:
         delta_y = 2 * max_x / config["min_samples"]  # !!! Changed this
         # if delta_y > config["delta_y"]:
         #     delta_y = config["delta_y"]
         delta_x1 = delta_y
-        delta_x2 = delta_x1 / config["int_ratio"]
+        delta_x2 = delta_x1 / int_ratio
     else:
         raise ValueError("Interference ratio must be positive")
 
@@ -456,21 +459,19 @@ def get_interference_alphabet_x_y(config, power1, power2):
     if config["regime"] == 1:
         # Note that both X1 and X2 are the same power
         max_y_1 = (
-            nonlinear_func(max_x_1 + config["int_ratio"] * max_x_2)
+            nonlinear_func1(max_x_1 + int_ratio * max_x_2)
             + config["sigma_12"] * config["stop_sd"]
         )
-        max_y_2 = nonlinear_func(max_x_2) + config["sigma_22"] * config["stop_sd"]
+        max_y_2 = nonlinear_func2(max_x_2) + config["sigma_22"] * config["stop_sd"]
     elif config["regime"] == 3:
         max_y_1 = (
-            nonlinear_func(
-                max_x_1
-                + config["int_ratio"] * max_x_2
-                + config["sigma_11"] * config["stop_sd"]
+            nonlinear_func1(
+                max_x_1 + int_ratio * max_x_2 + config["sigma_11"] * config["stop_sd"]
             )
             + config["sigma_12"] * config["stop_sd"]
         )
         max_y_2 = (
-            nonlinear_func(max_x_2 + config["sigma_21"] * config["stop_sd"])
+            nonlinear_func2(max_x_2 + config["sigma_21"] * config["stop_sd"])
             + config["sigma_22"] * config["stop_sd"]
         )
     else:
@@ -563,7 +564,14 @@ def plot_R1_R2_curve(
 
 
 def loss_interference(
-    pdf_x_RX1, pdf_x_RX2, reg_RX1, reg_RX2, lmbd=0.5, upd_RX1=True, upd_RX2=True
+    pdf_x_RX1,
+    pdf_x_RX2,
+    reg_RX1,
+    reg_RX2,
+    int_ratio,
+    lmbd=0.5,
+    upd_RX1=True,
+    upd_RX2=True,
 ):
     # Interference loss function for GD
     if torch.sum(pdf_x_RX1.isnan()) > 0 or torch.sum(pdf_x_RX2.isnan()) > 0:
@@ -599,16 +607,12 @@ def loss_interference(
         reg_RX1.config["x1_update_scheme"] == 0 and reg_RX1.config["x2_fixed"] == True
     ) or reg_RX1.config["x2_fixed"] == False:
         cap_RX1 = reg_RX1.capacity_with_interference(
-            pdf_x_RX1,
-            pdf_x_RX2,
-            reg_RX2.alphabet_x,
+            pdf_x_RX1, pdf_x_RX2, reg_RX2.alphabet_x, int_ratio
         )
 
     elif reg_RX1.config["x1_update_scheme"] == 1:  # Known interference
         cap_RX1 = reg_RX1.capacity_with_known_interference(
-            pdf_x_RX1,
-            pdf_x_RX2,
-            reg_RX2.alphabet_x,
+            pdf_x_RX1, pdf_x_RX2, reg_RX2.alphabet_x, int_ratio
         )
     cap_RX2 = reg_RX2.new_capacity(pdf_x_RX2)
 
@@ -651,6 +655,8 @@ def get_regime_class_interference(
     config,
     power1,
     power2,
+    tanh_factor,
+    tanh_factor2,
 ):
 
     if config["regime"] == 1:
@@ -663,10 +669,14 @@ def get_regime_class_interference(
     elif config["regime"] == 3:
         config["sigma_2"] = config["sigma_22"]
         config["sigma_1"] = config["sigma_21"]
-        t_reg_RX2 = Third_Regime(alphabet_x_RX2, alphabet_y_RX2, config, power2)
+        t_reg_RX2 = Third_Regime(
+            alphabet_x_RX2, alphabet_y_RX2, config, power2, tanh_factor2
+        )
         config["sigma_2"] = config["sigma_12"]
         config["sigma_1"] = config["sigma_11"]
-        t_reg_RX1 = Third_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power1)
+        t_reg_RX1 = Third_Regime(
+            alphabet_x_RX1, alphabet_y_RX1, config, power1, tanh_factor
+        )
         return t_reg_RX1, t_reg_RX2
     else:
         raise ValueError("Regime not defined")

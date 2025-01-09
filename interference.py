@@ -135,10 +135,7 @@ def get_run_parameters(config, chng):
     elif config["change"] == "k":
         tanh_factor = chng
         res_str = "pw1=" + str(power1) + "pw2=" + str(power2) + " a=" + str(int_ratio)
-    config["int_ratio"] = int_ratio
-    config["tanh_factor"] = tanh_factor
-    config["power_2"] = power2
-    # TODO: Remove the config requirement for these parameters
+
     return power1, power2, int_ratio, tanh_factor, res_str
 
 
@@ -186,7 +183,7 @@ def main():
                 1
                 + power1
                 / (
-                    config["int_ratio"] ** 2 * power2
+                    int_ratio**2 * power2
                     + config["sigma_12"] ** 2
                     + config["sigma_11"] ** 2
                 )
@@ -216,14 +213,13 @@ def main():
 
         os.makedirs(update_save_location, exist_ok=True)
         print("----------", str(config["change"]), ":", chng, "-----------")
-        # snr1, snr2, inr1 = interference_dependent_snr(config, power)
-        # cap_RX1_no_int_no_nonlinearity.append(0.5 * np.log2(1 + snr1))
-        # cap_RX2_no_nonlinearity.append(0.5 * np.log2(1 + snr2))
 
         alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
-            get_interference_alphabet_x_y(config, power1, power2)
+            get_interference_alphabet_x_y(
+                config, power1, power2, int_ratio, tanh_factor, config["tanh_factor_2"]
+            )
         )
-
+        # ---
         res_gaus = {}
         cap1_g, cap2_g = gaussian_interference_capacity(
             power1,
@@ -233,6 +229,8 @@ def main():
             alphabet_y_RX1,
             alphabet_x_RX2,
             alphabet_y_RX2,
+            tanh_factor,
+            int_ratio,
         )
 
         res_gaus["Gaussian"] = [cap1_g, cap2_g]
@@ -261,7 +259,9 @@ def main():
                 max_cap_RX1,
                 max_cap_RX2,
                 save_opt_sum_capacity,
-            ) = gradient_descent_on_interference(config, power1, power2, lambda_sweep)
+            ) = gradient_descent_on_interference(
+                config, power1, power2, lambda_sweep, tanh_factor, int_ratio
+            )
 
             res["R1"]["Learned"] = max_cap_RX1
             res_change["R1"].append(max_cap_RX1)

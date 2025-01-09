@@ -204,7 +204,7 @@ def main():
                 alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
 
                 regime_class = return_regime_class(
-                    config, alphabet_x, alphabet_y, power
+                    config, alphabet_x, alphabet_y, power,config["tanh_factor"]
                 )
 
                 # FIXME: Currently, the bounds are not calculated for TDM

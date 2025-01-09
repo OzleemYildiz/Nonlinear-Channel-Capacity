@@ -8,11 +8,12 @@ import numpy as np
 
 class Third_Regime:
     # Y = phi(X + Z_1) + Z_2, U = X+Z_1 and V = phi(U)
-    def __init__(self, alphabet_x, alphabet_y, config, power):
+    def __init__(self, alphabet_x, alphabet_y, config, power, tanh_factor):
         self.alphabet_x = alphabet_x
         self.config = config
         self.power = power
-        self.nonlinear_fn = return_nonlinear_fn(self.config)
+        self.tanh_factor = tanh_factor
+        self.nonlinear_fn = return_nonlinear_fn(self.config, tanh_factor)
         self.alphabet_y = alphabet_y
 
         # self.s_regime = Second_Regime(alphabet_x, config, power)
@@ -147,15 +148,21 @@ class Third_Regime:
 
         return cap
 
-    def capacity_with_interference(self, pdf_x, pdf_x2, alphabet_x2, x2_fixed=False):
+    def capacity_with_interference(
+        self,
+        pdf_x,
+        pdf_x2,
+        alphabet_x2,
+        int_ratio,
+    ):
         if x2_fixed and self.pdf_y_given_x_int is not None:
             pdf_y_given_x = self.pdf_y_given_x_int
         else:
             # pdf_y_given_x = self.get_pdf_y_given_x_with_interference_nofor(
-            #     pdf_x2, alphabet_x2
+            #     pdf_x2, alphabet_x2, int_ratio
             # )
             pdf_y_given_x = self.get_pdf_y_given_x_with_interference(
-                pdf_x2, alphabet_x2
+                pdf_x2, alphabet_x2, int_ratio
             )
 
         entropy_y_given_x = torch.sum(
@@ -220,7 +227,7 @@ class Third_Regime:
         else:
             return self.pdf_y_given_x
 
-    def get_pdf_y_given_x_with_interference(self, pdf_x2, alphabet_x2):
+    def get_pdf_y_given_x_with_interference(self, pdf_x2, alphabet_x2, int_ratio):
         pdf_y_given_x = torch.zeros(
             (self.alphabet_y.shape[0], self.alphabet_x.shape[0])
         )
@@ -246,11 +253,7 @@ class Third_Regime:
 
         for ind, x in enumerate(self.alphabet_x):
             # U = X + Z_1 + aX_2
-            alphabet_u = (
-                alphabet_z1[None, :]
-                + x
-                + self.config["int_ratio"] * alphabet_x2[:, None]
-            )
+            alphabet_u = alphabet_z1[None, :] + x + int_ratio * alphabet_x2[:, None]
             # V = phi(U)
 
             alphabet_v = self.nonlinear_fn(alphabet_u)
@@ -279,7 +282,7 @@ class Third_Regime:
         self.pdf_y_given_x_int = pdf_y_given_x
         return pdf_y_given_x
 
-    def get_pdf_y_given_x_with_interference_nofor(self, pdf_x2, alphabet_x2):
+    def get_pdf_y_given_x_with_interference_nofor(self, pdf_x2, alphabet_x2, int_ratio):
 
         max_z1 = self.config["stop_sd"] * self.config["sigma_11"] ** 2
         delta_z1 = self.alphabet_x[1] - self.alphabet_x[0]
@@ -303,7 +306,7 @@ class Third_Regime:
         # np_nonlin = return_nonlinear_fn_numpy(self.config)
         mean_random_x1_x2_z1 = self.nonlinear_fn(
             self.alphabet_x[None, :, None, None]
-            + self.config["int_ratio"] * np.array(alphabet_x2[None, None, :, None])
+            + int_ratio * np.array(alphabet_x2[None, None, :, None])
             + alphabet_z1[None, None, None, :]
         )
         # FIXME!!! : These could be really big
@@ -340,12 +343,12 @@ class Third_Regime:
         self.pdf_y_given_x_int = pdf_y_given_x1
         return pdf_y_given_x1
 
-    def capacity_with_known_interference(self, pdf_x, pdf_x2, alphabet_x2):
+    def capacity_with_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
         pdf_y_given_x2_and_x1, pdf_y_given_x2 = self.get_pdfs_for_known_interference(
-            pdf_x, pdf_x2, alphabet_x2
+            pdf_x, pdf_x2, alphabet_x2, int_ratio
         )
         # pdf_y_given_x2_and_x1, pdf_y_given_x2 = (
-        #     self.get_pdfs_for_known_interference_nofor(pdf_x, pdf_x2, alphabet_x2)
+        #     self.get_pdfs_for_known_interference_nofor(pdf_x, pdf_x2, alphabet_x2, int_ratio)
         # )
         # I(X1,Y1 | X2) = H(Y1|X2) - H(Y1|X1,X2)
 
@@ -370,7 +373,9 @@ class Third_Regime:
 
         return cap
 
-    def get_pdfs_for_known_interference_nofor(self, pdf_x, pdf_x2, alphabet_x2):
+    def get_pdfs_for_known_interference_nofor(
+        self, pdf_x, pdf_x2, alphabet_x2, int_ratio
+    ):
 
         max_z1 = self.config["stop_sd"] * self.config["sigma_11"] ** 2
         delta_z1 = self.alphabet_x[1] - self.alphabet_x[0]
@@ -384,7 +389,7 @@ class Third_Regime:
         pdf_z1 = pdf_z1 / (torch.sum(pdf_z1) + 1e-30)
 
         mean_random_x2_x1_z1 = self.nonlinear_fn(
-            self.config["int_ratio"] * alphabet_x2[None, :, None, None]
+            int_ratio * alphabet_x2[None, :, None, None]
             + self.alphabet_x[None, None, :, None]
             + alphabet_z1[None, None, None, :]
         )
@@ -409,7 +414,7 @@ class Third_Regime:
         )
         return pdf_y_given_x2_and_x1, pdf_y_given_x2
 
-    def get_pdfs_for_known_interference(self, pdf_x, pdf_x2, alphabet_x2):
+    def get_pdfs_for_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
 
         max_z1 = self.config["stop_sd"] * self.config["sigma_11"] ** 2
         delta_z1 = self.alphabet_x[1] - self.alphabet_x[0]
@@ -427,7 +432,7 @@ class Third_Regime:
         )
         for ind, x2 in enumerate(alphabet_x2):
             mean_random_x2_x1_z1 = self.nonlinear_fn(
-                self.config["int_ratio"] * x2
+                int_ratio * x2
                 + self.alphabet_x[None, :, None]
                 + alphabet_z1[None, None, :]
             )
