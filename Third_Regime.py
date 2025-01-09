@@ -155,7 +155,7 @@ class Third_Regime:
         alphabet_x2,
         int_ratio,
     ):
-        if x2_fixed and self.pdf_y_given_x_int is not None:
+        if self.config["x2_fixed"] and self.pdf_y_given_x_int is not None:
             pdf_y_given_x = self.pdf_y_given_x_int
         else:
             # pdf_y_given_x = self.get_pdf_y_given_x_with_interference_nofor(
