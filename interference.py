@@ -65,7 +65,6 @@ def define_save_location(config):
             + str(config["sigma_22"])
         )
 
-    save_location = save_location + "tanh2=" + str(config["tanh_factor_2"])
     if config["gd_active"]:
         save_location = save_location + "_gd_" + str(config["gd_active"])
         if config["x2_fixed"]:
@@ -74,8 +73,9 @@ def define_save_location(config):
             save_location = (
                 save_location + "_x1update=" + str(config["x1_update_scheme"])
             )
-
+    save_location = save_location + "_tanh2=" + str(config["tanh_factor_2"])
     save_location = save_location + "/"
+
     return save_location
 
 

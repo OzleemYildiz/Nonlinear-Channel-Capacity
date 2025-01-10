@@ -25,9 +25,10 @@ stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as sto
 gd_active : True
 epsilon : 0.0000000000005 #convergence criteria
 lr : [0.000005] # learning rate
-max_iter : 50000 # maximum number of iterations
+max_iter : 500 # maximum number of iterations
 max_seq_iter : 20 # px1 and px2 are updated alternatively, this is the maximum number of iterations for each update I
 n_lmbd : 5 # number of lambdas
 x2_fixed : True # if True, px2 is fixed and px1 is updated
 x1_update_scheme : 0 # 0: gd is over I(X1;Y1), 1: gd is over I(X1;Y1|X2) (Known Interference) - For this, x2_fixed should be True
-x2_type : 1 # 0: Gaussian, 1: OptimizedI
+x2_type : 1 # 0: Gaussian, 1: Optimized
+gd_nostop_cond : False # if True, the gd will not stop until max_iter

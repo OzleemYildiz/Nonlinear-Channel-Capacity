@@ -777,7 +777,7 @@ def get_fixed_interferer(config, alphabet_x_RX2, alphabet_y_RX2, power2):
         regime_class = return_regime_class(
             config, alphabet_x_RX2, alphabet_y_RX2, power2, config["tanh_factor_2"]
         )
-        config["gd_nostop_cond"] = True
+
         _, pdf_x_RX2, _, _ = gd_capacity(config, power2, regime_class)
 
     else:
