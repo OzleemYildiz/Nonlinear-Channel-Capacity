@@ -319,12 +319,11 @@ def gradient_descent_on_interference(
                 optimizer.zero_grad()
                 if torch.sum(pdf_x_RX1.isnan()) > 0 or torch.sum(pdf_x_RX2.isnan()) > 0:
                     breakpoint()
-
                 loss, cap_RX1, cap_RX2 = loss_interference(
                     pdf_x_RX1, pdf_x_RX2, reg_RX1, reg_RX2, int_ratio, lmbd
                 )
 
-                loss.backward()
+                loss.backward(retain_graph=True)
                 optimizer.step()
                 sum_capacity = loss.detach().clone()
                 opt_sum_capacity.append(-sum_capacity.detach().numpy())
