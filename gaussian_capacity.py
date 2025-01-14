@@ -3,6 +3,7 @@ from utils import (
     get_interference_alphabet_x_y,
     get_regime_class_interference,
     loss_interference,
+    loss_complex,
 )
 import torch
 from First_Regime import First_Regime
@@ -16,7 +17,7 @@ def gaussian_capacity(regime_class, power):
     pdf_x = (
         1
         / (torch.sqrt(torch.tensor([2 * torch.pi * power])))
-        * torch.exp(-0.5 * ((regime_class.alphabet_x) ** 2) / power).float()
+        * torch.exp(-0.5 * ((regime_class.alphabet_x_re) ** 2) / power).float()
     )
     pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
 
@@ -86,11 +87,11 @@ def gaussian_interference_capacity(
         config,
         power1,
         power2,
-        tanh_factor, 
-        config["tanh_factor_2"]
+        tanh_factor,
+        config["tanh_factor_2"],
     )
     loss, cap_RX1, cap_RX2 = loss_interference(
-        pdf_x_1, pdf_x_2, reg_RX1, reg_RX2,int_ratio, lmbd=0.5
+        pdf_x_1, pdf_x_2, reg_RX1, reg_RX2, int_ratio, lmbd=0.5
     )
 
     return cap_RX1, cap_RX2
@@ -175,39 +176,23 @@ def gaus_interference_R1_R2_curve(config, power, power2):
     return cap_gaus_RX1, cap_gaus_RX2
 
 
-def complex_gaussian_capacity_PP(real_x, imag_x, real_y, imag_y, power):
+def complex_gaussian_capacity_PP(power, config, regime_class):
     print("Complex Gaussian Capacity Calculation")
     pdf_x_re = (
         1
         / (torch.sqrt(torch.tensor([2 * torch.pi * power / 2])))
-        * torch.exp(-0.5 * ((real_x) ** 2) / (power / 2)).float()
+        * torch.exp(-0.5 * ((regime_class.alphabet_x_re) ** 2) / (power / 2)).float()
     )
     pdf_x_re = (pdf_x_re / torch.sum(pdf_x_re)).to(torch.float32)
 
     pdf_x_imag = (
         1
         / (torch.sqrt(torch.tensor([2 * torch.pi * power / 2])))
-        * torch.exp(-0.5 * ((imag_x) ** 2) / (power / 2)).float()
+        * torch.exp(-0.5 * ((regime_class.alphabet_x_im) ** 2) / (power / 2)).float()
     )
     pdf_x_imag = (pdf_x_imag / torch.sum(pdf_x_imag)).to(torch.float32)
-    phi = return_nonlinear_fn(config)
 
-    sum_cap = 0
-    for i in range(0, len(real_x)):
-        for j in range(0, len(imag_x)):
-            pdf_x = pdf_x_re[i] * pdf_x_imag[j]
-            for k in range(0, len(real_y)):
-                for l in range(0, len(imag_y)):
-                    pdf_y_given_x_re = (
-                        1
-                        / (
-                            torch.sqrt(
-                                torch.tensor([2 * torch.pi * config["sigma_2"] / 2])
-                            )
-                        )
-                        * torch.exp(
-                            -0.5
-                            * ((real_y[k] - phi(real_x[i])) ** 2)
-                            / (config["sigma_2"] / 2)
-                        ).float()
-                    )
+    pdf_x = pdf_x_re * pdf_x_imag
+
+    cap = -loss_complex(pdf_x, regime_class)
+    return cap

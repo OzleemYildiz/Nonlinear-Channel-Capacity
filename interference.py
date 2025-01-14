@@ -37,8 +37,6 @@ def define_save_location(config):
         save_location
         + "_regime="
         + str(config["regime"])
-        + "_delta_y="
-        + str(config["delta_y"])
         + "_max_iter="
         + str(config["max_iter"])
         + "_lr="

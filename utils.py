@@ -82,7 +82,7 @@ def loss(
         pdf_x = project_pdf(
             pdf_x,
             regime_class.config["cons_type"],
-            regime_class.alphabet_x,
+            regime_class.alphabet_x_re,
             regime_class.power,
         )
     # breakpoint()
@@ -290,8 +290,14 @@ def plot_pdf_vs_change(
         plt.close()
 
 
-def get_alphabet_x_y(config, power, bound=False):
-    nonlinear_func = return_nonlinear_fn(config)
+def get_max_alphabet_PP(
+    config,
+    power,
+    tanh_factor,
+    min_samples,
+    bound=False,
+):
+    nonlinear_func = return_nonlinear_fn(config, tanh_factor)
     if config["cons_type"] == 0:  # peak power
         peak_power = power
         # snr = peak_power/std
@@ -328,7 +334,7 @@ def get_alphabet_x_y(config, power, bound=False):
         )
 
     # Keep the number of samples fixed instead of delta
-    delta_y = 2 * max_x / config["min_samples"]
+    delta_y = 2 * max_x / min_samples
     # if delta_y > config["delta_y"]:
     #     delta_y = config["delta_y"]
 
@@ -336,8 +342,8 @@ def get_alphabet_x_y(config, power, bound=False):
     if config["regime"] == 3:
         max_z1 = config["stop_sd"] * config["sigma_1"] ** 2
         sample_num = math.ceil(2 * max_z1 / delta_y) + 1
-        if sample_num < config["min_samples"]:
-            delta_y = 2 * max_z1 / config["min_samples"]
+        if sample_num < min_samples:
+            delta_y = 2 * max_z1 / min_samples
 
     # else:
     #     delta_y = config["delta_y"]
@@ -345,6 +351,13 @@ def get_alphabet_x_y(config, power, bound=False):
     max_y = max_y + (delta_y - (max_y % delta_y))
     max_x = max_x + (delta_y - (max_x % delta_y))
 
+    return max_x, max_y, delta_y
+
+
+def get_alphabet_x_y(config, power, tanh_factor, bound=False):
+    max_x, max_y, delta_y = get_max_alphabet_PP(
+        config, power, tanh_factor, config["min_samples"], bound
+    )
     # Create the alphabet with the fixed delta
     alphabet_x = torch.arange(-max_x, max_x + delta_y / 2, delta_y)
     alphabet_y = torch.arange(-max_y, max_y + delta_y / 2, delta_y)
@@ -354,9 +367,25 @@ def get_alphabet_x_y(config, power, bound=False):
     return alphabet_x, alphabet_y, max_x, max_y
 
 
-def return_regime_class(config, alphabet_x, alphabet_y, power, tanh_factor):
+def return_regime_class(
+    config,
+    alphabet_x,
+    alphabet_y,
+    power,
+    tanh_factor,
+    alphabet_x_imag=None,
+    alphabet_y_imag=None,
+):
     if config["regime"] == 1:
-        regime_class = First_Regime(alphabet_x, alphabet_y, config, power)
+        regime_class = First_Regime(
+            alphabet_x=alphabet_x,
+            alphabet_y=alphabet_y,
+            config=config,
+            power=power,
+            tanh_factor=tanh_factor,
+            alphabet_x_imag=alphabet_x_imag,
+            alphabet_y_imag=alphabet_y_imag,
+        )
     elif config["regime"] == 2:
         regime_class = Second_Regime(alphabet_x, config, power)
     elif config["regime"] == 3:
@@ -580,14 +609,14 @@ def loss_interference(
         pdf_x_RX1 = project_pdf(
             pdf_x_RX1,
             reg_RX1.config["cons_type"],
-            reg_RX1.alphabet_x,
+            reg_RX1.alphabet_x_re,
             reg_RX1.power,
         )
     if upd_RX2:
         pdf_x_RX2 = project_pdf(
             pdf_x_RX2,
             reg_RX2.config["cons_type"],
-            reg_RX2.alphabet_x,
+            reg_RX2.alphabet_x_re,
             reg_RX2.power,
         )
 
@@ -607,12 +636,12 @@ def loss_interference(
         reg_RX1.config["x1_update_scheme"] == 0 and reg_RX1.config["x2_fixed"] == True
     ) or reg_RX1.config["x2_fixed"] == False:
         cap_RX1 = reg_RX1.capacity_with_interference(
-            pdf_x_RX1, pdf_x_RX2, reg_RX2.alphabet_x, int_ratio
+            pdf_x_RX1, pdf_x_RX2, reg_RX2.alphabet_x_re, int_ratio
         )
 
     elif reg_RX1.config["x1_update_scheme"] == 1:  # Known interference
         cap_RX1 = reg_RX1.capacity_with_known_interference(
-            pdf_x_RX1, pdf_x_RX2, reg_RX2.alphabet_x, int_ratio
+            pdf_x_RX1, pdf_x_RX2, reg_RX2.alphabet_x_re, int_ratio
         )
     cap_RX2 = reg_RX2.new_capacity(pdf_x_RX2)
 
@@ -634,15 +663,21 @@ def check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
     return cond1 and cond2 and cond3
 
 
-def get_PP_complex_alphabet_x_y(config, power):
-    _, _, max_x, max_y = get_alphabet_x_y(config, power)
+def get_PP_complex_alphabet_x_y(config, power, tanh_factor, bound=False):
+    max_x, max_y, delta_y = get_max_alphabet_PP(
+        config, power, tanh_factor, config["qam_k"], bound
+    )
     alphabet_x = torch.linspace(-max_x, max_x, config["qam_k"])
     delta = alphabet_x[1] - alphabet_x[0]
-    real_x, imag_x = torch.meshgrid([alphabet_x, alphabet_x])
+    # real_x, imag_x = torch.meshgrid([alphabet_x, alphabet_x])
+    real_x = alphabet_x
+    imag_x = alphabet_x.reshape(-1, 1)
 
     # FIXME: Not sure if avoiding zero is a good idea -- Check this
-    alphabet_y = torch.arange(-max_y - delta / 2, max_y + delta / 2, delta)
-    real_y, imag_y = torch.meshgrid([alphabet_y, alphabet_y])
+    alphabet_y = torch.arange(-max_y, max_y, delta)
+    # real_y, imag_y = torch.meshgrid([alphabet_y, alphabet_y])
+    real_y = alphabet_y
+    imag_y = alphabet_y.reshape(-1, 1)
 
     return real_x, imag_x, real_y, imag_y
 
@@ -696,3 +731,27 @@ def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
         save_location + "/Comp" + str(config["change"]) + "_" + res_str + ".png"
     )
     plt.close()
+
+
+def loss_complex(pdf_x, regime_class, project_active=False):
+    if project_active:
+        breakpoint()
+        # FIXME : Gotta check projection
+        pdf_x = project_pdf(
+            pdf_x,
+            regime_class.config["cons_type"],
+            regime_class.alphabet_x,
+            regime_class.power,
+        )
+    if torch.sum(pdf_x < 0) > 0:
+        pdf_x = torch.relu(pdf_x) + 1e-20
+
+    cap = regime_class.capacity_complex_PP(pdf_x)
+    loss = -cap
+    return loss
+
+
+# plotting 2D - might be a good idea to plot 3D - future complex domain #TODO
+# fig = plt.figure(figsize=(14,6))
+# ax = fig.add_subplot(1, 1, 1, projection='3d')
+# ax.plot_surface(regime_class.alphabet_x_re, regime_class.alphabet_x_im, pdf_x)

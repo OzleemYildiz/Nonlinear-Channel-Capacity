@@ -9,7 +9,7 @@ import numpy as np
 class Third_Regime:
     # Y = phi(X + Z_1) + Z_2, U = X+Z_1 and V = phi(U)
     def __init__(self, alphabet_x, alphabet_y, config, power, tanh_factor):
-        self.alphabet_x = alphabet_x
+        self.alphabet_x_re = alphabet_x
         self.config = config
         self.power = power
         self.tanh_factor = tanh_factor
@@ -31,7 +31,7 @@ class Third_Regime:
         self.pdf_y_given_x_int = None
 
     def set_alphabet_x(self, alphabet_x):
-        self.alphabet_x = alphabet_x
+        self.alphabet_x_re = alphabet_x
         self.s_regime = Second_Regime(alphabet_x, self.config, self.power)
         self.alphabet_v = self.nonlinear_fn(self.s_regime.alphabet_u)
         self.pdf_u_given_x = self.s_regime.calculate_pdf_u_given_x()
@@ -117,7 +117,7 @@ class Third_Regime:
         )
         c = 0
 
-        for i in range(len(self.alphabet_x)):
+        for i in range(len(self.alphabet_x_re)):
             if pdf_x[i] > 0:
                 c += torch.sum(
                     pdf_x[i]
@@ -177,12 +177,12 @@ class Third_Regime:
     def get_pdf_y_given_x(self):
         if self.pdf_y_given_x is None:
             pdf_y_given_x = torch.zeros(
-                (self.alphabet_y.shape[0], self.alphabet_x.shape[0])
+                (self.alphabet_y.shape[0], self.alphabet_x_re.shape[0])
             )
             # Z1 <- Gaussian noise with variance sigma_1^2
 
             max_z1 = self.config["stop_sd"] * self.config["sigma_1"] ** 2
-            delta_z1 = self.alphabet_x[1] - self.alphabet_x[0]
+            delta_z1 = self.alphabet_x_re[1] - self.alphabet_x_re[0]
             max_z1 = max_z1 + (delta_z1 - (max_z1 % delta_z1))
             alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
 
@@ -193,7 +193,7 @@ class Third_Regime:
             )
             pdf_z1 = pdf_z1 / (torch.sum(pdf_z1) + 1e-30)
 
-            for ind, x in enumerate(self.alphabet_x):
+            for ind, x in enumerate(self.alphabet_x_re):
                 # U = X + Z_1
                 alphabet_u = alphabet_z1 + x
                 # V = phi(U)
@@ -229,13 +229,13 @@ class Third_Regime:
 
     def get_pdf_y_given_x_with_interference(self, pdf_x2, alphabet_x2, int_ratio):
         pdf_y_given_x = torch.zeros(
-            (self.alphabet_y.shape[0], self.alphabet_x.shape[0])
+            (self.alphabet_y.shape[0], self.alphabet_x_re.shape[0])
         )
         # Z1 <- Gaussian noise with variance sigma_1^2
         # X2 <- given by the user
 
         max_z1 = self.config["stop_sd"] * self.config["sigma_11"] ** 2
-        delta_z1 = self.alphabet_x[1] - self.alphabet_x[0]
+        delta_z1 = self.alphabet_x_re[1] - self.alphabet_x_re[0]
         max_z1 = max_z1 + (delta_z1 - (max_z1 % delta_z1))
         alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
 
@@ -251,7 +251,7 @@ class Third_Regime:
 
         pdf_x2_and_z1 = pdf_x2[:, None] * pdf_z1[None, :]
 
-        for ind, x in enumerate(self.alphabet_x):
+        for ind, x in enumerate(self.alphabet_x_re):
             # U = X + Z_1 + aX_2
             alphabet_u = alphabet_z1[None, :] + x + int_ratio * alphabet_x2[:, None]
             # V = phi(U)
@@ -285,7 +285,7 @@ class Third_Regime:
     def get_pdf_y_given_x_with_interference_nofor(self, pdf_x2, alphabet_x2, int_ratio):
 
         max_z1 = self.config["stop_sd"] * self.config["sigma_11"] ** 2
-        delta_z1 = self.alphabet_x[1] - self.alphabet_x[0]
+        delta_z1 = self.alphabet_x_re[1] - self.alphabet_x_re[0]
         max_z1 = max_z1 + (delta_z1 - (max_z1 % delta_z1))
         alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
 
@@ -305,7 +305,7 @@ class Third_Regime:
         # pdf_z1 = pdf_z1 / (np.sum(pdf_z1) + 1e-30)
         # np_nonlin = return_nonlinear_fn_numpy(self.config)
         mean_random_x1_x2_z1 = self.nonlinear_fn(
-            self.alphabet_x[None, :, None, None]
+            self.alphabet_x_re[None, :, None, None]
             + int_ratio * np.array(alphabet_x2[None, None, :, None])
             + alphabet_z1[None, None, None, :]
         )
@@ -378,7 +378,7 @@ class Third_Regime:
     ):
 
         max_z1 = self.config["stop_sd"] * self.config["sigma_11"] ** 2
-        delta_z1 = self.alphabet_x[1] - self.alphabet_x[0]
+        delta_z1 = self.alphabet_x_re[1] - self.alphabet_x_re[0]
         max_z1 = max_z1 + (delta_z1 - (max_z1 % delta_z1))
         alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
         pdf_z1 = (
@@ -390,7 +390,7 @@ class Third_Regime:
 
         mean_random_x2_x1_z1 = self.nonlinear_fn(
             int_ratio * alphabet_x2[None, :, None, None]
-            + self.alphabet_x[None, None, :, None]
+            + self.alphabet_x_re[None, None, :, None]
             + alphabet_z1[None, None, None, :]
         )
         pdf_y_given_x2_x1_z1 = (
@@ -417,7 +417,7 @@ class Third_Regime:
     def get_pdfs_for_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
 
         max_z1 = self.config["stop_sd"] * self.config["sigma_11"] ** 2
-        delta_z1 = self.alphabet_x[1] - self.alphabet_x[0]
+        delta_z1 = self.alphabet_x_re[1] - self.alphabet_x_re[0]
         max_z1 = max_z1 + (delta_z1 - (max_z1 % delta_z1))
         alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
         pdf_z1 = (
@@ -428,12 +428,12 @@ class Third_Regime:
         pdf_z1 = pdf_z1 / (torch.sum(pdf_z1) + 1e-30)
         pdf_y_given_x2 = torch.zeros(len(self.alphabet_y), len(alphabet_x2))
         pdf_y_given_x2_and_x1 = torch.zeros(
-            len(self.alphabet_y), len(alphabet_x2), len(self.alphabet_x)
+            len(self.alphabet_y), len(alphabet_x2), len(self.alphabet_x_re)
         )
         for ind, x2 in enumerate(alphabet_x2):
             mean_random_x2_x1_z1 = self.nonlinear_fn(
                 int_ratio * x2
-                + self.alphabet_x[None, :, None]
+                + self.alphabet_x_re[None, :, None]
                 + alphabet_z1[None, None, :]
             )
             pdf_y_given_x2_x1_z1 = (

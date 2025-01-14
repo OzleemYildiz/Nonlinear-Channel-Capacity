@@ -10,37 +10,48 @@ import torchaudio
 
 class First_Regime:
     def __init__(
-        self, alphabet_x, alphabet_y, config, power=None, interference_active=False
+        self,
+        alphabet_x,
+        alphabet_y,
+        config,
+        power,
+        tanh_factor,
+        interference_active=False,
+        alphabet_x_imag=None,
+        alphabet_y_imag=None,
     ):
-        self.alphabet_x = alphabet_x
-        self.nonlinear_func = return_nonlinear_fn(config)
-        self.alphabet_v = self.nonlinear_func(alphabet_x)  # V = phi(X+Z_1) when Z_1 = 0
-        self.alphabet_y = alphabet_y  # Y = V + Z_2
+        self.alphabet_x_re = alphabet_x
+        self.alphabet_x_im = alphabet_x_imag
+        self.nonlinear_func = return_nonlinear_fn(config, tanh_factor)
+        self.get_v_alphabet(alphabet_x, alphabet_x_imag)
+        self.alphabet_y_re = alphabet_y  # Y = V + Z_2
+        self.alphabet_y_im = alphabet_y_imag
         self.config = config
-        self.pdf_y_given_v = self.calculate_pdf_y_given_v()
+        # self.pdf_y_given_v = self.calculate_pdf_y_given_v()
         self.power = power
-        self.entropy_y_given_x = self.calculate_entropy_y_given_x()
-        self.interference_active = interference_active
-        self.delta = self.alphabet_x[1] - self.alphabet_x[0]
+        # self.entropy_y_given_x = self.calculate_entropy_y_given_x()
+        # self.interference_active = interference_active
+        # self.delta = self.alphabet_x_re[1] - self.alphabet_x_re[0]
+        self.pdf_y_given_x = None
 
     def set_alphabet_x(self, alphabet_x):
-        self.alphabet_x = alphabet_x
-        self.alphabet_v = self.nonlinear_func(alphabet_x)
+        self.alphabet_x_re = alphabet_x
+        self.alphabet_v_re = self.nonlinear_func(alphabet_x)
         self.pdf_y_given_v = self.calculate_pdf_y_given_v()
 
     def set_alphabet_v(self, alphabet_v):
-        self.alphabet_v = alphabet_v
+        self.alphabet_v_re = alphabet_v
 
     def calculate_pdf_y_given_v(self, alphabet_v=None):
         if alphabet_v is None:
-            alphabet_v = self.alphabet_v
+            alphabet_v = self.alphabet_v_re
 
         pdf_y_given_v = (
             1
             / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_2"])
             * torch.exp(
                 -0.5
-                * ((self.alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1)) ** 2)
+                * ((self.alphabet_y_re.reshape(-1, 1) - alphabet_v.reshape(1, -1)) ** 2)
                 / self.config["sigma_2"] ** 2
             )
         )
@@ -51,7 +62,7 @@ class First_Regime:
     def calculate_entropy_y(self, pdf_x, eps=1e-20):
 
         # Projection is done with the main alphabet
-        if len(self.alphabet_x) == 0:
+        if len(self.alphabet_x_re) == 0:
             raise ValueError("Alphabet_x is empty")
 
         # pdf_x = pdf_u since one-one function
@@ -129,7 +140,7 @@ class First_Regime:
         )
         c = 0
         # breakpoint()
-        for i in range(len(self.alphabet_x)):
+        for i in range(len(self.alphabet_x_re)):
             if pdf_x[i] > 0:
                 c += torch.sum(
                     pdf_x[i]
@@ -160,9 +171,9 @@ class First_Regime:
         self.pdf_int, self.int_alphabet_x = self.update_pdf_int_for_ratio(
             int_pdf_x, int_alphabet_x, self.config["int_ratio"]
         )
-        max_u = max(self.alphabet_x) + max(self.int_alphabet_x)
+        max_u = max(self.alphabet_x_re) + max(self.int_alphabet_x)
         self.alphabet_u = torch.arange(-max_u, max_u + self.delta / 2, self.delta)
-        self.alphabet_v = self.nonlinear_func(self.alphabet_u)
+        self.alphabet_v_re = self.nonlinear_func(self.alphabet_u)
         self.pdf_y_given_v = self.calculate_pdf_y_given_v()
         # breakpoint()
 
@@ -172,7 +183,7 @@ class First_Regime:
         y_points = int_alphabet_x * ratio
         pdf_y = torch.zeros_like(int_alphabet_x)
         for ind, x_2 in enumerate(int_alphabet_x):
-            ind_x = torch.where(abs(self.alphabet_x - x_2 / ratio) < 1e-5)[0]
+            ind_x = torch.where(abs(self.alphabet_x_re - x_2 / ratio) < 1e-5)[0]
             if ind_x.size != 0:
                 pdf_y[ind] = int_pdf_x[ind_x]
             else:
@@ -200,9 +211,9 @@ class First_Regime:
     def calculate_pdf_y_given_x_interference(self):
         # U  = X_1 + aX_2
         # pdf_u = np.convolve(self.pdf_int, pdf_x)
-        pdf_u_given_x = torch.zeros((len(self.alphabet_u), len(self.alphabet_x)))
-        for i in range(len(self.alphabet_x)):
-            u_temp = self.alphabet_x[i] + self.int_alphabet_x
+        pdf_u_given_x = torch.zeros((len(self.alphabet_u), len(self.alphabet_x_re)))
+        for i in range(len(self.alphabet_x_re)):
+            u_temp = self.alphabet_x_re[i] + self.int_alphabet_x
             # breakpoint()
             # -Following does not work exactly
             # ind_temp = np.digitize(u_temp, self.alphabet_u, right=True)
@@ -223,7 +234,7 @@ class First_Regime:
         )
         # Why convolve gives 0 pdf output ???
         pdf_x_given_u = torch.transpose(pdf_u_given_x, 0, 1) / (self.pdf_u + 1e-20)
-        pdf_y_given_u = self.calculate_pdf_y_given_v(self.alphabet_v)
+        pdf_y_given_u = self.calculate_pdf_y_given_v(self.alphabet_v_re)
         pdf_x_and_y_given_u = pdf_x_given_u[:, None, :] * pdf_y_given_u[None, :, :]
         pdf_x_and_y = pdf_x_and_y_given_u @ self.pdf_u
         pdf_y_given_x = torch.transpose(pdf_x_and_y, 0, 1)
@@ -251,10 +262,10 @@ class First_Regime:
 
         # alphabet_y = torch.arange(-max_y, max_y + self.delta / 2, self.delta)
         # pdf_y_given_x1_r = torch.zeros((len(alphabet_y), len(self.alphabet_x)))
-        pdf_y = torch.zeros_like(self.alphabet_y)
+        pdf_y = torch.zeros_like(self.alphabet_y_re)
         entropy_y_given_x = 0
         # breakpoint()
-        for ind, x in enumerate(self.alphabet_x):
+        for ind, x in enumerate(self.alphabet_x_re):
             # U = X1 + aX2, a = 1 #FIXME: a is fixed to 1
             alphabet_u = self.config["int_ratio"] * alphabet_x_RX2 + x
             alphabet_v = self.nonlinear_func(alphabet_u)
@@ -264,7 +275,7 @@ class First_Regime:
                 * torch.exp(
                     -0.5
                     * (
-                        (self.alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1))
+                        (self.alphabet_y_re.reshape(-1, 1) - alphabet_v.reshape(1, -1))
                         ** 2
                     )
                     / self.config["sigma_2"] ** 2
@@ -301,20 +312,27 @@ class First_Regime:
         return cap
 
     def new_capacity(self, pdf_x):
-        pdf_y_given_x = (
-            1
-            / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_2"])
-            * torch.exp(
-                -0.5
-                * (
-                    (self.alphabet_y.reshape(-1, 1) - self.alphabet_v.reshape(1, -1))
-                    ** 2
-                )
-                / self.config["sigma_2"] ** 2
-            )
-        )
+        if self.pdf_y_given_x is None:
 
-        pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
+            pdf_y_given_x = (
+                1
+                / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_2"])
+                * torch.exp(
+                    -0.5
+                    * (
+                        (
+                            self.alphabet_y_re.reshape(-1, 1)
+                            - self.alphabet_v_re.reshape(1, -1)
+                        )
+                        ** 2
+                    )
+                    / self.config["sigma_2"] ** 2
+                )
+            )
+
+            pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
+
+            self.pdf_y_given_x = pdf_y_given_x
         py_x_logpy_x = pdf_y_given_x * torch.log(pdf_y_given_x + 1e-20)
         px_py_x_logpy_x = py_x_logpy_x @ pdf_x
         f_term = torch.sum(px_py_x_logpy_x)
@@ -322,4 +340,42 @@ class First_Regime:
         s_term = torch.sum(py * torch.log(py + 1e-20))
         return f_term - s_term
 
-    
+    def capacity_complex_PP(self, pdf_x):
+        if self.pdf_y_given_x is None:
+            alphabet_y = self.alphabet_y_re + 1j * self.alphabet_y_im
+            alphabet_v = self.alphabet_v_re + 1j * self.alphabet_v_im
+
+            pdf_y_given_x = (
+                1
+                / (torch.pi * self.config["sigma_2"] ** 2)
+                * torch.exp(
+                    -1
+                    * (abs(alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1)) ** 2)
+                    / self.config["sigma_2"] ** 2
+                )
+            )
+            pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
+
+            self.pdf_y_given_x = pdf_y_given_x
+
+        py_x_logpy_x = pdf_y_given_x * torch.log(pdf_y_given_x + 1e-20)
+        px_py_x_logpy_x = py_x_logpy_x @ pdf_x.reshape(-1)
+        f_term = torch.sum(px_py_x_logpy_x)
+        py = pdf_y_given_x @ pdf_x.reshape(-1)
+        s_term = torch.sum(py * torch.log(py + 1e-20))
+        return f_term - s_term
+
+    def get_v_alphabet(self, alphabet_x_re, alphabet_x_imag):
+        if alphabet_x_imag is None:
+            self.alphabet_v_re = self.nonlinear_func(
+                alphabet_x_re
+            )  # V = phi(X+Z_1) when Z_1 = 0
+            self.alphabet_v_im = None
+        else:  # Complex Domain
+            #  X = X_re + jX_im = r*exp(j*theta)
+            # V = phi(X) = phi(r)*exp(j*theta)
+            r = abs(alphabet_x_re + 1j * alphabet_x_imag)
+            theta = torch.angle(alphabet_x_re + 1j * alphabet_x_imag)
+            v_r = self.nonlinear_func(r)
+            self.alphabet_v_re = v_r * torch.cos(theta)
+            self.alphabet_v_im = v_r * torch.sin(theta)

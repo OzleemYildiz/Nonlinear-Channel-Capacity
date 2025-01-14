@@ -32,7 +32,7 @@ def gd_capacity(config, power, regime_class):
     for lr in config["lr"]:
 
         # alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
-        alphabet_x = regime_class.alphabet_x
+        alphabet_x = regime_class.alphabet_x_re
 
         print("Number of Mass Points:", len(alphabet_x))
         if config["cons_type"] == 0 and config["gd_initial_ba"]:

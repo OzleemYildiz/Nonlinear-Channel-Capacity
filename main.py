@@ -63,6 +63,8 @@ def define_save_location(config):
         + str(config["nonlinearity"])
         + "_regime="
         + str(config["regime"])
+        + "_min_samples="
+        + str(config["min_samples"])
         + "_tdm="
         + str(config["time_division_active"])
     )
@@ -178,6 +180,7 @@ def main():
         tau_list = np.array([1])
     power_change = []
     for snr in snr_change:
+        tanh_factor = config["tanh_factor"]
         start = time.time()
         print("-------SNR in dB:", snr, "--------")
         power = (10 ** (snr / 10)) * noise_power
@@ -201,10 +204,12 @@ def main():
                     calc_logsnr.append(np.log(1 + power / (noise_power)) / 2)
                 print("log(1+SNR)/2 :", calc_logsnr[-1])
 
-                alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
+                alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(
+                    config, power, tanh_factor
+                )
 
                 regime_class = return_regime_class(
-                    config, alphabet_x, alphabet_y, power,config["tanh_factor"]
+                    config, alphabet_x, alphabet_y, power, config["tanh_factor"]
                 )
 
                 # FIXME: Currently, the bounds are not calculated for TDM
@@ -265,12 +270,12 @@ def main():
                     if not config["time_division_active"]:
                         map_pdf_ba[str(snr)] = [
                             input_dist,
-                            regime_class.alphabet_x.numpy(),
+                            regime_class.alphabet_x_re.numpy(),
                         ]
                     else:
                         map_pdf_ba[str(tau)] = [
                             input_dist,
-                            regime_class.alphabet_x.numpy(),
+                            regime_class.alphabet_x_re.numpy(),
                         ]
 
                 # If constraint type is 2, calculate gaussian with optimized snr  -- Ruth's paper
