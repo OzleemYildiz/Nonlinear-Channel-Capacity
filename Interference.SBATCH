@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --nodes=3                        # requests 3 compute servers
+#SBATCH --nodes=1                       # requests 3 compute servers
 #SBATCH --ntasks-per-node=2              # runs 2 tasks on each server
 #SBATCH --cpus-per-task=5                # uses 1 compute core per task
 #SBATCH --time=80:00:00
