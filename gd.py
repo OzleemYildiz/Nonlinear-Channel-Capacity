@@ -243,7 +243,7 @@ def gradient_alphabet_lambda_loss():
 
 
 def gradient_descent_on_interference(
-    config, power, power2, lambda_sweep, tanh_factor, int_ratio
+    config, power, power2, lambda_sweep, tanh_factor, tanh_factor2, int_ratio
 ):
     # It should return R1 and R2 pairs for different lambda values
     # The loss function is lambda*Rate1 + (1-lambda)*Rate2
@@ -258,7 +258,12 @@ def gradient_descent_on_interference(
 
     alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
         get_interference_alphabet_x_y(
-            config, power, power2, int_ratio, tanh_factor, config["tanh_factor_2"]
+            config,
+            power,
+            power2,
+            int_ratio,
+            tanh_factor,
+            tanh_factor2,
         )
     )
 
@@ -271,7 +276,7 @@ def gradient_descent_on_interference(
         power,
         power2,
         tanh_factor,
-        config["tanh_factor_2"],
+        tanh_factor2,
     )
 
     # Initializations
@@ -283,7 +288,9 @@ def gradient_descent_on_interference(
     save_opt_sum_capacity = []
 
     if config["x2_fixed"]:
-        pdf_x_RX2 = get_fixed_interferer(config, alphabet_x_RX2, alphabet_y_RX2, power2)
+        pdf_x_RX2 = get_fixed_interferer(
+            config, alphabet_x_RX2, alphabet_y_RX2, power2, tanh_factor2
+        )
 
     for ind, lmbd in enumerate(lambda_sweep):
         # FIXME: currently different learning rate comparison is not supported
@@ -354,7 +361,8 @@ def gradient_descent_on_interference(
                     )
                     < config["epsilon"]
                 ):
-                    break
+                    if not config["gd_nostop_cond"]:
+                        break
 
             save_opt_sum_capacity.append(opt_sum_capacity)
             max_sum_cap.append(max_sum_cap_h)
@@ -760,7 +768,7 @@ def gradient_descent_projection_with_learning_rate(config, power, power2, lambda
     )
 
 
-def get_fixed_interferer(config, alphabet_x_RX2, alphabet_y_RX2, power2):
+def get_fixed_interferer(config, alphabet_x_RX2, alphabet_y_RX2, power2, tanh_factor2):
     if config["x2_type"] == 0:
         print(" +++----- X2 Distribution is Gaussian ------ +++")
         pdf_x_RX2 = (
@@ -774,7 +782,7 @@ def get_fixed_interferer(config, alphabet_x_RX2, alphabet_y_RX2, power2):
         config["sigma_2"] = config["sigma_22"]
 
         regime_class = return_regime_class(
-            config, alphabet_x_RX2, alphabet_y_RX2, power2, config["tanh_factor_2"]
+            config, alphabet_x_RX2, alphabet_y_RX2, power2, tanh_factor2
         )
 
         _, pdf_x_RX2, _, _ = gd_capacity(config, power2, regime_class)

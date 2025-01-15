@@ -135,21 +135,18 @@ def loss(
 
 
 def plot_res(
-    max_sum_cap,
-    save_opt_sum_capacity,
-    max_pdf_x_RX1,
-    max_pdf_x_RX2,
-    alphabet_x_RX1,
-    alphabet_x_RX2,
-    power,
+    res_opt,
+    res_pdf,
+    res_alph,
     save_location,
     lmbd_sweep,
 ):
     os.makedirs(save_location, exist_ok=True)
     for ind, lmbd in enumerate(lmbd_sweep):
-
         plt.figure(figsize=(5, 4))
-        plt.plot(save_opt_sum_capacity[ind])
+        for key in res_opt.keys():
+            plt.plot(res_opt[key][ind])
+        plt.legend(res_opt.keys())
         plt.xlabel("iteration")
         plt.ylabel("capacity")
         plt.savefig(
@@ -157,9 +154,14 @@ def plot_res(
         )
         plt.close()
 
+        list_line = ["-", "--", "-.", ":"]
+        index = 0
         plt.figure(figsize=(5, 4))
-        plt.bar(alphabet_x_RX1, max_pdf_x_RX1[ind], label="RX1")
-        plt.bar(alphabet_x_RX2, max_pdf_x_RX2[ind], label="RX2")
+        for key in res_pdf.keys():
+            plt.plot(
+                res_alph[key], res_pdf[key][ind], label=key, linestyle=list_line[index]
+            )
+            index += 1
         plt.legend()
         plt.xlabel("X")
         plt.ylabel("PDF")
@@ -555,7 +557,8 @@ def plot_R1_R2_curve(
     config,
     res_gaus=None,
 ):
-
+    if config["x2_fixed"]:
+        return
     figure = plt.figure(figsize=(5, 4))
     # See how many plot we need to do
     hold_keys = []
@@ -719,9 +722,9 @@ def get_regime_class_interference(
 
 def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
     plt.figure(figsize=(5, 4))
-    plt.plot(change_range, res_change["R1"], label="R1")
-    plt.plot(change_range, res_change["linear_tin"], label="TIN- Linear")
-    plt.plot(change_range, res_change["linear_ki"], label="KI- Linear")
+    for keys in res_change.keys():
+        plt.plot(change_range, res_change[keys], label=keys)
+
     plt.legend()
     plt.xlabel(str(config["change"]))
     plt.title(res_str)

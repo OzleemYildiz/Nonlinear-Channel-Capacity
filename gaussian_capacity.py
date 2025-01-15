@@ -61,6 +61,7 @@ def gaussian_interference_capacity(
     alphabet_x_RX2,
     alphabet_y_RX2,
     tanh_factor,
+    tanh_factor2,
     int_ratio,
 ):
     # Second User does not have interference
@@ -88,7 +89,7 @@ def gaussian_interference_capacity(
         power1,
         power2,
         tanh_factor,
-        config["tanh_factor_2"],
+        tanh_factor2,
     )
     loss, cap_RX1, cap_RX2 = loss_interference(
         pdf_x_1, pdf_x_2, reg_RX1, reg_RX2, int_ratio, lmbd=0.5

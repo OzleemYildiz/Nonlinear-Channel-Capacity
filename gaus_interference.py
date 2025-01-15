@@ -3,7 +3,6 @@ from utils import (
     plot_interference,
     get_interference_alphabet_x_y,
     interference_dependent_snr,
-    plot_res,
     plot_R1_R2_curve,
 )
 import numpy as np
