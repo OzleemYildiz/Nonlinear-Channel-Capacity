@@ -1,22 +1,22 @@
 min_power_cons : 0.01
-max_power_cons : 300
+max_power_cons : 400
 sigma_1 : 1
 sigma_2 : 1
 max_mass_points : 1
 epsilon : 0.000000000005 #convergence criteria
 lr : [0.00001] # learning rate
-max_iter : 5000 # maximum number of iterations
+max_iter : 20000 # maximum number of iterations
 delta_y : 0.1
-min_samples: 50 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this
+min_samples: 50 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this #qam_k :  k^2 QAM modulation
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment
 max_k_nochange : 5 # When to stop if the k change does not improve
-n_snr : 10 # number of SNRs
+n_snr : 15 # number of SNRs
 nonlinearity : 3 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C2 (sgn(X)abs(X)^{0.9}), 3:nonlinear tanh(X), 4:nonlinear x4: x/(1 + x^4)^1/4 # 5: nonlinear clip
 clipping_limit_x : 3 # the limit in x for the clipping if nonlinear is clip  (x_c)
 clipping_limit_y : 3 # the limit in y for the clipping if nonlinear is clip  (x_c)
 output_dir : 'Res-PP' # file name to save the results
 tanh_factor : 1 # k when the nonlinearity is tanh(x/k)
-regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
+regime : 1 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : True # the gradient descent is active
 gd_alphabet_active : False # the gradient descent is active for the alphabet
@@ -29,3 +29,5 @@ time_division_active: False # When this is active, I have only one SNR is active
 n_time_division: 10
 power_change_active: False # R1 and R2 boosts their power according to the time allocated to them to use the same power for the total duration
 gd_nostop_cond : False #epsilon is useless if it's true
+complex : True # complex alphabet and pdf
+x2_fixed : False

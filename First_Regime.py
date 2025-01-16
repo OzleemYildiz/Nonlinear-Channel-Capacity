@@ -17,18 +17,18 @@ class First_Regime:
         power,
         tanh_factor,
         interference_active=False,
-        alphabet_x_imag=None,
-        alphabet_y_imag=None,
+        alphabet_x_imag=0,
+        alphabet_y_imag=0,
     ):
         self.alphabet_x_re = alphabet_x
         self.alphabet_x_im = alphabet_x_imag
         self.nonlinear_func = return_nonlinear_fn(config, tanh_factor)
-        self.get_v_alphabet(alphabet_x, alphabet_x_imag)
         self.alphabet_y_re = alphabet_y  # Y = V + Z_2
         self.alphabet_y_im = alphabet_y_imag
         self.config = config
-        # self.pdf_y_given_v = self.calculate_pdf_y_given_v()
         self.power = power
+        self.get_x_v_and_y_alphabet(alphabet_x, alphabet_x_imag)
+        # self.pdf_y_given_v = self.calculate_pdf_y_given_v()
         # self.entropy_y_given_x = self.calculate_entropy_y_given_x()
         # self.interference_active = interference_active
         # self.delta = self.alphabet_x_re[1] - self.alphabet_x_re[0]
@@ -313,64 +313,62 @@ class First_Regime:
 
     def new_capacity(self, pdf_x):
         if self.pdf_y_given_x is None:
-
-            pdf_y_given_x = (
-                1
-                / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_2"])
-                * torch.exp(
-                    -0.5
-                    * (
-                        (
-                            self.alphabet_y_re.reshape(-1, 1)
-                            - self.alphabet_v_re.reshape(1, -1)
+            if self.config["complex"]:
+                pdf_y_given_x = (
+                    1
+                    / (torch.pi * self.config["sigma_2"] ** 2)
+                    * torch.exp(
+                        -1
+                        * (
+                            abs(
+                                self.alphabet_y.reshape(-1, 1)
+                                - self.alphabet_v.reshape(1, -1)
+                            )
+                            ** 2
                         )
-                        ** 2
+                        / self.config["sigma_2"] ** 2
                     )
-                    / self.config["sigma_2"] ** 2
                 )
-            )
+            else:
+                pdf_y_given_x = (
+                    1
+                    / (
+                        torch.sqrt(torch.tensor([2 * torch.pi]))
+                        * self.config["sigma_2"]
+                    )
+                    * torch.exp(
+                        -0.5
+                        * (
+                            abs(
+                                self.alphabet_y.reshape(-1, 1)
+                                - self.alphabet_v.reshape(1, -1)
+                            )
+                            ** 2
+                        )
+                        / self.config["sigma_2"] ** 2
+                    )
+                )
 
             pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
 
             self.pdf_y_given_x = pdf_y_given_x
-        py_x_logpy_x = pdf_y_given_x * torch.log(pdf_y_given_x + 1e-20)
+        py_x_logpy_x = self.pdf_y_given_x * torch.log(self.pdf_y_given_x + 1e-20)
         px_py_x_logpy_x = py_x_logpy_x @ pdf_x
         f_term = torch.sum(px_py_x_logpy_x)
-        py = pdf_y_given_x @ pdf_x
+        py = self.pdf_y_given_x @ pdf_x
         s_term = torch.sum(py * torch.log(py + 1e-20))
         return f_term - s_term
 
-    def capacity_complex_PP(self, pdf_x):
-        if self.pdf_y_given_x is None:
-            alphabet_y = self.alphabet_y_re + 1j * self.alphabet_y_im
-            alphabet_v = self.alphabet_v_re + 1j * self.alphabet_v_im
-
-            pdf_y_given_x = (
-                1
-                / (torch.pi * self.config["sigma_2"] ** 2)
-                * torch.exp(
-                    -1
-                    * (abs(alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1)) ** 2)
-                    / self.config["sigma_2"] ** 2
-                )
-            )
-            pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
-
-            self.pdf_y_given_x = pdf_y_given_x
-
-        py_x_logpy_x = pdf_y_given_x * torch.log(pdf_y_given_x + 1e-20)
-        px_py_x_logpy_x = py_x_logpy_x @ pdf_x.reshape(-1)
-        f_term = torch.sum(px_py_x_logpy_x)
-        py = pdf_y_given_x @ pdf_x.reshape(-1)
-        s_term = torch.sum(py * torch.log(py + 1e-20))
-        return f_term - s_term
-
-    def get_v_alphabet(self, alphabet_x_re, alphabet_x_imag):
-        if alphabet_x_imag is None:
+    def get_x_v_and_y_alphabet(self, alphabet_x_re, alphabet_x_imag):
+        if self.config["complex"] == False:
             self.alphabet_v_re = self.nonlinear_func(
                 alphabet_x_re
             )  # V = phi(X+Z_1) when Z_1 = 0
-            self.alphabet_v_im = None
+            self.alphabet_v_im = 0
+
+            self.alphabet_y = self.alphabet_y_re
+            self.alphabet_v = self.alphabet_v_re
+            self.alphabet_x = self.alphabet_x_re
         else:  # Complex Domain
             #  X = X_re + jX_im = r*exp(j*theta)
             # V = phi(X) = phi(r)*exp(j*theta)
@@ -379,3 +377,8 @@ class First_Regime:
             v_r = self.nonlinear_func(r)
             self.alphabet_v_re = v_r * torch.cos(theta)
             self.alphabet_v_im = v_r * torch.sin(theta)
+
+            self.alphabet_v = self.alphabet_v_re + 1j * self.alphabet_v_im
+            self.alphabet_y = self.alphabet_y_re + 1j * self.alphabet_y_im
+            self.alphabet_x = self.alphabet_x_re + 1j * self.alphabet_x_im
+            self.alphabet_x = self.alphabet_x.reshape(-1)

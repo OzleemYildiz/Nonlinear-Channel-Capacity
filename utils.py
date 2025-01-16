@@ -23,7 +23,6 @@ def project_pdf(pdf_x, cons_type, alphabet_x, power):
     # average power constraint
 
     if check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
-        # breakpoint()
         return pdf_x
 
     n, m = len(alphabet_x), 1
@@ -49,7 +48,7 @@ def project_pdf(pdf_x, cons_type, alphabet_x, power):
     if cons_type == 1:
         cvxpylayer = CvxpyLayer(problem, parameters=[A, mu, p], variables=[p_hat])
         power = torch.tensor([power]).float()
-        A_x = alphabet_x * alphabet_x
+        A_x = abs(alphabet_x**2)
         A_x = A_x.reshape(1, -1)
         try:
             (solution,) = cvxpylayer(A_x, power, pdf_x)
@@ -79,13 +78,13 @@ def loss(
     project_active=True,
 ):
     if project_active:
+
         pdf_x = project_pdf(
             pdf_x,
             regime_class.config["cons_type"],
-            regime_class.alphabet_x_re,
+            regime_class.alphabet_x,
             regime_class.power,
         )
-    # breakpoint()
 
     # Make sure that projection is working
     # assert pdf_x is not None, "pdf_x is None"
@@ -103,32 +102,8 @@ def loss(
 
     # cap = regime_class.capacity_like_ba(pdf_x)
     # cap = regime_class.capacity(pdf_x)
-    if regime_class.config["regime"] == 1 or regime_class.config["regime"] == 3:
-        cap = regime_class.new_capacity(pdf_x)
-    # elif regime_class.config["regime"] == 3:
-    #     max_z1 = regime_class.config["stop_sd"] * regime_class.config["sigma_1"] ** 2
-    #     delta_z1 = regime_class.alphabet_x[1] - regime_class.alphabet_x[0]
-    #     max_z1 = delta_z1 - (max_z1 % delta_z1)
-    #     alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
 
-    #     pdf_z1 = (
-    #         1
-    #         / (
-    #             torch.sqrt(torch.tensor([2 * torch.pi]))
-    #             * regime_class.config["sigma_1"]
-    #         )
-    #         * torch.exp(-0.5 * (alphabet_z1) ** 2 / regime_class.config["sigma_1"] ** 2)
-    #     )
-    #     pdf_z1 = pdf_z1 / (torch.sum(pdf_z1) + 1e-30)
-    #     f_reg = First_Regime(
-    #         regime_class.alphabet_x,
-    #         regime_class.alphabet_y,
-    #         regime_class.config,
-    #         regime_class.power,
-    #     )
-    #     cap = f_reg.capacity_with_interference(pdf_x, pdf_z1, alphabet_z1)
-    else:
-        cap = regime_class.new_capacity(pdf_x)
+    cap = regime_class.new_capacity(pdf_x)
     # print("What they did", cap)
     loss = -cap
     return loss
@@ -235,12 +210,12 @@ def plot_pdf_vs_change(
     plt.figure(figsize=(5, 4))
     if config["time_division_active"] and not config["power_change_active"]:
         range_change = [range_change[0]]  # Because I only ran the code for one value
-
     for chn in range_change:
         if config["power_change_active"]:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100)) + "ind=0"]
         else:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100))]
+
         if not isinstance(pdf_x, np.ndarray):
             pdf_x = pdf_x.detach().numpy()
         if not isinstance(alphabet_x, np.ndarray):
@@ -375,8 +350,8 @@ def return_regime_class(
     alphabet_y,
     power,
     tanh_factor,
-    alphabet_x_imag=None,
-    alphabet_y_imag=None,
+    alphabet_x_imag=0,
+    alphabet_y_imag=0,
 ):
     if config["regime"] == 1:
         regime_class = First_Regime(
@@ -583,15 +558,17 @@ def plot_R1_R2_curve(
         plt.title("Power = " + str(int(power1)))
 
     plt.legend()
-
-    plt.savefig(
-        save_location
-        + "/R1_R2_pow1="
-        + str(int(power1))
-        + "_pow2="
-        + str(int(power2))
-        + ".png"
-    )
+    if power2 is not None:
+        plt.savefig(
+            save_location
+            + "/R1_R2_pow1="
+            + str(int(power1))
+            + "_pow2="
+            + str(int(power2))
+            + ".png"
+        )
+    else:
+        plt.savefig(save_location + "/R1_R2_pow=" + str(int(power1)) + ".png")
     plt.close()
 
 
@@ -660,7 +637,7 @@ def check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
     cond1 = torch.abs(torch.sum(pdf_x) - 1) < 1e-5  # sum of pdf is 1
     cond2 = torch.sum(pdf_x < 0) == 0  # pdf cannot be negative
     if cons_type == 1:
-        cond3 = torch.sum(alphabet_x**2 * pdf_x) <= power + 1e-3
+        cond3 = torch.sum(torch.abs(alphabet_x) ** 2 * pdf_x) <= power + 1e-3
     else:
         cond3 = True
     return cond1 and cond2 and cond3
@@ -668,9 +645,9 @@ def check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
 
 def get_PP_complex_alphabet_x_y(config, power, tanh_factor, bound=False):
     max_x, max_y, delta_y = get_max_alphabet_PP(
-        config, power, tanh_factor, config["qam_k"], bound
+        config, power, tanh_factor, config["min_samples"], bound
     )
-    alphabet_x = torch.linspace(-max_x, max_x, config["qam_k"])
+    alphabet_x = torch.linspace(-max_x, max_x, config["min_samples"])
     delta = alphabet_x[1] - alphabet_x[0]
     # real_x, imag_x = torch.meshgrid([alphabet_x, alphabet_x])
     real_x = alphabet_x
@@ -736,22 +713,23 @@ def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
     plt.close()
 
 
-def loss_complex(pdf_x, regime_class, project_active=False):
-    if project_active:
-        breakpoint()
-        # FIXME : Gotta check projection
-        pdf_x = project_pdf(
-            pdf_x,
-            regime_class.config["cons_type"],
-            regime_class.alphabet_x,
-            regime_class.power,
-        )
-    if torch.sum(pdf_x < 0) > 0:
-        pdf_x = torch.relu(pdf_x) + 1e-20
+# def loss_complex(pdf_x, regime_class, project_active=True):
+#     if project_active:
+#         breakpoint()
+#         # FIXME : Gotta check projection
 
-    cap = regime_class.capacity_complex_PP(pdf_x)
-    loss = -cap
-    return loss
+#         pdf_x = project_pdf(
+#             pdf_x,
+#             regime_class.config["cons_type"],
+#             alphabet_x,
+#             regime_class.power,
+#         )
+#     if torch.sum(pdf_x < 0) > 0:
+#         pdf_x = torch.relu(pdf_x) + 1e-20
+
+#     cap = regime_class.capacity_complex_PP(pdf_x)
+#     loss = -cap
+#     return loss
 
 
 # plotting 2D - might be a good idea to plot 3D - future complex domain #TODO

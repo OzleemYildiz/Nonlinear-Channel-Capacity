@@ -3,7 +3,6 @@ from utils import (
     get_interference_alphabet_x_y,
     get_regime_class_interference,
     loss_interference,
-    loss_complex,
 )
 import torch
 from First_Regime import First_Regime
@@ -12,21 +11,16 @@ import numpy as np
 from nonlinearity_utils import return_nonlinear_fn
 
 
-def gaussian_capacity(regime_class, power):
+def gaussian_capacity(regime_class, power, complex_alphabet=False):
     # print("Gaussian Capacity Calculation")
-    pdf_x = (
-        1
-        / (torch.sqrt(torch.tensor([2 * torch.pi * power])))
-        * torch.exp(-0.5 * ((regime_class.alphabet_x_re) ** 2) / power).float()
-    )
-    pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
+    pdf_x = get_gaussian_distribution(power, regime_class, complex_alphabet)
+    pdf_x = pdf_x.reshape(-1)
 
     loss_g = loss(
         pdf_x,
         regime_class,
         # project_active=False,
     )
-
     cap_g = -loss_g
 
     return cap_g
@@ -177,23 +171,33 @@ def gaus_interference_R1_R2_curve(config, power, power2):
     return cap_gaus_RX1, cap_gaus_RX2
 
 
-def complex_gaussian_capacity_PP(power, config, regime_class):
-    print("Complex Gaussian Capacity Calculation")
-    pdf_x_re = (
-        1
-        / (torch.sqrt(torch.tensor([2 * torch.pi * power / 2])))
-        * torch.exp(-0.5 * ((regime_class.alphabet_x_re) ** 2) / (power / 2)).float()
-    )
-    pdf_x_re = (pdf_x_re / torch.sum(pdf_x_re)).to(torch.float32)
+def get_gaussian_distribution(power, regime_class, complex_alphabet=False):
+    if complex_alphabet:
+        pdf_x_re = (
+            1
+            / (torch.sqrt(torch.tensor([2 * torch.pi * power / 2])))
+            * torch.exp(
+                -0.5 * ((regime_class.alphabet_x_re) ** 2) / (power / 2)
+            ).float()
+        )
+        pdf_x_re = (pdf_x_re / torch.sum(pdf_x_re)).to(torch.float32)
 
-    pdf_x_imag = (
-        1
-        / (torch.sqrt(torch.tensor([2 * torch.pi * power / 2])))
-        * torch.exp(-0.5 * ((regime_class.alphabet_x_im) ** 2) / (power / 2)).float()
-    )
-    pdf_x_imag = (pdf_x_imag / torch.sum(pdf_x_imag)).to(torch.float32)
+        pdf_x_imag = (
+            1
+            / (torch.sqrt(torch.tensor([2 * torch.pi * power / 2])))
+            * torch.exp(
+                -0.5 * ((regime_class.alphabet_x_im) ** 2) / (power / 2)
+            ).float()
+        )
+        pdf_x_imag = (pdf_x_imag / torch.sum(pdf_x_imag)).to(torch.float32)
 
-    pdf_x = pdf_x_re * pdf_x_imag
+        pdf_x = pdf_x_re * pdf_x_imag
 
-    cap = -loss_complex(pdf_x, regime_class)
-    return cap
+    else:
+        pdf_x = (
+            1
+            / (torch.sqrt(torch.tensor([2 * torch.pi * power])))
+            * torch.exp(-0.5 * ((regime_class.alphabet_x_re) ** 2) / power).float()
+        )
+        pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
+    return pdf_x

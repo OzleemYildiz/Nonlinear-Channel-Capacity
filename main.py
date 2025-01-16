@@ -19,6 +19,7 @@ from utils import (
     read_config,
     loss,
     plot_R1_R2_curve,
+    get_PP_complex_alphabet_x_y,
 )
 import numpy as np
 from bounds import (
@@ -55,6 +56,8 @@ def define_save_location(config):
         save_location = save_location + "-TDM"
         if config["power_change_active"]:
             save_location = save_location + "-PB"
+    if config["complex"]:
+        save_location = save_location + "-Complex"
 
     save_location = save_location + (
         "/"
@@ -139,6 +142,8 @@ def main():
         if config["n_snr"] > 1:
             print("WARNING!! Time Division Active: Only minimum SNR will be considered")
             config["n_snr"] = 1
+    if config["complex"]:
+        print("****Complex**** Domain Point to Point Communication")
 
     snr_change, noise_power = regime_dependent_snr(config)
 
@@ -201,18 +206,35 @@ def main():
                     print("Power Kept Constant: ", power)
                 if ind == 0:  # keeping record of only tau results for demonstration
                     # 1-tau is for R1 and R2 curve
-                    calc_logsnr.append(np.log(1 + power / (noise_power)) / 2)
+                    if config["complex"]:
+                        calc_logsnr.append(np.log(1 + power / (noise_power)))
+                    else:
+                        calc_logsnr.append(np.log(1 + power / (noise_power)) / 2)
                 print("log(1+SNR)/2 :", calc_logsnr[-1])
 
-                alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(
-                    config, power, tanh_factor
-                )
+                # Complex Alphabet is on #FIXME: Checking still
+                if config["complex"]:
+                    real_x, imag_x, real_y, imag_y = get_PP_complex_alphabet_x_y(
+                        config, power, tanh_factor
+                    )
+                    regime_class = return_regime_class(
+                        config=config,
+                        alphabet_x=real_x,
+                        alphabet_y=real_y,
+                        power=power,
+                        tanh_factor=tanh_factor,
+                        alphabet_x_imag=imag_x,
+                        alphabet_y_imag=imag_y,
+                    )
+                else:
+                    alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(
+                        config, power, tanh_factor
+                    )
+                    regime_class = return_regime_class(
+                        config, alphabet_x, alphabet_y, power, config["tanh_factor"]
+                    )
 
-                regime_class = return_regime_class(
-                    config, alphabet_x, alphabet_y, power, config["tanh_factor"]
-                )
-
-                # FIXME: Currently, the bounds are not calculated for TDM
+                # FIXME: Currently, the bounds are not calculated for TDM and Complex
                 if config["bound_active"] and ind == 0:
                     if config["regime"] == 1 and config["cons_type"] == 1:
                         up_tarokh.append(upper_bound_tarokh(power, config))
@@ -253,13 +275,21 @@ def main():
                 # Gaussian Capacity
                 # cap_g = gaussian_capacity(regime_class)
                 # power_g, cap_g = find_best_gaussian(regime_class)
+                (cap_g,) = (
+                    gaussian_capacity(
+                        regime_class, power, complex_alphabet=config["complex"]
+                    ),
+                )
                 if ind == 0:  # keeping record of only tau results for demonstration
+
                     capacity_gaussian = bound_backtracing_check(
-                        capacity_gaussian, gaussian_capacity(regime_class, power)
+                        capacity_gaussian, cap_g
                     )
+
                     # capacity_gaussian.append(cap_g)
                     # power_gaussian.append(power_g)
 
+                # FIXME: This condition might not work right now
                 if config["ba_active"] and config["cons_type"] == 0:
                     (cap, input_dist) = apply_blahut_arimoto(regime_class, config)
                     loss_g = loss(
@@ -279,7 +309,7 @@ def main():
                         ]
 
                 # If constraint type is 2, calculate gaussian with optimized snr  -- Ruth's paper
-                # TODO: Might not be working
+                # FIXME: Might not be working
                 if config["cons_type"] == 2:
                     cap_r = gaussian_with_l1_norm(alphabet_x, alphabet_y, power, config)
                     capacity_ruth.append(cap_r)
@@ -321,7 +351,7 @@ def main():
                                 max_alphabet_x.detach().numpy(),
                             ]
                     else:
-                        map_pdf["Chng" + str(int(abs(snr * 100)))] = [
+                        map_pdf["Chng" + str(int((snr * 100)))] = [
                             max_pdf_x.detach().numpy(),
                             max_alphabet_x.detach().numpy(),
                         ]
@@ -336,13 +366,14 @@ def main():
                         max_pdf_x.detach().numpy(),
                         max_alphabet_x.detach().numpy(),
                     ]
-
-                del regime_class, alphabet_x, alphabet_y
+                if config["complex"]:
+                    del real_x, imag_x, real_y, imag_y, regime_class
+                else:
+                    del regime_class, alphabet_x, alphabet_y
                 end = time.time()
 
                 # Time Division Active Calculation
                 if config["time_division_active"]:
-
                     if config["power_change_active"]:
                         if ind == 0:
                             rate_1_tau_gaussian.append(tau * cap_g)

@@ -16,12 +16,14 @@ from blahut_arimoto_capacity import (
     return_pdf_y_x_for_ba,
     blahut_arimoto_torch,
 )
+from gaussian_capacity import get_gaussian_distribution
 
 from First_Regime import First_Regime
 
 
 def gd_capacity(config, power, regime_class):
     print("------GD Capacity Calculation--------")
+
     max_capacity = 0
     max_dict = {}
     max_opt_capacity = torch.tensor([])
@@ -32,9 +34,10 @@ def gd_capacity(config, power, regime_class):
     for lr in config["lr"]:
 
         # alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
-        alphabet_x = regime_class.alphabet_x_re
-
+        alphabet_x = regime_class.alphabet_x
+        
         print("Number of Mass Points:", len(alphabet_x))
+        # FIXME: BA initial won't work right now
         if config["cons_type"] == 0 and config["gd_initial_ba"]:
             _, pdf_x = apply_blahut_arimoto(regime_class, config)
             # breakpoint()
@@ -42,13 +45,10 @@ def gd_capacity(config, power, regime_class):
         else:  # uniform distribution if no initial distribution
             # pdf_x = torch.ones_like(alphabet_x) * 1 / len(alphabet_x)
             # Gaussian distribution
-            pdf_x = (
-                1
-                / (torch.sqrt(torch.tensor([2 * torch.pi * power])))
-                * torch.exp(-0.5 * ((alphabet_x) ** 2) / power).float()
-            )
-
-            pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
+            
+            pdf_x = get_gaussian_distribution(power, regime_class, complex_alphabet=config["complex"])
+            pdf_x = pdf_x.reshape(-1)
+        
         if len(alphabet_x) == 0:
             breakpoint()
         pdf_x = project_pdf(pdf_x, config["cons_type"], alphabet_x, power)
@@ -57,7 +57,7 @@ def gd_capacity(config, power, regime_class):
         # optimizer = torch.optim.Adam([pdf_x], lr=lr)
         optimizer = torch.optim.AdamW([pdf_x], lr=lr, weight_decay=1e-5)
         opt_capacity = []
-
+        
         for i in range(config["max_iter"]):
             # breakpoint()
             # project back
@@ -86,7 +86,7 @@ def gd_capacity(config, power, regime_class):
                     break
 
         # is it enough mass point check?
-        if opt_capacity[-1] > max_capacity:
+        if opt_capacity[-1] >= max_capacity:
             count_no_impr = 0  # improvement happened
 
             # p_pdf_x = project_pdf(pdf_x, cons_type, max_alphabet_x, power)
