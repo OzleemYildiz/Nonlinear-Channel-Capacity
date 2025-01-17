@@ -35,7 +35,7 @@ def gd_capacity(config, power, regime_class):
 
         # alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
         alphabet_x = regime_class.alphabet_x
-        
+
         print("Number of Mass Points:", len(alphabet_x))
         # FIXME: BA initial won't work right now
         if config["cons_type"] == 0 and config["gd_initial_ba"]:
@@ -45,10 +45,12 @@ def gd_capacity(config, power, regime_class):
         else:  # uniform distribution if no initial distribution
             # pdf_x = torch.ones_like(alphabet_x) * 1 / len(alphabet_x)
             # Gaussian distribution
-            
-            pdf_x = get_gaussian_distribution(power, regime_class, complex_alphabet=config["complex"])
+
+            pdf_x = get_gaussian_distribution(
+                power, regime_class, complex_alphabet=config["complex"]
+            )
             pdf_x = pdf_x.reshape(-1)
-        
+
         if len(alphabet_x) == 0:
             breakpoint()
         pdf_x = project_pdf(pdf_x, config["cons_type"], alphabet_x, power)
@@ -57,13 +59,14 @@ def gd_capacity(config, power, regime_class):
         # optimizer = torch.optim.Adam([pdf_x], lr=lr)
         optimizer = torch.optim.AdamW([pdf_x], lr=lr, weight_decay=1e-5)
         opt_capacity = []
-        
+
         for i in range(config["max_iter"]):
             # breakpoint()
             # project back
             optimizer.zero_grad()
 
             loss_it = loss(pdf_x, regime_class, project_active=True)
+
             # breakpoint()
             loss_it.backward()
             optimizer.step()

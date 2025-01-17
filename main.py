@@ -159,6 +159,7 @@ def main():
     calc_logsnr = []
 
     map_pdf = {}
+    map_opt = {}
     map_pdf_ba = {}  # TODO: Change this too
     alphabet_x = []
     up_tarokh = []
@@ -320,18 +321,6 @@ def main():
                         config, power, regime_class
                     )
 
-                    # FIXME: Messy
-                    plt.figure()
-                    plt.plot(opt_capacity)
-                    plt.xlabel("Iterations")
-                    plt.grid()
-                    plt.savefig(save_location + "/opt_capacity.png")
-                    plt.close()
-                    io.savemat(
-                        save_location + "/opt_capacity.mat",
-                        {"opt_capacity": opt_capacity},
-                    )
-
                     if ind == 0:  # keeping record of only tau results for demonstration
                         capacity_learned.append(cap_learned)
                     max_pdf_x = project_pdf(
@@ -355,6 +344,7 @@ def main():
                             max_pdf_x.detach().numpy(),
                             max_alphabet_x.detach().numpy(),
                         ]
+                        map_opt["Chng" + str(int((snr * 100)))] = opt_capacity
                 # Gradient Descent on Alphabet X for Peak Power Constraint
                 # TODO: Not working for TDM
                 if config["gd_alphabet_active"] and config["cons_type"] == 0:
@@ -496,6 +486,7 @@ def main():
                 config,
                 save_location=save_location,
                 file_name="pdf_snr_gd.png",
+                map_opt=map_opt,
             )
         if config["ba_active"] and config["cons_type"] == 0:
             plot_pdf_vs_change(
@@ -528,6 +519,7 @@ def main():
                 save_location + "/pdf.mat",
                 map_pdf,
             )
+
             plot_pdf_vs_change(
                 map_pdf,
                 tau_list,

@@ -69,6 +69,7 @@ def project_pdf(pdf_x, cons_type, alphabet_x, power):
         #   print('First moment constraint is not satisfied')
         #  breakpoint()
     # breakpoint()
+
     return solution
 
 
@@ -77,32 +78,16 @@ def loss(
     regime_class,
     project_active=True,
 ):
-    if project_active:
 
+    if project_active:
         pdf_x = project_pdf(
             pdf_x,
             regime_class.config["cons_type"],
             regime_class.alphabet_x,
             regime_class.power,
         )
-
-    # Make sure that projection is working
-    # assert pdf_x is not None, "pdf_x is None"
-    # assert (
-    #    torch.abs(torch.sum(pdf_x) - 1) <= 1e-4
-    # ), "pdf_x is not normalized the sum is " + str(torch.sum(pdf_x).detach().numpy())
-
-    if torch.sum(pdf_x < 0) != 0:
-        # breakpoint()
-        # , "pdf_x has negative values " + str(
-        # pdf_x[np.where((pdf_x < 0))].detach().numpy())
-        # if torch.max(torch.abs(pdf_x[pdf_x < 0])) > 1e-4:
-        #     breakpoint()
+    if torch.sum(pdf_x < 0) > 0:
         pdf_x = torch.relu(pdf_x) + 1e-20
-
-    # cap = regime_class.capacity_like_ba(pdf_x)
-    # cap = regime_class.capacity(pdf_x)
-
     cap = regime_class.new_capacity(pdf_x)
     # print("What they did", cap)
     loss = -cap
@@ -198,7 +183,7 @@ def plot_vs_change(
 
 
 def plot_pdf_vs_change(
-    map_pdf, range_change, config, save_location=None, file_name=None
+    map_pdf, range_change, config, save_location=None, file_name=None, map_opt=None
 ):
 
     if file_name is None:
@@ -259,12 +244,30 @@ def plot_pdf_vs_change(
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100))]
         save_new = save_location + "/pdf_" + str(int(chn * 100)) + ".png"
         plt.figure(figsize=(5, 4))
-        plt.plot(alphabet_x, pdf_x)
+        if config["complex"]:
+            alphabet_x_re = np.real(alphabet_x)
+            alphabet_x_im = np.imag(alphabet_x)
+            plt.scatter(alphabet_x_re, alphabet_x_im, s=pdf_x * len(alphabet_x) ** 2)
+            plt.xlabel("Re(X)")
+            plt.ylabel("Im(X)")
+        else:
+            plt.plot(alphabet_x, pdf_x)
+            plt.xlabel("X")
+            plt.ylabel("PDF")
         plt.grid()
-        plt.xlabel("X")
-        plt.ylabel("PDF")
         plt.savefig(save_new)
         plt.close()
+
+        if map_opt is not None:
+            opt_cap = map_opt["Chng" + str(int(chn * 100))]
+            save_new = save_location + "/opt_" + str(int(chn * 100)) + ".png"
+            plt.figure(figsize=(5, 4))
+            plt.plot(opt_cap)
+            plt.grid()
+            plt.xlabel("iteration")
+            plt.ylabel("Rate")
+            plt.savefig(save_new)
+            plt.close()
 
 
 def get_max_alphabet_PP(
@@ -288,8 +291,8 @@ def get_max_alphabet_PP(
         # max_x = stop_s*avg_power
 
         # If it's clipped after this value, it does not matter to put values outside
-        if config["nonlinearity"] == 5 and not bound:
-            max_x = config["clipping_limit_x"]
+        # if config["nonlinearity"] == 5 and not bound:
+        #     max_x = config["clipping_limit_x"]
 
     else:  # first moment
         first_moment = power  # E[|X|] < P

@@ -28,6 +28,6 @@ n_samples: 20000
 time_division_active: False # When this is active, I have only one SNR is active - forced in the code
 n_time_division: 10
 power_change_active: False # R1 and R2 boosts their power according to the time allocated to them to use the same power for the total duration
-gd_nostop_cond : False #epsilon is useless if it's true
+gd_nostop_cond : True #epsilon is useless if it's true
 complex : True # complex alphabet and pdf
 x2_fixed : False
