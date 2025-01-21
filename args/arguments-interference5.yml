@@ -32,3 +32,4 @@ n_lmbd : 5 # number of lambdas
 x2_fixed : True # if True, px2 is fixed and px1 is updated
 x2_type : 0 # 0: Gaussian, 1: Optimized
 gd_nostop_cond : True # if True, the gd will not stop until max_iter
+complex : False # if True, the complex alphabet is used

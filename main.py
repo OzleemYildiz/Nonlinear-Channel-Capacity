@@ -213,7 +213,7 @@ def main():
                         calc_logsnr.append(np.log(1 + power / (noise_power)) / 2)
                 print("log(1+SNR)/2 :", calc_logsnr[-1])
 
-                # Complex Alphabet is on #FIXME: Checking still
+                # Complex Alphabet is on 
                 if config["complex"]:
                     real_x, imag_x, real_y, imag_y = get_PP_complex_alphabet_x_y(
                         config, power, tanh_factor

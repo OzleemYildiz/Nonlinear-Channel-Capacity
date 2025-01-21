@@ -91,6 +91,15 @@ def loss(
     cap = regime_class.new_capacity(pdf_x)
     # print("What they did", cap)
     loss = -cap
+
+    if (
+        len(pdf_x) == 0
+        or torch.sum(pdf_x.isnan()) > 0
+        or torch.sum(cap.isnan()) > 0
+        or torch.sum(pdf_x < 0) > 0
+    ):
+        breakpoint()
+
     return loss
 
 
@@ -247,7 +256,7 @@ def plot_pdf_vs_change(
         if config["complex"]:
             alphabet_x_re = np.real(alphabet_x)
             alphabet_x_im = np.imag(alphabet_x)
-            plt.scatter(alphabet_x_re, alphabet_x_im, s=pdf_x * len(alphabet_x) ** 2)
+            plt.scatter(alphabet_x_re, alphabet_x_im, s=pdf_x * 100)
             plt.xlabel("Re(X)")
             plt.ylabel("Im(X)")
         else:
@@ -363,13 +372,24 @@ def return_regime_class(
             config=config,
             power=power,
             tanh_factor=tanh_factor,
+            sigma_2=config["sigma_2"],
             alphabet_x_imag=alphabet_x_imag,
             alphabet_y_imag=alphabet_y_imag,
         )
     elif config["regime"] == 2:
         regime_class = Second_Regime(alphabet_x, config, power)
     elif config["regime"] == 3:
-        regime_class = Third_Regime(alphabet_x, alphabet_y, config, power, tanh_factor)
+        regime_class = Third_Regime(
+            alphabet_x,
+            alphabet_y,
+            config,
+            power,
+            tanh_factor,
+            sigma_1=config["sigma_1"],
+            sigma_2=config["sigma_2"],
+            alphabet_x_imag=alphabet_x_imag,
+            alphabet_y_imag=alphabet_y_imag,
+        )
     else:
         raise ValueError("Regime not defined")
     return regime_class
@@ -425,7 +445,7 @@ def interference_dependent_snr(config, power):
     return snr1, snr2, inr1
 
 
-def get_interference_alphabet_x_y(
+def get_max_alphabet_interference(
     config, power1, power2, int_ratio, tanh_factor, tanh_factor2
 ):
     nonlinear_func1 = return_nonlinear_fn(config, tanh_factor)
@@ -489,6 +509,17 @@ def get_interference_alphabet_x_y(
     max_y_1 = max_y_1 + (delta_x1 - (max_y_1 % delta_x1))
     max_y_2 = max_y_2 + (delta_x2 - (max_y_2 % delta_x2))
 
+    return max_x_1, max_y_1, delta_x1, max_x_2, max_y_2, delta_x2
+
+
+def get_interference_alphabet_x_y(
+    config, power1, power2, int_ratio, tanh_factor, tanh_factor2
+):
+    max_x_1, max_y_1, delta_x1, max_x_2, max_y_2, delta_x2 = (
+        get_max_alphabet_interference(
+            config, power1, power2, int_ratio, tanh_factor, tanh_factor2
+        )
+    )
     # Create the alphabet with the fixed delta
     alphabet_x_1 = torch.arange(-max_x_1, max_x_1 + delta_x1 / 2, delta_x1)
     alphabet_x_2 = torch.arange(-max_x_2, max_x_2 + delta_x2 / 2, delta_x2)
@@ -496,6 +527,33 @@ def get_interference_alphabet_x_y(
     alphabet_y_1 = torch.arange(-max_y_1, max_y_1 + delta_x1 / 2, delta_x1)
     alphabet_y_2 = torch.arange(-max_y_2, max_y_2 + delta_x2 / 2, delta_x2)
     return alphabet_x_1, alphabet_y_1, alphabet_x_2, alphabet_y_2
+
+
+def get_interference_alphabet_x_y_complex(
+    config, power1, power2, int_ratio, tanh_factor, tanh_factor2
+):
+    max_x_1, max_y_1, delta_x1, max_x_2, max_y_2, delta_x2 = (
+        get_max_alphabet_interference(
+            config, power1, power2, int_ratio, tanh_factor, tanh_factor2
+        )
+    )
+    # Create the alphabet with the fixed delta
+    alphabet_x_1 = torch.arange(-max_x_1, max_x_1 + delta_x1 / 2, delta_x1)
+    real_x1 = alphabet_x_1
+    imag_x1 = alphabet_x_1.reshape(-1, 1)
+    breakpoint()
+    alphabet_x_2 = torch.arange(-max_x_2, max_x_2 + delta_x2 / 2, delta_x2)
+    real_x2 = alphabet_x_2
+    imag_x2 = alphabet_x_2.reshape(-1, 1)
+
+    alphabet_y_1 = torch.arange(-max_y_1, max_y_1 + delta_x1 / 2, delta_x1)
+    real_y1 = alphabet_y_1
+    imag_y1 = alphabet_y_1.reshape(-1, 1)
+
+    alphabet_y_2 = torch.arange(-max_y_2, max_y_2 + delta_x2 / 2, delta_x2)
+    real_y2 = alphabet_y_2
+    imag_y2 = alphabet_y_2.reshape(-1, 1)
+    return real_x1, imag_x1, real_y_1, imag_y1, real_x2, imag_x2, real_y2, imag_y2
 
 
 def plot_interference(res, config, save_location):
@@ -640,7 +698,7 @@ def check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
     cond1 = torch.abs(torch.sum(pdf_x) - 1) < 1e-5  # sum of pdf is 1
     cond2 = torch.sum(pdf_x < 0) == 0  # pdf cannot be negative
     if cons_type == 1:
-        cond3 = torch.sum(torch.abs(alphabet_x) ** 2 * pdf_x) <= power + 1e-3
+        cond3 = torch.sum(torch.abs(alphabet_x) ** 2 * pdf_x) <= power + 1e-1
     else:
         cond3 = True
     return cond1 and cond2 and cond3
@@ -678,22 +736,45 @@ def get_regime_class_interference(
 ):
 
     if config["regime"] == 1:
-        config["sigma_2"] = config["sigma_22"]
+        # config["sigma_2"] = config["sigma_22"]
 
-        f_reg_RX2 = First_Regime(alphabet_x_RX2, alphabet_y_RX2, config, power2)
-        config["sigma_2"] = config["sigma_12"]
-        f_reg_RX1 = First_Regime(alphabet_x_RX1, alphabet_y_RX1, config, power1)
+        f_reg_RX2 = First_Regime(
+            alphabet_x_RX2,
+            alphabet_y_RX2,
+            config,
+            power2,
+            tanh_factor2,
+            sigma_2=config["sigma_22"],
+        )
+        # config["sigma_2"] = config["sigma_12"]
+        f_reg_RX1 = First_Regime(
+            alphabet_x_RX1,
+            alphabet_y_RX1,
+            config,
+            power1,
+            tanh_factor,
+            sigma_2=config["sigma_12"],
+        )
         return f_reg_RX1, f_reg_RX2
     elif config["regime"] == 3:
-        config["sigma_2"] = config["sigma_22"]
-        config["sigma_1"] = config["sigma_21"]
+
         t_reg_RX2 = Third_Regime(
-            alphabet_x_RX2, alphabet_y_RX2, config, power2, tanh_factor2
+            alphabet_x_RX2,
+            alphabet_y_RX2,
+            config,
+            power2,
+            tanh_factor2,
+            sigma_1=config["sigma_21"],
+            sigma_2=config["sigma_22"],
         )
-        config["sigma_2"] = config["sigma_12"]
-        config["sigma_1"] = config["sigma_11"]
         t_reg_RX1 = Third_Regime(
-            alphabet_x_RX1, alphabet_y_RX1, config, power1, tanh_factor
+            alphabet_x_RX1,
+            alphabet_y_RX1,
+            config,
+            power1,
+            tanh_factor,
+            sigma_1=config["sigma_11"],
+            sigma_2=config["sigma_12"],
         )
         return t_reg_RX1, t_reg_RX2
     else:
@@ -701,9 +782,13 @@ def get_regime_class_interference(
 
 
 def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
+    list_line = ["-", "--", "-.", ":"]
+
     plt.figure(figsize=(5, 4))
+    index = 0
     for keys in res_change.keys():
-        plt.plot(change_range, res_change[keys], label=keys)
+        plt.plot(change_range, res_change[keys], label=keys, linestyle=list_line[index])
+        index = np.mod(index + 1, 4)
 
     plt.legend()
     plt.xlabel(str(config["change"]))

@@ -24,11 +24,8 @@ from First_Regime import First_Regime
 def gd_capacity(config, power, regime_class):
     print("------GD Capacity Calculation--------")
 
-    max_capacity = 0
     max_dict = {}
     max_opt_capacity = torch.tensor([])
-    max_pdf_x = torch.tensor([])
-    max_alphabet_x = torch.tensor([])
     count_no_impr = 0
 
     for lr in config["lr"]:
@@ -43,17 +40,26 @@ def gd_capacity(config, power, regime_class):
             # breakpoint()
             pdf_x = torch.tensor(pdf_x).float()
         else:  # uniform distribution if no initial distribution
-            # pdf_x = torch.ones_like(alphabet_x) * 1 / len(alphabet_x)
+
             # Gaussian distribution
 
             pdf_x = get_gaussian_distribution(
-                power, regime_class, complex_alphabet=config["complex"]
+                power,
+                regime_class,
+                complex_alphabet=config["complex"],
+                optimum_power=True,
             )
+
             pdf_x = pdf_x.reshape(-1)
+        # start of the max is with the initial distribution
+        max_pdf_x = pdf_x
+        max_alphabet_x = alphabet_x
+        max_capacity = loss(pdf_x, regime_class, project_active=True)
 
         if len(alphabet_x) == 0:
             breakpoint()
-        pdf_x = project_pdf(pdf_x, config["cons_type"], alphabet_x, power)
+        # pdf_x = project_pdf(pdf_x, config["cons_type"], alphabet_x, power) -> this projection makes the capacity worse - like double projection since it's also in the loss function
+
         pdf_x.requires_grad = True
 
         # optimizer = torch.optim.Adam([pdf_x], lr=lr)
@@ -61,8 +67,7 @@ def gd_capacity(config, power, regime_class):
         opt_capacity = []
 
         for i in range(config["max_iter"]):
-            # breakpoint()
-            # project back
+
             optimizer.zero_grad()
 
             loss_it = loss(pdf_x, regime_class, project_active=True)
@@ -105,6 +110,7 @@ def gd_capacity(config, power, regime_class):
             count_no_impr += 1
 
     max_pdf_x = project_pdf(max_pdf_x, config["cons_type"], max_alphabet_x, power)
+    print("~~~~~Max Capacity:", max_capacity, "~~~~~")
 
     return max_capacity, max_pdf_x, max_alphabet_x, opt_capacity
 

@@ -189,6 +189,40 @@ def get_run_parameters(config, chng):
     return power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str
 
 
+def get_linear_interference_capacity(power1, power2, int_ratio, config):
+    # This is X2 fixed results --- X1's tin and ki results
+
+    if config["regime"] == 3:
+        linear_ki = (
+            1
+            / 2
+            * np.log(1 + power1 / (config["sigma_12"] ** 2 + config["sigma_11"] ** 2))
+        )
+        linear_tin = (
+            1
+            / 2
+            * np.log(
+                1
+                + power1
+                / (
+                    int_ratio**2 * power2
+                    + config["sigma_12"] ** 2
+                    + config["sigma_11"] ** 2
+                )
+            )
+        )
+    elif config["regime"] == 1:
+        linear_ki = 1 / 2 * np.log(1 + power1 / config["sigma_12"] ** 2)
+        linear_tin = (
+            1
+            / 2
+            * np.log(1 + power1 / (int_ratio**2 * power2 + config["sigma_12"] ** 2))
+        )
+    else:
+        raise ValueError("Regime not defined")
+    return linear_tin, linear_ki
+
+
 def main():
     # First and Third regime implementation
     # ----System Model--- Z channel
@@ -228,25 +262,11 @@ def main():
             get_run_parameters(config, chng)
         )
         res = {"R1": {}, "R2": {}}
-
-        res_change["Linear_TIN"].append(
-            1
-            / 2
-            * np.log(
-                1
-                + power1
-                / (
-                    int_ratio**2 * power2
-                    + config["sigma_12"] ** 2
-                    + config["sigma_11"] ** 2
-                )
-            )
+        linear_tin, linear_ki = get_linear_interference_capacity(
+            power1, power2, int_ratio, config
         )
-        res_change["Linear_KI"].append(
-            1
-            / 2
-            * np.log(1 + power1 / (config["sigma_12"] ** 2 + config["sigma_11"] ** 2))
-        )
+        res_change["Linear_TIN"].append(linear_tin)
+        res_change["Linear_KI"].append(linear_ki)
 
         update_save_location = (
             save_location
@@ -269,12 +289,22 @@ def main():
 
         os.makedirs(update_save_location, exist_ok=True)
         print("----------", str(config["change"]), ":", chng, "-----------")
-
-        alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
-            get_interference_alphabet_x_y(
-                config, power1, power2, int_ratio, tanh_factor, tanh_factor2
+        if config["complex"]:
+            real_x1, imag_x1, real_y_1, imag_y1, real_x2, imag_x2, real_y2, imag_y2 = (
+                get_interference_alphabet_x_y_complex(
+                    config, power1, power2, int_ratio, tanh_factor, tanh_factor2
+                )
             )
-        )
+            breakpoint()
+            # !!! Complex Regimes implement here - functions should take regime as input!!!!
+
+        else:
+            alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
+                get_interference_alphabet_x_y(
+                    config, power1, power2, int_ratio, tanh_factor, tanh_factor2
+                )
+            )
+
         # ---
         res_gaus = {}
         config["x1_update_scheme"] = 0  # First, we apply tin
@@ -352,6 +382,8 @@ def main():
             )
             if config["x2_fixed"]:
                 res["R1"]["Learned_TIN"] = max_cap_RX1
+                # if max_cap_RX1 > res_change["Linear_TIN"][-1]:
+                #     breakpoint()
                 res_change["Learned_TIN"].append(max_cap_RX1)
                 res_pdf_tin = {
                     "RX1_tin": max_pdf_x_RX1,
@@ -361,6 +393,9 @@ def main():
                     "RX1_tin": alphabet_x_RX1,
                     "RX2_tin": alphabet_x_RX2,
                 }
+                if max_cap_RX1 > linear_tin:
+                    breakpoint()
+
                 config["x1_update_scheme"] = 1  # Then, we apply ki
                 (
                     max_sum_cap2,

@@ -21,7 +21,9 @@ def gaussian_capacity(regime_class, power, complex_alphabet=False):
         regime_class,
         # project_active=False,
     )
+
     cap_g = -loss_g
+    # print("~~~~~Gaussian Capacity:", cap_g, "~~~~~")
 
     return cap_g
 
@@ -92,20 +94,28 @@ def gaussian_interference_capacity(
     return cap_RX1, cap_RX2
 
 
-def find_best_gaussian(regime_class):
+def find_best_gaussian(regime_class, complex_alphabet=False):
     max_power = regime_class.power
-    power_range = torch.arange(max_power, 0, -1)
+    try:
+        power_range = torch.arange(max_power, 1, -1)
+    except:
+        return max_power, gaussian_capacity(regime_class, max_power, complex_alphabet)
     best_cap = 0
-    best_power = 0
+    best_power = max_power
+    ind = 0
     for power in power_range:
-        cap_g = gaussian_capacity(regime_class, power)
-        if cap_g - best_cap > 1e-5:
+        cap_g = gaussian_capacity(regime_class, power, complex_alphabet)
+        if cap_g > best_cap:
             best_cap = cap_g
             best_power = power
+            ind = 0
         else:
-            # lowering the power at every step but it does not increase the capacity
-            # then higher the power, the better
-            break
+            if ind > 100:
+                # lowering the power at every step but it does not increase the capacity
+                # then higher the power, the better
+                break
+        ind += 1
+
     print("Gaussian Capacity: ", best_cap)
     return best_power, best_cap
 
@@ -171,7 +181,13 @@ def gaus_interference_R1_R2_curve(config, power, power2):
     return cap_gaus_RX1, cap_gaus_RX2
 
 
-def get_gaussian_distribution(power, regime_class, complex_alphabet=False):
+def get_gaussian_distribution(
+    power, regime_class, complex_alphabet=False, optimum_power=False
+):
+    if optimum_power:
+        (power, _) = find_best_gaussian(regime_class, complex_alphabet)
+        print("Optimum Power: ", power)
+        # power = 75
     if complex_alphabet:
         pdf_x_re = (
             1
@@ -200,4 +216,5 @@ def get_gaussian_distribution(power, regime_class, complex_alphabet=False):
             * torch.exp(-0.5 * ((regime_class.alphabet_x_re) ** 2) / power).float()
         )
         pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
+
     return pdf_x
