@@ -4,7 +4,7 @@ sigma_1 : 1
 sigma_2 : 1
 max_mass_points : 1
 epsilon : 0.000000000005 #convergence criteria
-lr : [0.00001] # learning rate
+lr : [0.000001] # learning rate
 max_iter : 20000 # maximum number of iterations
 delta_y : 0.1
 min_samples: 16 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this #qam_k :  k^2 QAM modulation
@@ -28,6 +28,6 @@ n_samples: 20000
 time_division_active: False # When this is active, I have only one SNR is active - forced in the code
 n_time_division: 10
 power_change_active: False # R1 and R2 boosts their power according to the time allocated to them to use the same power for the total duration
-gd_nostop_cond : False  #epsilon is useless if it's true
+gd_nostop_cond : True  #epsilon is useless if it's true
 complex : True # complex alphabet and pdf
 x2_fixed : True

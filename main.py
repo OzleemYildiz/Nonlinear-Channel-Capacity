@@ -70,6 +70,8 @@ def define_save_location(config):
         + str(config["min_samples"])
         + "_tdm="
         + str(config["time_division_active"])
+        + "_lr="
+        + str(config["lr"])
     )
     if config["time_division_active"]:
         save_location = (
@@ -118,6 +120,7 @@ def define_save_location(config):
             + str(1 / config["tanh_factor"])
             + "x"
         )
+
     save_location = save_location + "/"
     os.makedirs(
         save_location,
@@ -213,7 +216,7 @@ def main():
                         calc_logsnr.append(np.log(1 + power / (noise_power)) / 2)
                 print("log(1+SNR)/2 :", calc_logsnr[-1])
 
-                # Complex Alphabet is on 
+                # Complex Alphabet is on
                 if config["complex"]:
                     real_x, imag_x, real_y, imag_y = get_PP_complex_alphabet_x_y(
                         config, power, tanh_factor

@@ -539,19 +539,19 @@ def get_interference_alphabet_x_y_complex(
     )
     # Create the alphabet with the fixed delta
     alphabet_x_1 = torch.arange(-max_x_1, max_x_1 + delta_x1 / 2, delta_x1)
-    real_x1 = alphabet_x_1
+    real_x1 = alphabet_x_1.reshape(1, -1)
     imag_x1 = alphabet_x_1.reshape(-1, 1)
-    breakpoint()
     alphabet_x_2 = torch.arange(-max_x_2, max_x_2 + delta_x2 / 2, delta_x2)
-    real_x2 = alphabet_x_2
+
+    real_x2 = alphabet_x_2.reshape(1, -1)
     imag_x2 = alphabet_x_2.reshape(-1, 1)
 
     alphabet_y_1 = torch.arange(-max_y_1, max_y_1 + delta_x1 / 2, delta_x1)
-    real_y1 = alphabet_y_1
+    real_y1 = alphabet_y_1.reshape(1, -1)
     imag_y1 = alphabet_y_1.reshape(-1, 1)
 
     alphabet_y_2 = torch.arange(-max_y_2, max_y_2 + delta_x2 / 2, delta_x2)
-    real_y2 = alphabet_y_2
+    real_y2 = alphabet_y_2.reshape(1, -1)
     imag_y2 = alphabet_y_2.reshape(-1, 1)
     return real_x1, imag_x1, real_y_1, imag_y1, real_x2, imag_x2, real_y2, imag_y2
 

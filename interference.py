@@ -6,6 +6,7 @@ from utils import (
     plot_res,
     plot_R1_R2_curve,
     plot_R1_vs_change,
+    get_interference_alphabet_x_y_complex,
 )
 import numpy as np
 from gaussian_capacity import (
@@ -295,6 +296,7 @@ def main():
                     config, power1, power2, int_ratio, tanh_factor, tanh_factor2
                 )
             )
+            
             breakpoint()
             # !!! Complex Regimes implement here - functions should take regime as input!!!!
 
