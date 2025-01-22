@@ -14,7 +14,7 @@ from utils import (
     plot_vs_change,
     plot_pdf_vs_change,
     project_pdf,
-    return_regime_class,
+    get_regime_class,
     regime_dependent_snr,
     read_config,
     loss,
@@ -214,14 +214,14 @@ def main():
                         calc_logsnr.append(np.log(1 + power / (noise_power)))
                     else:
                         calc_logsnr.append(np.log(1 + power / (noise_power)) / 2)
-                print("log(1+SNR)/2 :", calc_logsnr[-1])
+                print("Linear Capacity :", calc_logsnr[-1])
 
                 # Complex Alphabet is on
                 if config["complex"]:
                     real_x, imag_x, real_y, imag_y = get_PP_complex_alphabet_x_y(
                         config, power, tanh_factor
                     )
-                    regime_class = return_regime_class(
+                    regime_class = get_regime_class(
                         config=config,
                         alphabet_x=real_x,
                         alphabet_y=real_y,
@@ -234,7 +234,7 @@ def main():
                     alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(
                         config, power, tanh_factor
                     )
-                    regime_class = return_regime_class(
+                    regime_class = get_regime_class(
                         config, alphabet_x, alphabet_y, power, config["tanh_factor"]
                     )
 
@@ -304,12 +304,12 @@ def main():
                     if not config["time_division_active"]:
                         map_pdf_ba[str(snr)] = [
                             input_dist,
-                            regime_class.alphabet_x_re.numpy(),
+                            regime_class.alphabet_x.numpy(),
                         ]
                     else:
                         map_pdf_ba[str(tau)] = [
                             input_dist,
-                            regime_class.alphabet_x_re.numpy(),
+                            regime_class.alphabet_x.numpy(),
                         ]
 
                 # If constraint type is 2, calculate gaussian with optimized snr  -- Ruth's paper
@@ -395,7 +395,7 @@ def main():
             res_tau["R2"]["Learned"] = rate_2_tau_learned
 
             pow_original = (10 ** (snr / 10)) * noise_power
-            plot_R1_R2_curve(  # TODO: Check why this exists
+            plot_R1_R2_curve(  # TODO: Check why this exists - it must be because of the time division
                 res_tau,
                 pow_original,
                 power2=None,

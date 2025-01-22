@@ -7,6 +7,7 @@ from utils import (
     plot_R1_R2_curve,
     plot_R1_vs_change,
     get_interference_alphabet_x_y_complex,
+    get_regime_class_interference,
 )
 import numpy as np
 from gaussian_capacity import (
@@ -221,6 +222,11 @@ def get_linear_interference_capacity(power1, power2, int_ratio, config):
         )
     else:
         raise ValueError("Regime not defined")
+
+    if config["complex"]:  # 1/2 comes from real
+        linear_ki = linear_ki * 2
+        linear_tin = linear_tin * 2
+
     return linear_tin, linear_ki
 
 
@@ -291,14 +297,27 @@ def main():
         os.makedirs(update_save_location, exist_ok=True)
         print("----------", str(config["change"]), ":", chng, "-----------")
         if config["complex"]:
-            real_x1, imag_x1, real_y_1, imag_y1, real_x2, imag_x2, real_y2, imag_y2 = (
+            real_x1, imag_x1, real_y1, imag_y1, real_x2, imag_x2, real_y2, imag_y2 = (
                 get_interference_alphabet_x_y_complex(
                     config, power1, power2, int_ratio, tanh_factor, tanh_factor2
                 )
             )
-            
-            breakpoint()
-            # !!! Complex Regimes implement here - functions should take regime as input!!!!
+
+            regime_RX1, regime_RX2 = get_regime_class_interference(
+                config=config,
+                alphabet_x_RX1=real_x1,
+                alphabet_x_RX2=real_x2,
+                alphabet_y_RX1=real_y1,
+                alphabet_y_RX2=real_y2,
+                power1=power1,
+                power2=power2,
+                tanh_factor=tanh_factor,
+                tanh_factor2=tanh_factor2,
+                alphabet_x_RX1_imag=imag_x1,
+                alphabet_x_RX2_imag=imag_x2,
+                alphabet_y_RX1_imag=imag_y1,
+                alphabet_y_RX2_imag=imag_y2,
+            )
 
         else:
             alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
@@ -306,38 +325,36 @@ def main():
                     config, power1, power2, int_ratio, tanh_factor, tanh_factor2
                 )
             )
+            regime_RX1, regime_RX2 = get_regime_class_interference(
+                config=config,
+                alphabet_x_RX1=alphabet_x_RX1,
+                alphabet_x_RX2=alphabet_x_RX2,
+                alphabet_y_RX1=alphabet_y_RX1,
+                alphabet_y_RX2=alphabet_y_RX2,
+                power1=power1,
+                power2=power2,
+                tanh_factor=tanh_factor,
+                tanh_factor2=tanh_factor2,
+            )
 
         # ---
         res_gaus = {}
-        config["x1_update_scheme"] = 0  # First, we apply tin
         cap1_g, cap2_g = gaussian_interference_capacity(
-            power1,
-            power2,
-            config,
-            alphabet_x_RX1,
-            alphabet_y_RX1,
-            alphabet_x_RX2,
-            alphabet_y_RX2,
-            tanh_factor,
-            tanh_factor2,
-            int_ratio,
+            reg_RX1=regime_RX1,
+            reg_RX2=regime_RX2,
+            int_ratio=int_ratio,
+            tin_active=True,  # First, we apply tin
         )
         if config["x2_fixed"]:
             res["R1"]["Gaussian_TIN"] = cap1_g
             res["R2"]["Gaussian_TIN"] = cap2_g
             res_change["Gaussian_TIN"].append(cap1_g)
-            config["x1_update_scheme"] = 1  # Then, we apply ki
+
             cap1_g, cap2_g = gaussian_interference_capacity(
-                power1,
-                power2,
-                config,
-                alphabet_x_RX1,
-                alphabet_y_RX1,
-                alphabet_x_RX2,
-                alphabet_y_RX2,
-                tanh_factor,
-                tanh_factor2,
-                int_ratio,
+                reg_RX1=regime_RX1,
+                reg_RX2=regime_RX2,
+                int_ratio=int_ratio,
+                tin_active=False,  # Then, we apply ki
             )
             res["R1"]["Gaussian_KI"] = cap1_g
             res["R2"]["Gaussian_KI"] = cap2_g
@@ -362,7 +379,7 @@ def main():
                 lambda_sweep = [
                     1
                 ]  # There will be only one lambda solution since x2 is fixed
-                config["x1_update_scheme"] = 0  # First, we apply tin
+
             else:
                 lambda_sweep = np.linspace(0.01, 0.99, config["n_lmbd"])
 
@@ -374,13 +391,12 @@ def main():
                 max_cap_RX2,
                 save_opt_sum_capacity,
             ) = gradient_descent_on_interference(
-                config,
-                power1,
-                power2,
-                lambda_sweep,
-                tanh_factor,
-                tanh_factor2,
-                int_ratio,
+                config=config,
+                reg_RX1=regime_RX1,
+                reg_RX2=regime_RX2,
+                lambda_sweep=lambda_sweep,
+                int_ratio=int_ratio,
+                tin_active=True,  # First, we apply tin
             )
             if config["x2_fixed"]:
                 res["R1"]["Learned_TIN"] = max_cap_RX1
@@ -392,13 +408,12 @@ def main():
                     "RX2_tin": max_pdf_x_RX2,
                 }
                 res_alph_tin = {
-                    "RX1_tin": alphabet_x_RX1,
-                    "RX2_tin": alphabet_x_RX2,
+                    "RX1_tin": regime_RX1.alphabet_x,
+                    "RX2_tin": regime_RX2.alphabet_x,
                 }
                 if max_cap_RX1 > linear_tin:
                     breakpoint()
 
-                config["x1_update_scheme"] = 1  # Then, we apply ki
                 (
                     max_sum_cap2,
                     max_pdf_x_RX1,
@@ -407,14 +422,14 @@ def main():
                     max_cap_RX2,
                     save_opt_sum_capacity2,
                 ) = gradient_descent_on_interference(
-                    config,
-                    power1,
-                    power2,
-                    lambda_sweep,
-                    tanh_factor,
-                    tanh_factor2,
-                    int_ratio,
+                    config=config,
+                    reg_RX1=regime_RX1,
+                    reg_RX2=regime_RX2,
+                    lambda_sweep=lambda_sweep,
+                    int_ratio=int_ratio,
+                    tin_active=False,  # Then, we apply ki
                 )
+
                 res["R1"]["Learned_KI"] = max_cap_RX1
                 res_change["Learned_KI"].append(max_cap_RX1)
                 res_pdf_ki = {
@@ -422,8 +437,8 @@ def main():
                     "RX2_ki": max_pdf_x_RX2,
                 }
                 res_alph_ki = {
-                    "RX1_ki": alphabet_x_RX1,
-                    "RX2_ki": alphabet_x_RX2,
+                    "RX1_ki": regime_RX1.alphabet_x,
+                    "RX2_ki": regime_RX2.alphabet_x,
                 }
                 res_pdf = {**res_pdf_tin, **res_pdf_ki}
                 res_alph = {**res_alph_tin, **res_alph_ki}
@@ -465,8 +480,28 @@ def main():
             update_save_location + "res.mat",
             res,
         )
-
-        del alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2
+        if config["complex"]:
+            del (
+                real_x1,
+                imag_x1,
+                real_y1,
+                imag_y1,
+                real_x2,
+                imag_x2,
+                real_y2,
+                imag_y2,
+                regime_RX1,
+                regime_RX2,
+            )
+        else:
+            del (
+                alphabet_x_RX1,
+                alphabet_y_RX1,
+                alphabet_x_RX2,
+                alphabet_y_RX2,
+                regime_RX1,
+                regime_RX2,
+            )
 
     if config["x2_fixed"]:
         plot_R1_vs_change(res_change, change_range, config, save_location, res_str)

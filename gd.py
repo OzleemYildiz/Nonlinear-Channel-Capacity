@@ -2,7 +2,7 @@ import torch
 from utils import (
     project_pdf,
     loss,
-    return_regime_class,
+    get_regime_class,
     get_interference_alphabet_x_y,
     loss_interference,
     get_alphabet_x_y,
@@ -26,7 +26,6 @@ def gd_capacity(config, power, regime_class):
 
     max_dict = {}
     max_opt_capacity = torch.tensor([])
-    count_no_impr = 0
 
     for lr in config["lr"]:
 
@@ -47,7 +46,7 @@ def gd_capacity(config, power, regime_class):
                 power,
                 regime_class,
                 complex_alphabet=config["complex"],
-                optimum_power=True,
+                optimum_power=False,  # NOTE: did not save the smal alphabet problem
             )
 
             pdf_x = pdf_x.reshape(-1)
@@ -89,25 +88,9 @@ def gd_capacity(config, power, regime_class):
                     and np.abs(
                         np.mean(opt_capacity[-50:]) - np.mean(opt_capacity[-100:-50])
                     )
-                    < config["epsilon"]
+                    < opt_capacity[-1] / config["epsilon"]
                 ):
                     break
-
-        # is it enough mass point check?
-        if opt_capacity[-1] >= max_capacity:
-            count_no_impr = 0  # improvement happened
-
-            # p_pdf_x = project_pdf(pdf_x, cons_type, max_alphabet_x, power)
-
-            max_opt_capacity = opt_capacity
-            max_pdf_x = pdf_x
-            max_alphabet_x = alphabet_x
-
-            if np.abs(opt_capacity[-1] - max_capacity) < config["epsilon"]:
-                break
-            max_capacity = opt_capacity[-1]
-        else:
-            count_no_impr += 1
 
     max_pdf_x = project_pdf(max_pdf_x, config["cons_type"], max_alphabet_x, power)
     print("~~~~~Max Capacity:", max_capacity, "~~~~~")
@@ -187,7 +170,13 @@ def gd_on_alphabet_capacity(max_x, config, power, regime_class):
                 max_pdf_x = pdf_x
                 max_alphabet_x = alphabet_x
 
-                if np.abs(opt_capacity[-1] - max_capacity) < config["epsilon"]:
+                if (
+                    i > 100
+                    and np.abs(
+                        np.mean(opt_capacity[-50:]) - np.mean(opt_capacity[-100:-50])
+                    )
+                    < opt_capacity[-1] / config["epsilon"]
+                ):
                     break
                 max_capacity = opt_capacity[-1]
             else:
@@ -252,7 +241,12 @@ def gradient_alphabet_lambda_loss():
 
 
 def gradient_descent_on_interference(
-    config, power, power2, lambda_sweep, tanh_factor, tanh_factor2, int_ratio
+    config,
+    reg_RX1,
+    reg_RX2,
+    lambda_sweep,
+    int_ratio,
+    tin_active,
 ):
     # It should return R1 and R2 pairs for different lambda values
     # The loss function is lambda*Rate1 + (1-lambda)*Rate2
@@ -265,29 +259,6 @@ def gradient_descent_on_interference(
     if config["regime"] != 1 and config["regime"] != 3:
         raise ValueError("This function only works for regime 1 or regime 3")
 
-    alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
-        get_interference_alphabet_x_y(
-            config,
-            power,
-            power2,
-            int_ratio,
-            tanh_factor,
-            tanh_factor2,
-        )
-    )
-
-    reg_RX1, reg_RX2 = get_regime_class_interference(
-        alphabet_x_RX1,
-        alphabet_x_RX2,
-        alphabet_y_RX1,
-        alphabet_y_RX2,
-        config,
-        power,
-        power2,
-        tanh_factor,
-        tanh_factor2,
-    )
-
     # Initializations
     max_sum_cap = []
     max_pdf_x_RX1 = []
@@ -297,9 +268,8 @@ def gradient_descent_on_interference(
     save_opt_sum_capacity = []
 
     if config["x2_fixed"]:
-        pdf_x_RX2 = get_fixed_interferer(
-            config, alphabet_x_RX2, alphabet_y_RX2, power2, tanh_factor2
-        )
+        pdf_x_RX2 = get_fixed_interferer(config, reg_RX2)
+        update_RX2 = False
 
     for ind, lmbd in enumerate(lambda_sweep):
         # FIXME: currently different learning rate comparison is not supported
@@ -309,21 +279,31 @@ def gradient_descent_on_interference(
 
             # Initial distributions are uniform for peak power constraint
             # if config["cons_type"] == 0:
-            pdf_x_RX1 = torch.ones_like(alphabet_x_RX1) * 1 / len(alphabet_x_RX1)
-            pdf_x_RX1 = pdf_x_RX1 / torch.sum(pdf_x_RX1)
-            pdf_x_RX1 = project_pdf(
-                pdf_x_RX1, config["cons_type"], alphabet_x_RX1, power
+            pdf_x_RX1 = get_gaussian_distribution(
+                reg_RX1.power,
+                reg_RX1,
+                complex_alphabet=config["complex"],
+                optimum_power=False,
             )
             pdf_x_RX1.requires_grad = True
 
             if not config["x2_fixed"]:
-                pdf_x_RX2 = torch.ones_like(alphabet_x_RX2) * 1 / len(alphabet_x_RX2)
-                pdf_x_RX2 = pdf_x_RX2 / torch.sum(pdf_x_RX2)
-                pdf_x_RX2 = project_pdf(
-                    pdf_x_RX2, config["cons_type"], alphabet_x_RX2, power2
+                # pdf_x_RX2 = (
+                #     torch.ones_like(reg_RX2.alphabet_x) * 1 / len(reg_RX2.alphabet_x)
+                # )
+                # pdf_x_RX2 = pdf_x_RX2 / torch.sum(pdf_x_RX2)
+                # pdf_x_RX2 = project_pdf(
+                #     pdf_x_RX2, config["cons_type"], reg_RX2.alphabet_x, reg_RX2.power
+                # )
+
+                # NOTE: Earlier it was uniform, it could change sth
+                pdf_x_RX2 = get_gaussian_distribution(
+                    reg_RX2.power,
+                    reg_RX2,
+                    complex_alphabet=config["complex"],
                 )
                 pdf_x_RX2.requires_grad = True
-
+                update_RX2 = True
                 optimizer = torch.optim.Adam([pdf_x_RX1, pdf_x_RX2], lr=lr)
             else:
                 optimizer = torch.optim.Adam([pdf_x_RX1], lr=lr)
@@ -336,7 +316,14 @@ def gradient_descent_on_interference(
                 if torch.sum(pdf_x_RX1.isnan()) > 0 or torch.sum(pdf_x_RX2.isnan()) > 0:
                     breakpoint()
                 loss, cap_RX1, cap_RX2 = loss_interference(
-                    pdf_x_RX1, pdf_x_RX2, reg_RX1, reg_RX2, int_ratio, lmbd
+                    pdf_x_RX1,
+                    pdf_x_RX2,
+                    reg_RX1,
+                    reg_RX2,
+                    int_ratio,
+                    tin_active,
+                    lmbd,
+                    upd_RX2=update_RX2,
                 )
 
                 loss.backward(retain_graph=True)
@@ -368,7 +355,7 @@ def gradient_descent_on_interference(
                         np.mean(opt_sum_capacity[-50:])
                         - np.mean(opt_sum_capacity[-100:-50])
                     )
-                    < config["epsilon"]
+                    < opt_sum_capacity[-1] / config["epsilon"]
                 ):
                     if not config["gd_nostop_cond"]:
                         break
@@ -380,10 +367,10 @@ def gradient_descent_on_interference(
 
             # save the pdfs after projection
             pdf_x_RX1 = project_pdf(
-                max_pdf_x_RX1_h, config["cons_type"], alphabet_x_RX1, power
+                max_pdf_x_RX1_h, config["cons_type"], reg_RX1.alphabet_x, reg_RX1.power
             )
             pdf_x_RX2 = project_pdf(
-                max_pdf_x_RX2_h, config["cons_type"], alphabet_x_RX2, power2
+                max_pdf_x_RX2_h, config["cons_type"], reg_RX2.alphabet_x, reg_RX2.power
             )
             max_pdf_x_RX1.append(pdf_x_RX1.detach().clone().numpy())
             max_pdf_x_RX2.append(pdf_x_RX2.detach().clone().numpy())
@@ -738,7 +725,7 @@ def gradient_descent_projection_with_learning_rate(config, power, power2, lambda
                         np.mean(opt_sum_capacity[-50:])
                         - np.mean(opt_sum_capacity[-100:-50])
                     )
-                    < config["epsilon"]
+                    < opt_sum_capacity[-1] / config["epsilon"]
                 ):
                     break
 
@@ -777,29 +764,28 @@ def gradient_descent_projection_with_learning_rate(config, power, power2, lambda
     )
 
 
-def get_fixed_interferer(config, alphabet_x_RX2, alphabet_y_RX2, power2, tanh_factor2):
+def get_fixed_interferer(config, reg_RX2):
+
     if config["x2_type"] == 0:
         print(" +++----- X2 Distribution is Gaussian ------ +++")
-        pdf_x_RX2 = (
-            1
-            / (torch.sqrt(torch.tensor([2 * torch.pi * power2])))
-            * torch.exp(-0.5 * ((alphabet_x_RX2) ** 2) / power2).float()
+
+        pdf_x_RX2 = get_gaussian_distribution(
+            reg_RX2.power,
+            reg_RX2,
+            complex_alphabet=config["complex"],
+            # optimum_power=True, #!!NOTE:It could be added later
         )
     elif config["x2_type"] == 1:
         print(" +++----- X2 Distribution is calculated ------ +++")
-        config["sigma_1"] = config["sigma_21"]
-        config["sigma_2"] = config["sigma_22"]
 
-        regime_class = return_regime_class(
-            config, alphabet_x_RX2, alphabet_y_RX2, power2, tanh_factor2
-        )
-
-        _, pdf_x_RX2, _, _ = gd_capacity(config, power2, regime_class)
+        _, pdf_x_RX2, _, _ = gd_capacity(config, reg_RX2.power, reg_RX2)
 
     else:
         raise ValueError("Interferer type not defined")
     pdf_x_RX2 = (pdf_x_RX2 / torch.sum(pdf_x_RX2)).to(torch.float32)
-    pdf_x_RX2 = project_pdf(pdf_x_RX2, config["cons_type"], alphabet_x_RX2, power2)
+    pdf_x_RX2 = project_pdf(
+        pdf_x_RX2, config["cons_type"], reg_RX2.alphabet_x, reg_RX2.power
+    )
 
     return pdf_x_RX2
 

@@ -28,6 +28,7 @@ class First_Regime:
         self.config = config
         self.power = power
         self.sigma_2 = sigma_2
+        self.tanh_factor = tanh_factor
         self.get_x_v_and_y_alphabet()
         self.pdf_y_given_x = None
 
@@ -88,25 +89,44 @@ class First_Regime:
 
         # alphabet_y = torch.arange(-max_y, max_y + self.delta / 2, self.delta)
         # pdf_y_given_x1_r = torch.zeros((len(alphabet_y), len(self.alphabet_x)))
-        pdf_y = torch.zeros_like(self.alphabet_y_re)
+
+        pdf_y = torch.zeros(len(self.alphabet_y))
         entropy_y_given_x = 0
         # breakpoint()
-        for ind, x in enumerate(self.alphabet_x_re):
+        for ind, x in enumerate(self.alphabet_x):
             # U = X1 + aX2, a = 1 #FIXME: a is fixed to 1
             alphabet_u = int_ratio * alphabet_x_RX2 + x
-            alphabet_v = self.nonlinear_func(alphabet_u)
-            pdf_y_given_x1_and_x2 = (
-                1
-                / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
-                * torch.exp(
-                    -0.5
-                    * (
-                        (self.alphabet_y_re.reshape(-1, 1) - alphabet_v.reshape(1, -1))
-                        ** 2
+
+            alphabet_v = self.get_out_nonlinear(alphabet_u)
+            if self.config["complex"]:
+                pdf_y_given_x1_and_x2 = (
+                    1
+                    / (torch.pi * self.sigma_2**2)
+                    * torch.exp(
+                        -1
+                        * (
+                            abs(
+                                self.alphabet_y.reshape(-1, 1)
+                                - alphabet_v.reshape(1, -1)
+                            )
+                            ** 2
+                        )
+                        / self.sigma_2**2
                     )
-                    / self.sigma_2**2
                 )
-            )
+            else:
+                pdf_y_given_x1_and_x2 = (
+                    1
+                    / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
+                    * torch.exp(
+                        -0.5
+                        * (
+                            (self.alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1))
+                            ** 2
+                        )
+                        / self.sigma_2**2
+                    )
+                )
             pdf_y_given_x1_and_x2 = pdf_y_given_x1_and_x2 / (
                 torch.sum(pdf_y_given_x1_and_x2, axis=0) + 1e-30
             )
@@ -116,6 +136,7 @@ class First_Regime:
             pdf_y_given_x1 = pdf_y_given_x1_and_x2 @ pdf_x_RX2 / int_ratio
             pdfy_given_x1 = pdf_y_given_x1 / (torch.sum(pdf_y_given_x1, axis=0) + 1e-30)
             plogp_y_given_x = pdfy_given_x1 * torch.log(pdfy_given_x1 + 1e-20)
+
             entropy_y_given_x += torch.sum(plogp_y_given_x * pdf_x_RX1[ind])
 
             pdf_y = pdf_y + pdf_y_given_x1 * pdf_x_RX1[ind]
@@ -135,6 +156,16 @@ class First_Regime:
 
         return cap
 
+    def get_out_nonlinear(self, alphabet_u):
+
+        if self.config["complex"]:
+            r = self.nonlinear_func(abs(alphabet_u))
+            theta = torch.angle(alphabet_u)
+            alphabet_v = r * torch.exp(1j * theta)
+        else:
+            alphabet_v = self.nonlinear_func(alphabet_u)
+        return alphabet_v
+
     def capacity_with_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
         pdf_y_given_x2_and_x1, pdf_y_given_x2 = self.get_pdfs_for_known_interference(
             pdf_x, pdf_x2, alphabet_x2, int_ratio
@@ -152,18 +183,32 @@ class First_Regime:
         return cap
 
     def get_pdfs_for_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
-        mean_random_x2_and_x1 = self.nonlinear_func(
+        mean_random_x2_and_x1 = self.get_out_nonlinear(
             int_ratio * alphabet_x2[None, :, None] + self.alphabet_x[None, None, :]
         )
-        pdf_y_given_x2_and_x1 = (
-            1
-            / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
-            * torch.exp(
-                -0.5
-                * ((self.alphabet_y.reshape(-1, 1, 1, 1) - mean_random_x2_x1) ** 2)
-                / self.sigma_2**2
+        if self.config["complex"]:
+            pdf_y_given_x2_and_x1 = (
+                1
+                / (torch.pi * self.sigma_2**2)
+                * torch.exp(
+                    -1
+                    * (
+                        abs(self.alphabet_y.reshape(-1, 1, 1) - mean_random_x2_and_x1)
+                        ** 2
+                    )
+                    / self.sigma_2**2
+                )
             )
-        )
+        else:
+            pdf_y_given_x2_and_x1 = (
+                1
+                / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
+                * torch.exp(
+                    -0.5
+                    * ((self.alphabet_y.reshape(-1, 1, 1) - mean_random_x2_and_x1) ** 2)
+                    / self.sigma_2**2
+                )
+            )
         pdf_y_given_x2_and_x1 = pdf_y_given_x2_and_x1 / (
             torch.sum(pdf_y_given_x2_and_x1, axis=0) + 1e-30
         )
@@ -195,6 +240,8 @@ class First_Regime:
             self.alphabet_y = self.alphabet_y_re + 1j * self.alphabet_y_im
             self.alphabet_x = self.alphabet_x_re + 1j * self.alphabet_x_im
             self.alphabet_x = self.alphabet_x.reshape(-1)
+            self.alphabet_v = self.alphabet_v.reshape(-1)
+            self.alphabet_y = self.alphabet_y.reshape(-1)
 
             # - Dead Functions-#
 

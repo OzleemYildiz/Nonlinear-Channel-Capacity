@@ -14,6 +14,8 @@ from Third_Regime import Third_Regime
 import argparse
 import yaml
 
+plt.rcParams["text.usetex"] = True
+
 
 def project_pdf(pdf_x, cons_type, alphabet_x, power):
     # pdf cannot be negative
@@ -155,25 +157,61 @@ def plot_vs_change(
     save_location=None,
     low_tarokh=None,
 ):
-    plt.figure(figsize=(5, 4))
+    line_styles = ["-", "--", "-.", ":"]
+    fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
     leg_str = []
+    ind = 0
     for keys in res.keys():
-        plt.plot(change_range, res[keys])
+        ax.plot(change_range, res[keys], linewidth=3, linestyle=line_styles[ind])
+        ind += 1
         leg_str.append(keys)
 
     if low_tarokh is not None and (config["regime"] == 1 or config["regime"] == 3):
-        plt.plot(low_tarokh["SNR"], low_tarokh["Lower_Bound"], "--")
+        ax.plot(low_tarokh["SNR"], low_tarokh["Lower_Bound"], "--", linewidth=3)
         leg_str.append("Lower Bound Tarokh")
 
-    plt.legend(leg_str)
+    leg_str_new = [ind.replace("_", " ") for ind in leg_str]
+
+    ax.legend(leg_str_new, loc="best", fontsize=14)
     if not config["time_division_active"]:
-        plt.xlabel("SNR (dB)")
+        ax.set_xlabel(r"SNR (dB)", fontsize=14)
     else:
-        plt.xlabel("Time Division Ratio")
-    plt.ylabel("Capacity")
-    plt.grid()
+        ax.set_xlabel(r"Time Division Ratio", fontsize=14)
+
+    ax.set_ylabel(r"Rate", fontsize=14)
+    plt.minorticks_on()
+    ax.grid(
+        visible=True,
+        which="major",
+        axis="both",
+        color="lightgray",
+        linestyle="-",
+        linewidth=0.5,
+    )
+    ax.grid(
+        visible=True,
+        which="minor",
+        axis="both",
+        color="gainsboro",
+        linestyle=":",
+        linewidth=0.5,
+    )
+    ax.set_title(
+        r"Regime: "
+        + str(config["regime"])
+        + ", $\phi = $ "
+        + str(config["nonlinearity"])
+        + ", $\sigma_1 = $"
+        + str(config["sigma_1"])
+        + ", $\sigma_2 = $"
+        + str(config["sigma_2"])
+        + ", $N = $"
+        + str(config["min_samples"]),
+        fontsize=14,
+    )
+
     if save_location == None:
-        plt.savefig(
+        fig.savefig(
             config["output_dir"]
             + "/"
             + config["cons_str"]
@@ -187,7 +225,7 @@ def plot_vs_change(
             + ".png"
         )
     else:
-        plt.savefig(save_location + "/Comp" + ".png")
+        fig.savefig(save_location + "/Comp" + ".png")
     plt.close()
 
 
@@ -201,7 +239,7 @@ def plot_pdf_vs_change(
         else:
             file_name = "pdf_tau.png"
 
-    plt.figure(figsize=(5, 4))
+    fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
     if config["time_division_active"] and not config["power_change_active"]:
         range_change = [range_change[0]]  # Because I only ran the code for one value
     for chn in range_change:
@@ -217,19 +255,48 @@ def plot_pdf_vs_change(
 
         act_pdf_x = pdf_x > 0
         act_alp = alphabet_x[act_pdf_x]
-        plt.scatter(
+        ax.scatter(
             chn * np.ones_like(act_alp),
             act_alp,
             s=pdf_x[act_pdf_x] * 100,
         )
     if not config["time_division_active"]:
-        plt.xlabel("SNR (dB)")
+        ax.set_xlabel(r"SNR (dB)")
     else:
-        plt.xlabel("Time Division Ratio")
-    plt.ylabel("X")
-    plt.grid()
+        ax.set_xlabel(r"Time Division Ratio", fontsize=14)
+    ax.set_ylabel(r"X", fontsize=14)
+    ax.grid(
+        visible=True,
+        which="minor",
+        axis="both",
+        color="gainsboro",
+        linestyle=":",
+        linewidth=0.5,
+    )
+    plt.minorticks_on()
+    ax.grid(
+        visible=True,
+        which="major",
+        axis="both",
+        color="lightgray",
+        linestyle="-",
+        linewidth=0.5,
+    )
+    ax.set_title(
+        r"Regime "
+        + str(config["regime"])
+        + " $\phi = $ "
+        + str(config["nonlinearity"])
+        + " $\sigma_1 = $"
+        + str(config["sigma_1"])
+        + " $\sigma_2 = $"
+        + str(config["sigma_2"])
+        + " $N = $"
+        + str(config["min_samples"]),
+        fontsize=14,
+    )
     if save_location == None:
-        plt.savefig(
+        fig.savefig(
             config["output_dir"]
             + "/"
             + config["cons_str"]
@@ -243,7 +310,7 @@ def plot_pdf_vs_change(
             + file_name
         )
     else:
-        plt.savefig(save_location + "/" + file_name)
+        fig.savefig(save_location + "/" + file_name)
     plt.close()
 
     for chn in range_change:
@@ -252,19 +319,48 @@ def plot_pdf_vs_change(
         else:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100))]
         save_new = save_location + "/pdf_" + str(int(chn * 100)) + ".png"
-        plt.figure(figsize=(5, 4))
+        fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
         if config["complex"]:
             alphabet_x_re = np.real(alphabet_x)
             alphabet_x_im = np.imag(alphabet_x)
-            plt.scatter(alphabet_x_re, alphabet_x_im, s=pdf_x * 100)
-            plt.xlabel("Re(X)")
-            plt.ylabel("Im(X)")
+            ax.scatter(alphabet_x_re, alphabet_x_im, s=pdf_x * 100)
+            ax.set_xlabel(r"Re(X)", fontsize=14)
+            ax.set_ylabel(r"Im(X)", fontsize=14)
         else:
-            plt.plot(alphabet_x, pdf_x)
-            plt.xlabel("X")
-            plt.ylabel("PDF")
-        plt.grid()
-        plt.savefig(save_new)
+            ax.plot(alphabet_x, pdf_x, linewidth=3)
+            ax.set_xlabel(r"X", fontsize=14)
+            ax.set_ylabel(r"PDF", fontsize=14)
+        ax.grid(
+            visible=True,
+            which="minor",
+            axis="both",
+            color="gainsboro",
+            linestyle=":",
+            linewidth=0.5,
+        )
+        ax.grid(
+            visible=True,
+            which="major",
+            axis="both",
+            color="lightgray",
+            linestyle="-",
+            linewidth=0.5,
+        )
+        plt.minorticks_on()
+        ax.set_title(
+            r"Regime "
+            + str(config["regime"])
+            + ", $\phi = $ "
+            + str(config["nonlinearity"])
+            + ", $\sigma_1 = $"
+            + str(config["sigma_1"])
+            + ", $\sigma_2 = $"
+            + str(config["sigma_2"])
+            + ", $N = $"
+            + str(config["min_samples"]),
+            fontsize=14,
+        )
+        fig.savefig(save_new)
         plt.close()
 
         if map_opt is not None:
@@ -356,7 +452,7 @@ def get_alphabet_x_y(config, power, tanh_factor, bound=False):
     return alphabet_x, alphabet_y, max_x, max_y
 
 
-def return_regime_class(
+def get_regime_class(
     config,
     alphabet_x,
     alphabet_y,
@@ -553,7 +649,7 @@ def get_interference_alphabet_x_y_complex(
     alphabet_y_2 = torch.arange(-max_y_2, max_y_2 + delta_x2 / 2, delta_x2)
     real_y2 = alphabet_y_2.reshape(1, -1)
     imag_y2 = alphabet_y_2.reshape(-1, 1)
-    return real_x1, imag_x1, real_y_1, imag_y1, real_x2, imag_x2, real_y2, imag_y2
+    return real_x1, imag_x1, real_y1, imag_y1, real_x2, imag_x2, real_y2, imag_y2
 
 
 def plot_interference(res, config, save_location):
@@ -639,6 +735,7 @@ def loss_interference(
     reg_RX1,
     reg_RX2,
     int_ratio,
+    tin_active,
     lmbd=0.5,
     upd_RX1=True,
     upd_RX2=True,
@@ -650,14 +747,14 @@ def loss_interference(
         pdf_x_RX1 = project_pdf(
             pdf_x_RX1,
             reg_RX1.config["cons_type"],
-            reg_RX1.alphabet_x_re,
+            reg_RX1.alphabet_x,
             reg_RX1.power,
         )
     if upd_RX2:
         pdf_x_RX2 = project_pdf(
             pdf_x_RX2,
             reg_RX2.config["cons_type"],
-            reg_RX2.alphabet_x_re,
+            reg_RX2.alphabet_x,
             reg_RX2.power,
         )
 
@@ -673,16 +770,16 @@ def loss_interference(
         pdf_x_RX2 = pdf_x_RX2 - torch.min(pdf_x_RX2[pdf_x_RX2 < 0]) + 1e-20
         # breakpoint()
 
-    if (
-        reg_RX1.config["x1_update_scheme"] == 0 and reg_RX1.config["x2_fixed"] == True
-    ) or reg_RX1.config["x2_fixed"] == False:
+    if (tin_active and reg_RX1.config["x2_fixed"] == True) or reg_RX1.config[
+        "x2_fixed"
+    ] == False:
         cap_RX1 = reg_RX1.capacity_with_interference(
-            pdf_x_RX1, pdf_x_RX2, reg_RX2.alphabet_x_re, int_ratio
+            pdf_x_RX1, pdf_x_RX2, reg_RX2.alphabet_x, int_ratio
         )
 
-    elif reg_RX1.config["x1_update_scheme"] == 1:  # Known interference
+    elif not tin_active:  # Known interference
         cap_RX1 = reg_RX1.capacity_with_known_interference(
-            pdf_x_RX1, pdf_x_RX2, reg_RX2.alphabet_x_re, int_ratio
+            pdf_x_RX1, pdf_x_RX2, reg_RX2.alphabet_x, int_ratio
         )
     cap_RX2 = reg_RX2.new_capacity(pdf_x_RX2)
 
@@ -733,48 +830,60 @@ def get_regime_class_interference(
     power2,
     tanh_factor,
     tanh_factor2,
+    alphabet_x_RX1_imag=0,
+    alphabet_x_RX2_imag=0,
+    alphabet_y_RX1_imag=0,
+    alphabet_y_RX2_imag=0,
 ):
 
     if config["regime"] == 1:
         # config["sigma_2"] = config["sigma_22"]
 
         f_reg_RX2 = First_Regime(
-            alphabet_x_RX2,
-            alphabet_y_RX2,
-            config,
-            power2,
-            tanh_factor2,
+            alphabet_x=alphabet_x_RX2,
+            alphabet_y=alphabet_y_RX2,
+            config=config,
+            power=power2,
+            tanh_factor=tanh_factor2,
             sigma_2=config["sigma_22"],
+            alphabet_x_imag=alphabet_x_RX2_imag,
+            alphabet_y_imag=alphabet_y_RX2_imag,
         )
         # config["sigma_2"] = config["sigma_12"]
         f_reg_RX1 = First_Regime(
-            alphabet_x_RX1,
-            alphabet_y_RX1,
-            config,
-            power1,
-            tanh_factor,
+            alphabet_x=alphabet_x_RX1,
+            alphabet_y=alphabet_y_RX1,
+            config=config,
+            power=power1,
+            tanh_factor=tanh_factor,
             sigma_2=config["sigma_12"],
+            alphabet_x_imag=alphabet_x_RX1_imag,
+            alphabet_y_imag=alphabet_y_RX1_imag,
         )
         return f_reg_RX1, f_reg_RX2
     elif config["regime"] == 3:
 
         t_reg_RX2 = Third_Regime(
-            alphabet_x_RX2,
-            alphabet_y_RX2,
-            config,
-            power2,
-            tanh_factor2,
+            alphabet_x=alphabet_x_RX2,
+            alphabet_y=alphabet_y_RX2,
+            config=config,
+            power=power2,
+            tanh_factor=tanh_factor2,
             sigma_1=config["sigma_21"],
             sigma_2=config["sigma_22"],
+            alphabet_x_imag=alphabet_x_RX2_imag,
+            alphabet_y_imag=alphabet_y_RX2_imag,
         )
         t_reg_RX1 = Third_Regime(
-            alphabet_x_RX1,
-            alphabet_y_RX1,
-            config,
-            power1,
-            tanh_factor,
+            alphabet_x=alphabet_x_RX1,
+            alphabet_y=alphabet_y_RX1,
+            config=config,
+            power=power1,
+            tanh_factor=tanh_factor,
             sigma_1=config["sigma_11"],
             sigma_2=config["sigma_12"],
+            alphabet_x_imag=alphabet_x_RX1_imag,
+            alphabet_y_imag=alphabet_y_RX1_imag,
         )
         return t_reg_RX1, t_reg_RX2
     else:

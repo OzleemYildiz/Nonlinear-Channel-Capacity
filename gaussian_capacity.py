@@ -14,7 +14,6 @@ from nonlinearity_utils import return_nonlinear_fn
 def gaussian_capacity(regime_class, power, complex_alphabet=False):
     # print("Gaussian Capacity Calculation")
     pdf_x = get_gaussian_distribution(power, regime_class, complex_alphabet)
-    pdf_x = pdf_x.reshape(-1)
 
     loss_g = loss(
         pdf_x,
@@ -48,47 +47,18 @@ def gaussian_with_l1_norm(alphabet_x, alphabet_y, power, config):
     return cap_r
 
 
-def gaussian_interference_capacity(
-    power1,
-    power2,
-    config,
-    alphabet_x_RX1,
-    alphabet_y_RX1,
-    alphabet_x_RX2,
-    alphabet_y_RX2,
-    tanh_factor,
-    tanh_factor2,
-    int_ratio,
-):
+def gaussian_interference_capacity(reg_RX1, reg_RX2, int_ratio, tin_active):
     # Second User does not have interference
-    pdf_x_2 = (
-        1
-        / (torch.sqrt(torch.tensor([2 * torch.pi * power2])))
-        * torch.exp(-0.5 * ((alphabet_x_RX2) ** 2) / power2).float()
-    )
-    pdf_x_2 = (pdf_x_2 / torch.sum(pdf_x_2)).to(torch.float32)
 
-    pdf_x_1 = (
-        1
-        / (torch.sqrt(torch.tensor([2 * torch.pi * power1])))
-        * torch.exp(-0.5 * ((alphabet_x_RX1) ** 2) / power1).float()
+    pdf_x_1 = get_gaussian_distribution(
+        reg_RX1.power, reg_RX1, complex_alphabet=reg_RX1.config["complex"]
+    )
+    pdf_x_2 = get_gaussian_distribution(
+        reg_RX2.power, reg_RX2, complex_alphabet=reg_RX2.config["complex"]
     )
 
-    pdf_x_1 = (pdf_x_1 / torch.sum(pdf_x_1)).to(torch.float32)
-
-    reg_RX1, reg_RX2 = get_regime_class_interference(
-        alphabet_x_RX1,
-        alphabet_x_RX2,
-        alphabet_y_RX1,
-        alphabet_y_RX2,
-        config,
-        power1,
-        power2,
-        tanh_factor,
-        tanh_factor2,
-    )
     loss, cap_RX1, cap_RX2 = loss_interference(
-        pdf_x_1, pdf_x_2, reg_RX1, reg_RX2, int_ratio, lmbd=0.5
+        pdf_x_1, pdf_x_2, reg_RX1, reg_RX2, int_ratio, tin_active, lmbd=0.5
     )
 
     return cap_RX1, cap_RX2
@@ -208,6 +178,8 @@ def get_gaussian_distribution(
         pdf_x_imag = (pdf_x_imag / torch.sum(pdf_x_imag)).to(torch.float32)
 
         pdf_x = pdf_x_re * pdf_x_imag
+        pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
+        pdf_x = pdf_x.reshape(-1)
 
     else:
         pdf_x = (

@@ -20,10 +20,10 @@ class Third_Regime:
         alphabet_x_imag=0,
         alphabet_y_imag=0,
     ):
-        self.alphabet_x_re = alphabet_x
-        self.alphabet_x_im = alphabet_x_imag
-        self.alphabet_y_re = alphabet_y
-        self.alphabet_y_im = alphabet_y_imag
+        self.alphabet_x_re = alphabet_x.reshape(-1)
+        self.alphabet_x_im = alphabet_x_imag.reshape(-1)
+        self.alphabet_y_re = alphabet_y.reshape(-1)
+        self.alphabet_y_im = alphabet_y_imag.reshape(-1)
         self.config = config
         self.power = power
         self.sigma_1 = sigma_1
@@ -35,6 +35,36 @@ class Third_Regime:
         self.pdf_y_given_x_int = None
         self.get_x_and_y_alphabet()
 
+    def get_z1_pdf_and_alphabet(self):
+        max_z1 = self.config["stop_sd"] * self.sigma_1**2
+
+        delta_z1 = self.alphabet_x_re[1] - self.alphabet_x_re[0]
+        max_z1 = max_z1 + (delta_z1 - (max_z1 % delta_z1))
+        # Z1 <- Gaussian noise with variance sigma_1^2
+
+        if self.config["complex"]:
+            # Z is also complex, Z = Z_re + 1j*Z_im
+            alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
+            alphabet_z1 = alphabet_z1.reshape(1, -1) + 1j * alphabet_z1.reshape(-1, 1)
+
+            alphabet_z1 = alphabet_z1.reshape(-1)
+            pdf_z1 = (
+                1
+                / (torch.pi * self.sigma_1**2)
+                * torch.exp(-1 * abs(alphabet_z1) ** 2 / self.sigma_1**2)
+            )
+
+        else:
+            alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
+            pdf_z1 = (
+                1
+                / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_1)
+                * torch.exp(-0.5 * (alphabet_z1) ** 2 / self.sigma_1**2)
+            )
+
+        pdf_z1 = pdf_z1 / (torch.sum(pdf_z1) + 1e-30)
+        return pdf_z1, alphabet_z1
+
     def get_pdf_y_given_x(self):
         if self.pdf_y_given_x is None:
             pdf_y_given_x = torch.zeros(
@@ -42,38 +72,14 @@ class Third_Regime:
             )
             # Z1 <- Gaussian noise with variance sigma_1^2
 
-            max_z1 = self.config["stop_sd"] * self.sigma_1**2
-            delta_z1 = self.alphabet_x_re[1] - self.alphabet_x_re[0]
-            max_z1 = max_z1 + (delta_z1 - (max_z1 % delta_z1))
-            # Z1 <- Gaussian noise with variance sigma_1^2
-
-            if self.config["complex"]:
-                # Z is also complex, Z = Z_re + 1j*Z_im
-                alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
-                alphabet_z1 = alphabet_z1.reshape(1, -1) + 1j * alphabet_z1.reshape(
-                    -1, 1
-                )
-                alphabet_z1 = alphabet_z1.reshape(-1)
-                pdf_z1 = (
-                    1
-                    / (torch.pi * self.sigma_1**2)
-                    * torch.exp(-1 * abs(alphabet_z1) ** 2 / self.sigma_1**2)
-                )
-            else:
-                alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
-                pdf_z1 = (
-                    1
-                    / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_1)
-                    * torch.exp(-0.5 * (alphabet_z1) ** 2 / self.sigma_1**2)
-                )
-            pdf_z1 = pdf_z1 / (torch.sum(pdf_z1) + 1e-30)
+            pdf_z1, alphabet_z1 = self.get_z1_pdf_and_alphabet()
 
             for ind, x in enumerate(self.alphabet_x):
                 # U = X + Z_1
                 alphabet_u = alphabet_z1 + x
                 # V = phi(U)
 
-                alphabet_v = self.get_v(alphabet_u)
+                alphabet_v = self.get_out_nonlinear(alphabet_u)
                 if self.config["complex"]:
                     pdf_y_given_x_and_z1 = (
                         1
@@ -117,7 +123,7 @@ class Third_Regime:
         else:
             return self.pdf_y_given_x
 
-    def get_v(self, alphabet_u):
+    def get_out_nonlinear(self, alphabet_u):
         if self.config["complex"]:
             r = self.nonlinear_fn(abs(alphabet_u))
             theta = torch.angle(alphabet_u)
@@ -154,17 +160,7 @@ class Third_Regime:
         # Z1 <- Gaussian noise with variance sigma_1^2
         # X2 <- given by the user
 
-        max_z1 = self.config["stop_sd"] * self.config["sigma_11"] ** 2
-        delta_z1 = self.alphabet_x[1] - self.alphabet_x[0]
-        max_z1 = max_z1 + (delta_z1 - (max_z1 % delta_z1))
-        alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
-
-        pdf_z1 = (
-            1
-            / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_11"])
-            * torch.exp(-0.5 * (alphabet_z1) ** 2 / self.config["sigma_11"] ** 2)
-        )
-        pdf_z1 = pdf_z1 / (torch.sum(pdf_z1) + 1e-30)
+        pdf_z1, alphabet_z1 = self.get_z1_pdf_and_alphabet()
 
         # Z_1 and X_2 are independent
         # Make sure that the pdf_x2 is normalized
@@ -176,19 +172,33 @@ class Third_Regime:
             alphabet_u = alphabet_z1[None, :] + x + int_ratio * alphabet_x2[:, None]
             # V = phi(U)
 
-            alphabet_v = self.nonlinear_fn(alphabet_u)
-            pdf_y_given_x_z1_x2 = (
-                1
-                / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
-                * torch.exp(
-                    -0.5
-                    * (
-                        (self.alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1))
+            alphabet_v = self.get_out_nonlinear(alphabet_u)
+            if self.config["complex"]:
+                pdf_y_given_x_z1_x2 = (
+                    1
+                    / (torch.pi * self.sigma_2**2)
+                    * torch.exp(
+                        -1
+                        * abs(
+                            self.alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1)
+                        )
                         ** 2
+                        / self.sigma_2**2
                     )
-                    / self.sigma_2**2
                 )
-            )
+            else:
+                pdf_y_given_x_z1_x2 = (
+                    1
+                    / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
+                    * torch.exp(
+                        -0.5
+                        * (
+                            (self.alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1))
+                            ** 2
+                        )
+                        / self.sigma_2**2
+                    )
+                )
             pdf_y_given_x_z1_x2 = pdf_y_given_x_z1_x2 / (
                 torch.sum(pdf_y_given_x_z1_x2, axis=0) + 1e-30
             )
@@ -230,33 +240,24 @@ class Third_Regime:
 
     def get_pdfs_for_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
 
-        max_z1 = self.config["stop_sd"] * self.config["sigma_11"] ** 2
-        delta_z1 = self.alphabet_x[1] - self.alphabet_x[0]
-        max_z1 = max_z1 + (delta_z1 - (max_z1 % delta_z1))
-        alphabet_z1 = torch.arange(-max_z1, max_z1 + delta_z1 / 2, delta_z1)
-        pdf_z1 = (
-            1
-            / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_11"])
-            * torch.exp(-0.5 * (alphabet_z1) ** 2 / self.config["sigma_11"] ** 2)
-        )
-        pdf_z1 = pdf_z1 / (torch.sum(pdf_z1) + 1e-30)
+        pdf_z1, alphabet_z1 = self.get_z1_pdf_and_alphabet()
         pdf_y_given_x2 = torch.zeros(len(self.alphabet_y), len(alphabet_x2))
         pdf_y_given_x2_and_x1 = torch.zeros(
             len(self.alphabet_y), len(alphabet_x2), len(self.alphabet_x)
         )
         for ind, x2 in enumerate(alphabet_x2):
-            mean_random_x2_x1_z1 = self.nonlinear_fn(
+            mean_random_x2_x1_z1 = self.get_out_nonlinear(
                 int_ratio * x2
                 + self.alphabet_x[None, :, None]
                 + alphabet_z1[None, None, :]
             )
-            pdf_y_given_x2_x1_z1 = (
-                1
-                / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_12"])
-                * torch.exp(
-                    -0.5
-                    * (
-                        (
+            if self.config["complex"]:
+                pdf_y_given_x2_x1_z1 = (
+                    1
+                    / (torch.pi * self.sigma_2**2)
+                    * torch.exp(
+                        -1
+                        * abs(
                             self.alphabet_y.reshape(
                                 -1,
                                 1,
@@ -265,10 +266,29 @@ class Third_Regime:
                             - mean_random_x2_x1_z1
                         )
                         ** 2
+                        / self.sigma_2**2
                     )
-                    / self.config["sigma_12"] ** 2
                 )
-            )
+            else:
+                pdf_y_given_x2_x1_z1 = (
+                    1
+                    / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
+                    * torch.exp(
+                        -0.5
+                        * (
+                            (
+                                self.alphabet_y.reshape(
+                                    -1,
+                                    1,
+                                    1,
+                                )
+                                - mean_random_x2_x1_z1
+                            )
+                            ** 2
+                        )
+                        / self.sigma_2**2
+                    )
+                )
             pdf_y_given_x2_x1_z1 = pdf_y_given_x2_x1_z1 / (
                 torch.sum(pdf_y_given_x2_x1_z1, axis=0) + 1e-30
             )
