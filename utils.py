@@ -133,7 +133,7 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
             linestyle=":",
             linewidth=0.5,
         )
-        ax.set_title(title + ", $\lambda = $" + str(format(lmbd, ".1f")), fontsize=14)
+        ax.set_title(title + ", lambda = " + str(format(lmbd, ".1f")), fontsize=14)
         fig.savefig(
             save_location + "iteration for lambda=" + str(format(lmbd, ".1f")) + ".png",
             bbox_inches="tight",
@@ -175,7 +175,7 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
             linestyle=":",
             linewidth=0.5,
         )
-        ax.set_title(title + ", $\lambda = $" + str(format(lmbd, ".1f")), fontsize=14)
+        ax.set_title(title + ", lambda = " + str(format(lmbd, ".1f")), fontsize=14)
         fig.savefig(
             save_location + "pdfx_lambda=" + str(format(lmbd, ".1f")) + ".png",
             bbox_inches="tight",
