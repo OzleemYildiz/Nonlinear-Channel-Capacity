@@ -25,12 +25,13 @@ import time
 
 
 def define_save_location(config):
+
+    save_location = config["output_dir"]
+    if config["complex"]:
+        save_location = save_location + "-Complex"
+
     save_location = (
-        config["output_dir"]
-        + "/"
-        + config["cons_str"]
-        + "_phi="
-        + str(config["nonlinearity"])
+        save_location + "/" + config["cons_str"] + "_phi=" + str(config["nonlinearity"])
     )
     if config["nonlinearity"] == 5:
         save_location = save_location + "_clip=" + str(config["clipping_limit_x"])
@@ -137,8 +138,9 @@ def get_run_parameters(config, chng):
             + "_k="
             + str(tanh_factor)
             + "_k2="
-            + str(tanh_factor)
+            + str(tanh_factor2)
         )
+        res_str_run = res_str + "_pw1=" + str(power1)
     elif config["change"] == "pw2":
         power2 = chng
         res_str = (
@@ -151,6 +153,7 @@ def get_run_parameters(config, chng):
             + "_k2="
             + str(tanh_factor2)
         )
+        res_str_run = res_str + "_pw2=" + str(power2)
     elif config["change"] == "a":
         int_ratio = chng
         res_str = (
@@ -163,6 +166,7 @@ def get_run_parameters(config, chng):
             + "_k2="
             + str(tanh_factor2)
         )
+        res_str_run = res_str + "_a=" + str(int_ratio)
     elif config["change"] == "k":
         tanh_factor = chng
         res_str = (
@@ -175,6 +179,7 @@ def get_run_parameters(config, chng):
             + "_a="
             + str(int_ratio)
         )
+        res_str_run = res_str + "_k=" + str(tanh_factor)
     elif config["change"] == "k2":
         tanh_factor2 = chng
         res_str = (
@@ -187,8 +192,9 @@ def get_run_parameters(config, chng):
             + "_a="
             + str(int_ratio)
         )
+        res_str_run = res_str + "_k2=" + str(tanh_factor2)
 
-    return power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str
+    return power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str, res_str_run
 
 
 def get_linear_interference_capacity(power1, power2, int_ratio, config):
@@ -265,7 +271,7 @@ def main():
     }
 
     for ind, chng in enumerate(change_range):
-        power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str = (
+        power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str, res_str_run = (
             get_run_parameters(config, chng)
         )
         res = {"R1": {}, "R2": {}}
@@ -465,12 +471,14 @@ def main():
                 update_save_location + "alph.mat",
                 res_alph,
             )
+
             plot_res(
                 res_opt,
                 res_pdf,
                 res_alph,
                 update_save_location,
                 lambda_sweep,
+                res_str_run,
             )
         plot_R1_R2_curve(
             res, power1, power2, update_save_location, config=config, res_gaus=res_gaus

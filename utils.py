@@ -105,38 +105,77 @@ def loss(
     return loss
 
 
-def plot_res(
-    res_opt,
-    res_pdf,
-    res_alph,
-    save_location,
-    lmbd_sweep,
-):
+def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
+    title = res_str.replace("_", ", ")
+
     os.makedirs(save_location, exist_ok=True)
     for ind, lmbd in enumerate(lmbd_sweep):
-        plt.figure(figsize=(5, 4))
+        fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
+
         for key in res_opt.keys():
-            plt.plot(res_opt[key][ind])
-        plt.legend(res_opt.keys())
-        plt.xlabel("iteration")
-        plt.ylabel("capacity")
-        plt.savefig(
+            ax.plot(res_opt[key][ind], linewidth=3)
+        ax.legend(res_opt.keys(), loc="best", fontsize=14)
+        ax.set_xlabel(r"iteration", fontsize=14)
+        ax.set_ylabel(r"capacity", fontsize=14)
+        ax.grid(
+            visible=True,
+            which="major",
+            axis="both",
+            color="lightgray",
+            linestyle="-",
+            linewidth=0.5,
+        )
+        plt.minorticks_on()
+        ax.grid(
+            visible=True,
+            which="minor",
+            axis="both",
+            color="gainsboro",
+            linestyle=":",
+            linewidth=0.5,
+        )
+        ax.set_title(title + ", $\lambda = $" + str(format(lmbd, ".1f")), fontsize=14)
+        fig.savefig(
             save_location + "iteration for lambda=" + str(format(lmbd, ".1f")) + ".png"
         )
         plt.close()
 
         list_line = ["-", "--", "-.", ":"]
         index = 0
-        plt.figure(figsize=(5, 4))
+
+        fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
         for key in res_pdf.keys():
-            plt.plot(
-                res_alph[key], res_pdf[key][ind], label=key, linestyle=list_line[index]
+            key_new = key.replace("_", " ")
+            ax.plot(
+                res_alph[key],
+                res_pdf[key][ind],
+                label=key_new,
+                linestyle=list_line[index],
+                linewidth=3,
             )
             index += 1
-        plt.legend()
-        plt.xlabel("X")
-        plt.ylabel("PDF")
-        plt.savefig(save_location + "pdfx_lambda=" + str(format(lmbd, ".1f")) + ".png")
+        ax.legend(loc="best", fontsize=14)
+        ax.set_xlabel(r"X", fontsize=14)
+        ax.set_ylabel(r"PDF", fontsize=14)
+        ax.grid(
+            visible=True,
+            which="major",
+            axis="both",
+            color="lightgray",
+            linestyle="-",
+            linewidth=0.5,
+        )
+        plt.minorticks_on()
+        ax.grid(
+            visible=True,
+            which="minor",
+            axis="both",
+            color="gainsboro",
+            linestyle=":",
+            linewidth=0.5,
+        )
+        ax.set_title(title + ", $\lambda = $" + str(format(lmbd, ".1f")), fontsize=14)
+        fig.savefig(save_location + "pdfx_lambda=" + str(format(lmbd, ".1f")) + ".png")
         plt.close()
 
         # ---- This was necessary for the sequential gradient descent version
@@ -659,14 +698,32 @@ def plot_interference(res, config, save_location):
         config["n_snr"],
     )
     leg_str = []
+    fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
     for keys in res.keys():
-        plt.plot(power_range, res[keys])
+        ax.plot(power_range, res[keys], linewidth=3)
         leg_str.append(keys)
-    plt.xlabel("Average Power")
-    plt.ylabel("Capacity")
-    plt.legend(leg_str)
-    plt.grid()
-    plt.savefig(save_location + "/Comp" + ".png")
+    ax.set_xlabel(r"Average Power", fontsize=14)
+    ax.set_ylabel(r"Capacity", fontsize=14)
+    ax.legend(leg_str, loc="best", fontsize=14)
+    ax.grid(
+        visible=True,
+        which="major",
+        axis="both",
+        color="lightgray",
+        linestyle="-",
+        linewidth=0.5,
+    )
+    plt.minorticks_on()
+    ax.grid(
+        visible=True,
+        which="minor",
+        axis="both",
+        color="gainsboro",
+        linestyle=":",
+        linewidth=0.5,
+    )
+
+    fig.savefig(save_location + "/Comp" + ".png")
     plt.close()
 
 
@@ -691,32 +748,56 @@ def plot_R1_R2_curve(
 ):
     if config["x2_fixed"]:
         return
-    figure = plt.figure(figsize=(5, 4))
+    fig, ax = plt.figure(figsize=(5, 4), tight_layout=True)
     # See how many plot we need to do
     hold_keys = []
     for keys in res["R1"].keys():
         hold_keys.append(keys)
 
     for keys in hold_keys:
-        plt.plot(res["R1"][keys], res["R2"][keys], label=keys)
+        keys_new = keys.replace("_", " ")
+        ax.plot(res["R1"][keys], res["R2"][keys], label=keys_new, linewidth=3)
 
     if res_gaus is not None:
         for keys in res_gaus.keys():
-            plt.scatter(res_gaus[keys][0], res_gaus[keys][1], label=keys)
+            keys_new = keys.replace("_", " ")
+            ax.scatter(res_gaus[keys][0], res_gaus[keys][1], label=keys)
 
-    plt.xlabel("Rate 1")
-    plt.ylabel("Rate 2")
+    ax.set_xlabel(r"Rate 1", fontsize=14)
+    ax.set_ylabel(r"Rate 2", fontsize=14)
 
     if power2 is not None:
-        plt.title(
-            "Power User 1 = " + str(int(power1)) + " Power User 2 = " + str(int(power2))
+        ax.set_title(
+            r"Power User 1 = "
+            + str(int(power1))
+            + " Power User 2 = "
+            + str(int(power2)),
+            fontsize=14,
         )
     else:
-        plt.title("Power = " + str(int(power1)))
+        ax.set_title(r"Power = " + str(int(power1)), fontsize=14)
 
-    plt.legend()
+    ax.legend(loc="best", fontsize=14)
+    ax.grid(
+        visible=True,
+        which="major",
+        axis="both",
+        color="lightgray",
+        linestyle="-",
+        linewidth=0.5,
+    )
+    plt.minorticks_on()
+    ax.grid(
+        visible=True,
+        which="minor",
+        axis="both",
+        color="gainsboro",
+        linestyle=":",
+        linewidth=0.5,
+    )
+
     if power2 is not None:
-        plt.savefig(
+        fig.savefig(
             save_location
             + "/R1_R2_pow1="
             + str(int(power1))
@@ -725,7 +806,7 @@ def plot_R1_R2_curve(
             + ".png"
         )
     else:
-        plt.savefig(save_location + "/R1_R2_pow=" + str(int(power1)) + ".png")
+        fig.savefig(save_location + "/R1_R2_pow=" + str(int(power1)) + ".png")
     plt.close()
 
 
@@ -893,18 +974,45 @@ def get_regime_class_interference(
 def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
     list_line = ["-", "--", "-.", ":"]
 
-    plt.figure(figsize=(5, 4))
+    fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
     index = 0
     for keys in res_change.keys():
-        plt.plot(change_range, res_change[keys], label=keys, linestyle=list_line[index])
+        keys_new = keys.replace("_", " ")
+        ax.plot(
+            change_range,
+            res_change[keys],
+            label=keys_new,
+            linestyle=list_line[index],
+            linewidth=3,
+        )
         index = np.mod(index + 1, 4)
 
-    plt.legend()
-    plt.xlabel(str(config["change"]))
-    plt.title(res_str)
-    plt.ylabel("R1")
-    plt.grid()
-    plt.savefig(
+    ax.legend(loc="best", fontsize=12)
+    ax.set_xlabel(str(config["change"]), fontsize=14)
+
+    res_str_new = res_str.replace("_", ", ")
+
+    ax.set_title(res_str_new, fontsize=14)
+    ax.set_ylabel(r"R1", fontsize=14)
+    plt.minorticks_on()
+    ax.grid(
+        visible=True,
+        which="major",
+        axis="both",
+        color="lightgray",
+        linestyle="-",
+        linewidth=0.5,
+    )
+    ax.grid(
+        visible=True,
+        which="minor",
+        axis="both",
+        color="gainsboro",
+        linestyle=":",
+        linewidth=0.5,
+    )
+
+    fig.savefig(
         save_location + "/Comp" + str(config["change"]) + "_" + res_str + ".png"
     )
     plt.close()
