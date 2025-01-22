@@ -242,13 +242,13 @@ def plot_vs_change(
     ax.set_title(
         r"Regime: "
         + str(config["regime"])
-        + ", $\phi = $ "
+        + ", phi =  "
         + str(config["nonlinearity"])
-        + ", $\sigma_1 = $"
+        + ", sigma_1 = "
         + str(config["sigma_1"])
-        + ", $\sigma_2 = $"
+        + ", sigma_2 = "
         + str(config["sigma_2"])
-        + ", $N = $"
+        + ", N = "
         + str(config["min_samples"]),
         fontsize=14,
     )
@@ -332,13 +332,13 @@ def plot_pdf_vs_change(
     ax.set_title(
         r"Regime "
         + str(config["regime"])
-        + " $\phi = $ "
+        + " phi =  "
         + str(config["nonlinearity"])
-        + " $\sigma_1 = $"
+        + " sigma_1 = "
         + str(config["sigma_1"])
-        + " $\sigma_2 = $"
+        + " sigma_2 = "
         + str(config["sigma_2"])
-        + " $N = $"
+        + " N = "
         + str(config["min_samples"]),
         fontsize=14,
     )
@@ -398,13 +398,13 @@ def plot_pdf_vs_change(
         ax.set_title(
             r"Regime "
             + str(config["regime"])
-            + ", $\phi = $ "
+            + ", phi =  "
             + str(config["nonlinearity"])
-            + ", $\sigma_1 = $"
+            + ", sigma_1 = "
             + str(config["sigma_1"])
-            + ", $\sigma_2 = $"
+            + ", sigma_2 = "
             + str(config["sigma_2"])
-            + ", $N = $"
+            + ", N = "
             + str(config["min_samples"]),
             fontsize=14,
         )
