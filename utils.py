@@ -136,8 +136,10 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
         )
         ax.set_title(title + ", $\lambda = $" + str(format(lmbd, ".1f")), fontsize=14)
         fig.savefig(
-            save_location + "iteration for lambda=" + str(format(lmbd, ".1f")) + ".png"
+            save_location + "iteration for lambda=" + str(format(lmbd, ".1f")) + ".png",
+            bbox_inches="tight",
         )
+
         plt.close()
 
         list_line = ["-", "--", "-.", ":"]
@@ -873,12 +875,13 @@ def loss_interference(
 
 def check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
     # We should check if the projection is necessary
-    cond1 = torch.abs(torch.sum(pdf_x) - 1) < 1e-5  # sum of pdf is 1
+    cond1 = torch.abs(torch.sum(pdf_x) - 1) < 1e-2  # sum of pdf is 1
     cond2 = torch.sum(pdf_x < 0) == 0  # pdf cannot be negative
     if cons_type == 1:
         cond3 = torch.sum(torch.abs(alphabet_x) ** 2 * pdf_x) <= power + 1e-1
     else:
         cond3 = True
+
     return cond1 and cond2 and cond3
 
 

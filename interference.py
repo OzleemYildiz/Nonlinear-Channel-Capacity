@@ -404,6 +404,7 @@ def main():
                 int_ratio=int_ratio,
                 tin_active=True,  # First, we apply tin
             )
+
             if config["x2_fixed"]:
                 res["R1"]["Learned_TIN"] = max_cap_RX1
                 # if max_cap_RX1 > res_change["Linear_TIN"][-1]:
@@ -417,8 +418,6 @@ def main():
                     "RX1_tin": regime_RX1.alphabet_x,
                     "RX2_tin": regime_RX2.alphabet_x,
                 }
-                if max_cap_RX1 > linear_tin:
-                    breakpoint()
 
                 (
                     max_sum_cap2,

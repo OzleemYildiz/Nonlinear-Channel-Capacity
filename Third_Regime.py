@@ -21,9 +21,9 @@ class Third_Regime:
         alphabet_y_imag=0,
     ):
         self.alphabet_x_re = alphabet_x.reshape(-1)
-        self.alphabet_x_im = alphabet_x_imag.reshape(-1)
+        self.alphabet_x_im = alphabet_x_imag.reshape(-1) if config["complex"] else 0
         self.alphabet_y_re = alphabet_y.reshape(-1)
-        self.alphabet_y_im = alphabet_y_imag.reshape(-1)
+        self.alphabet_y_im = alphabet_y_imag.reshape(-1) if config["complex"] else 0
         self.config = config
         self.power = power
         self.sigma_1 = sigma_1
