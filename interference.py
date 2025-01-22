@@ -140,7 +140,7 @@ def get_run_parameters(config, chng):
             + "_k2="
             + str(tanh_factor2)
         )
-        res_str_run = res_str + "_pw1=" + str(power1)
+        res_str_run = res_str + "_pw1=" + str(round(power1, 3))
     elif config["change"] == "pw2":
         power2 = chng
         res_str = (
@@ -153,7 +153,7 @@ def get_run_parameters(config, chng):
             + "_k2="
             + str(tanh_factor2)
         )
-        res_str_run = res_str + "_pw2=" + str(power2)
+        res_str_run = res_str + "_pw2=" + str(round(power2, 3))
     elif config["change"] == "a":
         int_ratio = chng
         res_str = (

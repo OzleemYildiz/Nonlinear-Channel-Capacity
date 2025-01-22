@@ -14,8 +14,6 @@ from Third_Regime import Third_Regime
 import argparse
 import yaml
 
-plt.rcParams["text.usetex"] = True
-
 
 def project_pdf(pdf_x, cons_type, alphabet_x, power):
     # pdf cannot be negative
@@ -106,6 +104,7 @@ def loss(
 
 
 def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
+    plt.rcParams["text.usetex"] = True
     title = res_str.replace("_", ", ")
 
     os.makedirs(save_location, exist_ok=True)
@@ -177,7 +176,10 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
             linewidth=0.5,
         )
         ax.set_title(title + ", $\lambda = $" + str(format(lmbd, ".1f")), fontsize=14)
-        fig.savefig(save_location + "pdfx_lambda=" + str(format(lmbd, ".1f")) + ".png")
+        fig.savefig(
+            save_location + "pdfx_lambda=" + str(format(lmbd, ".1f")) + ".png",
+            bbox_inches="tight",
+        )
         plt.close()
 
         # ---- This was necessary for the sequential gradient descent version
@@ -263,10 +265,14 @@ def plot_vs_change(
             + "_gd_"
             + str(config["gd_active"])
             + "/Comp"
-            + ".png"
+            + ".png",
+            bbox_inches="tight",
         )
     else:
-        fig.savefig(save_location + "/Comp" + ".png")
+        fig.savefig(
+            save_location + "/Comp" + ".png",
+            bbox_inches="tight",
+        )
     plt.close()
 
 
@@ -348,10 +354,11 @@ def plot_pdf_vs_change(
             + "_gd_"
             + str(config["gd_active"])
             + "/"
-            + file_name
+            + file_name,
+            bbox_inches="tight",
         )
     else:
-        fig.savefig(save_location + "/" + file_name)
+        fig.savefig(save_location + "/" + file_name, bbox_inches="tight")
     plt.close()
 
     for chn in range_change:
@@ -401,7 +408,7 @@ def plot_pdf_vs_change(
             + str(config["min_samples"]),
             fontsize=14,
         )
-        fig.savefig(save_new)
+        fig.savefig(save_new, bbox_inches="tight")
         plt.close()
 
         if map_opt is not None:
@@ -725,7 +732,7 @@ def plot_interference(res, config, save_location):
         linewidth=0.5,
     )
 
-    fig.savefig(save_location + "/Comp" + ".png")
+    fig.savefig(save_location + "/Comp" + ".png", bbox_inches="tight")
     plt.close()
 
 
@@ -805,10 +812,14 @@ def plot_R1_R2_curve(
             + str(int(power1))
             + "_pow2="
             + str(int(power2))
-            + ".png"
+            + ".png",
+            bbox_inches="tight",
         )
     else:
-        fig.savefig(save_location + "/R1_R2_pow=" + str(int(power1)) + ".png")
+        fig.savefig(
+            save_location + "/R1_R2_pow=" + str(int(power1)) + ".png",
+            bbox_inches="tight",
+        )
     plt.close()
 
 
@@ -1016,7 +1027,8 @@ def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
     )
 
     fig.savefig(
-        save_location + "/Comp" + str(config["change"]) + "_" + res_str + ".png"
+        save_location + "/Comp" + str(config["change"]) + "_" + res_str + ".png",
+        bbox_inches="tight",
     )
     plt.close()
 
