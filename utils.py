@@ -113,9 +113,9 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
 
         for key in res_opt.keys():
             ax.plot(res_opt[key][ind], linewidth=3)
-        ax.legend(res_opt.keys(), loc="best", fontsize=14)
-        ax.set_xlabel(r"iteration", fontsize=14)
-        ax.set_ylabel(r"capacity", fontsize=14)
+        ax.legend(res_opt.keys(), loc="best", fontsize=12)
+        ax.set_xlabel(r"iteration", fontsize=12)
+        ax.set_ylabel(r"capacity", fontsize=12)
         ax.grid(
             visible=True,
             which="major",
@@ -133,7 +133,7 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
             linestyle=":",
             linewidth=0.5,
         )
-        ax.set_title(title + ", lambda = " + str(format(lmbd, ".1f")), fontsize=14)
+        ax.set_title(title + ", lambda = " + str(format(lmbd, ".1f")), fontsize=12)
         fig.savefig(
             save_location + "iteration for lambda=" + str(format(lmbd, ".1f")) + ".png",
             bbox_inches="tight",
@@ -155,9 +155,9 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
                 linewidth=3,
             )
             index += 1
-        ax.legend(loc="best", fontsize=14)
-        ax.set_xlabel(r"X", fontsize=14)
-        ax.set_ylabel(r"PDF", fontsize=14)
+        ax.legend(loc="best", fontsize=12)
+        ax.set_xlabel(r"X", fontsize=12)
+        ax.set_ylabel(r"PDF", fontsize=12)
         ax.grid(
             visible=True,
             which="major",
@@ -175,7 +175,7 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
             linestyle=":",
             linewidth=0.5,
         )
-        ax.set_title(title + ", lambda = " + str(format(lmbd, ".1f")), fontsize=14)
+        ax.set_title(title + ", lambda = " + str(format(lmbd, ".1f")), fontsize=12)
         fig.savefig(
             save_location + "pdfx_lambda=" + str(format(lmbd, ".1f")) + ".png",
             bbox_inches="tight",
@@ -215,13 +215,13 @@ def plot_vs_change(
 
     leg_str_new = [ind.replace("_", " ") for ind in leg_str]
 
-    ax.legend(leg_str_new, loc="best", fontsize=14)
+    ax.legend(leg_str_new, loc="best", fontsize=12)
     if not config["time_division_active"]:
-        ax.set_xlabel(r"SNR (dB)", fontsize=14)
+        ax.set_xlabel(r"SNR (dB)", fontsize=12)
     else:
-        ax.set_xlabel(r"Time Division Ratio", fontsize=14)
+        ax.set_xlabel(r"Time Division Ratio", fontsize=12)
 
-    ax.set_ylabel(r"Rate", fontsize=14)
+    ax.set_ylabel(r"Rate", fontsize=12)
     plt.minorticks_on()
     ax.grid(
         visible=True,
@@ -250,7 +250,7 @@ def plot_vs_change(
         + str(config["sigma_2"])
         + ", N = "
         + str(config["min_samples"]),
-        fontsize=14,
+        fontsize=12,
     )
 
     if save_location == None:
@@ -310,8 +310,8 @@ def plot_pdf_vs_change(
     if not config["time_division_active"]:
         ax.set_xlabel(r"SNR (dB)")
     else:
-        ax.set_xlabel(r"Time Division Ratio", fontsize=14)
-    ax.set_ylabel(r"X", fontsize=14)
+        ax.set_xlabel(r"Time Division Ratio", fontsize=12)
+    ax.set_ylabel(r"X", fontsize=12)
     ax.grid(
         visible=True,
         which="minor",
@@ -340,7 +340,7 @@ def plot_pdf_vs_change(
         + str(config["sigma_2"])
         + " N = "
         + str(config["min_samples"]),
-        fontsize=14,
+        fontsize=12,
     )
     if save_location == None:
         fig.savefig(
@@ -372,12 +372,12 @@ def plot_pdf_vs_change(
             alphabet_x_re = np.real(alphabet_x)
             alphabet_x_im = np.imag(alphabet_x)
             ax.scatter(alphabet_x_re, alphabet_x_im, s=pdf_x * 100)
-            ax.set_xlabel(r"Re(X)", fontsize=14)
-            ax.set_ylabel(r"Im(X)", fontsize=14)
+            ax.set_xlabel(r"Re(X)", fontsize=12)
+            ax.set_ylabel(r"Im(X)", fontsize=12)
         else:
             ax.plot(alphabet_x, pdf_x, linewidth=3)
-            ax.set_xlabel(r"X", fontsize=14)
-            ax.set_ylabel(r"PDF", fontsize=14)
+            ax.set_xlabel(r"X", fontsize=12)
+            ax.set_ylabel(r"PDF", fontsize=12)
         ax.grid(
             visible=True,
             which="minor",
@@ -406,7 +406,7 @@ def plot_pdf_vs_change(
             + str(config["sigma_2"])
             + ", N = "
             + str(config["min_samples"]),
-            fontsize=14,
+            fontsize=12,
         )
         fig.savefig(save_new, bbox_inches="tight")
         plt.close()
@@ -711,9 +711,9 @@ def plot_interference(res, config, save_location):
     for keys in res.keys():
         ax.plot(power_range, res[keys], linewidth=3)
         leg_str.append(keys)
-    ax.set_xlabel(r"Average Power", fontsize=14)
-    ax.set_ylabel(r"Capacity", fontsize=14)
-    ax.legend(leg_str, loc="best", fontsize=14)
+    ax.set_xlabel(r"Average Power", fontsize=12)
+    ax.set_ylabel(r"Capacity", fontsize=12)
+    ax.legend(leg_str, loc="best", fontsize=12)
     ax.grid(
         visible=True,
         which="major",
@@ -772,8 +772,8 @@ def plot_R1_R2_curve(
             keys_new = keys.replace("_", " ")
             ax.scatter(res_gaus[keys][0], res_gaus[keys][1], label=keys)
 
-    ax.set_xlabel(r"Rate 1", fontsize=14)
-    ax.set_ylabel(r"Rate 2", fontsize=14)
+    ax.set_xlabel(r"Rate 1", fontsize=12)
+    ax.set_ylabel(r"Rate 2", fontsize=12)
 
     if power2 is not None:
         ax.set_title(
@@ -781,12 +781,12 @@ def plot_R1_R2_curve(
             + str(int(power1))
             + " Power User 2 = "
             + str(int(power2)),
-            fontsize=14,
+            fontsize=12,
         )
     else:
-        ax.set_title(r"Power = " + str(int(power1)), fontsize=14)
+        ax.set_title(r"Power = " + str(int(power1)), fontsize=12)
 
-    ax.legend(loc="best", fontsize=14)
+    ax.legend(loc="best", fontsize=12)
     ax.grid(
         visible=True,
         which="major",
@@ -1002,12 +1002,12 @@ def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
         index = np.mod(index + 1, 4)
 
     ax.legend(loc="best", fontsize=12)
-    ax.set_xlabel(str(config["change"]), fontsize=14)
+    ax.set_xlabel(str(config["change"]), fontsize=12)
 
     res_str_new = res_str.replace("_", ", ")
 
-    ax.set_title(res_str_new, fontsize=14)
-    ax.set_ylabel(r"R1", fontsize=14)
+    ax.set_title(res_str_new, fontsize=12)
+    ax.set_ylabel(r"R1", fontsize=12)
     plt.minorticks_on()
     ax.grid(
         visible=True,
