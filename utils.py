@@ -104,7 +104,7 @@ def loss(
 
 
 def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
-    plt.rcParams["text.usetex"] = True
+    # plt.rcParams["text.usetex"] = True
     title = res_str.replace("_", ", ")
 
     os.makedirs(save_location, exist_ok=True)
