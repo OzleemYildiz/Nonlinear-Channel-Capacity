@@ -251,6 +251,24 @@ def get_linear_interference_capacity(power1, power2, int_ratio, config):
     return linear_tin, linear_ki
 
 
+def get_interferer_capacity(config, power2):
+    if config["regime"] == 3:
+        cap = (
+            1
+            / 2
+            * np.log(1 + power2 / (config["sigma_21"] ** 2 + config["sigma_22"] ** 2))
+        )
+    elif config["regime"] == 1:
+        cap = 1 / 2 * np.log(1 + power2 / config["sigma_22"] ** 2)
+    else:
+        raise ValueError("Regime not defined")
+
+    if config["complex"]:  # 1/2 comes from real
+        cap = cap * 2
+
+    return cap
+
+
 def get_linear_approximation_capacity(regime_RX2, config, power1, pdf_x_RX2):
 
     deriv_func = return_derivative_of_nonlinear_fn(
@@ -277,16 +295,26 @@ def get_linear_approximation_capacity(regime_RX2, config, power1, pdf_x_RX2):
     if not config["complex"]:
         approx_cap1 = approx_cap1 / 2
 
-    return approx_cap1.numpy()
+    return approx_cap1.detach().numpy()
 
 
-def get_tdm_capacity_with_optimized_dist(regime_RX1, regime_RX2, config, pdf_x_RX2):
+def get_tdm_capacity_with_optimized_dist(
+    regime_RX1, regime_RX2, config, pdf_x_RX2, save_location
+):
     print("---- TDM Capacity ----")
-    if config["x2_type"] == 0:
-        pdf_x_RX2 = get_fixed_interferer(config, regime_RX2, 1)  # optimized X2
+
+    if (
+        config["x2_type"] == 0
+    ):  # calculated pdf_x_RX2 is gaussian and I need an optimized distribution
+        save_rx2 = save_location + "/TDM_pdf_x_RX2_opt.png"
+        pdf_x_RX2 = get_fixed_interferer(
+            config, regime_RX2, 1, save_rx2
+        )  # optimized X2
     cap_RX2 = -loss(pdf_x_RX2, regime_RX2)
 
-    pdf_x_RX1 = get_fixed_interferer(config, regime_RX1, 1)  # optimized X1
+    save_rx1 = save_location + "/TDM_pdf_x_RX1_opt.png"
+
+    pdf_x_RX1 = get_fixed_interferer(config, regime_RX1, 1, save_rx1)  # optimized X1
     cap_RX1 = -loss(pdf_x_RX1, regime_RX1)
 
     time_lambda = np.linspace(0, 1, 100)
@@ -343,6 +371,14 @@ def main():
         linear_tin, linear_ki = get_linear_interference_capacity(
             power1, power2, int_ratio, config
         )
+        res["R1"]["Linear_TIN"] = linear_tin
+        res["R1"]["Linear_KI"] = linear_ki
+
+        linear_R2 = get_interferer_capacity(config, power2)
+
+        res["R2"]["Linear_TIN"] = linear_R2
+        res["R2"]["Linear_KI"] = linear_R2
+
         res_change["Linear_TIN"].append(linear_tin)
         res_change["Linear_KI"].append(linear_ki)
 
@@ -408,12 +444,15 @@ def main():
                 tanh_factor2=tanh_factor2,
             )
         if config["x2_fixed"]:
-            pdf_x_RX2 = get_fixed_interferer(config, regime_RX2, config["x2_type"])
+            save_loc_rx2 = update_save_location + "/pdf_x_RX2_opt.png"
+            pdf_x_RX2 = get_fixed_interferer(
+                config, regime_RX2, config["x2_type"], save_loc_rx2
+            )
         else:
             pdf_x_RX2 = None
 
         res_tdm = get_tdm_capacity_with_optimized_dist(
-            regime_RX1, regime_RX2, config, pdf_x_RX2
+            regime_RX1, regime_RX2, config, pdf_x_RX2, update_save_location
         )
 
         # Approximated Capacity
@@ -424,7 +463,9 @@ def main():
                 )
             else:
                 gaus_pdf_x_RX2 = get_fixed_interferer(
-                    config, regime_RX2, 0
+                    config,
+                    regime_RX2,
+                    0,
                 )  # give gaussian - not fixed
                 approx_cap1 = get_linear_approximation_capacity(
                     regime_RX2, config, power1, gaus_pdf_x_RX2
@@ -549,8 +590,8 @@ def main():
                     "RX2": max_pdf_x_RX2,
                 }
                 res_alph = {
-                    "RX1": alphabet_x_RX1,
-                    "RX2": alphabet_x_RX2,
+                    "RX1": regime_RX1.alphabet_x,
+                    "RX2": regime_RX2.alphabet_x,
                 }
                 res_opt = {"opt": save_opt_sum_capacity}
 

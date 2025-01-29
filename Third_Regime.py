@@ -20,10 +20,10 @@ class Third_Regime:
         alphabet_x_imag=0,
         alphabet_y_imag=0,
     ):
-        self.alphabet_x_re = alphabet_x.reshape(-1)
-        self.alphabet_x_im = alphabet_x_imag.reshape(-1) if config["complex"] else 0
-        self.alphabet_y_re = alphabet_y.reshape(-1)
-        self.alphabet_y_im = alphabet_y_imag.reshape(-1) if config["complex"] else 0
+        self.alphabet_x_re = alphabet_x.reshape(-1, 1)
+        self.alphabet_x_im = alphabet_x_imag.reshape(1, -1) if config["complex"] else 0
+        self.alphabet_y_re = alphabet_y.reshape(-1, 1)
+        self.alphabet_y_im = alphabet_y_imag.reshape(1, -1) if config["complex"] else 0
         self.config = config
         self.power = power
         self.sigma_1 = sigma_1
@@ -38,7 +38,7 @@ class Third_Regime:
     def get_z1_pdf_and_alphabet(self):
         max_z1 = self.config["stop_sd"] * self.sigma_1**2
 
-        delta_z1 = self.alphabet_x_re[1] - self.alphabet_x_re[0]
+        delta_z1 = (self.alphabet_x_re[1] - self.alphabet_x_re[0])[0]
         max_z1 = max_z1 + (delta_z1 - (max_z1 % delta_z1))
         # Z1 <- Gaussian noise with variance sigma_1^2
 
@@ -338,13 +338,17 @@ class Third_Regime:
 
     def get_x_and_y_alphabet(self):
         if self.config["complex"]:
-            self.alphabet_y = self.alphabet_y_re + 1j * self.alphabet_y_im
-            self.alphabet_x = self.alphabet_x_re + 1j * self.alphabet_x_im
+            self.alphabet_y = self.alphabet_y_re.reshape(
+                -1, 1
+            ) + 1j * self.alphabet_y_im.reshape(1, -1)
+            self.alphabet_x = self.alphabet_x_re.reshape(
+                -1, 1
+            ) + 1j * self.alphabet_x_im.reshape(1, -1)
             self.alphabet_x = self.alphabet_x.reshape(-1)
             self.alphabet_y = self.alphabet_y.reshape(-1)
         else:
-            self.alphabet_y = self.alphabet_y_re
-            self.alphabet_x = self.alphabet_x_re
+            self.alphabet_y = self.alphabet_y_re.reshape(-1)
+            self.alphabet_x = self.alphabet_x_re.reshape(-1)
 
             # - Dead Funcs -#
 

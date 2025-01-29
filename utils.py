@@ -21,7 +21,6 @@ def project_pdf(pdf_x, cons_type, alphabet_x, power):
     # sum of pdf is 1
     # pdf_x = pdf_x/torch.sum(pdf_x)
     # average power constraint
-
     if check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
         return pdf_x
 
@@ -109,52 +108,75 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
 
     os.makedirs(save_location, exist_ok=True)
     for ind, lmbd in enumerate(lmbd_sweep):
-        fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
 
         for key in res_opt.keys():
-            ax.plot(res_opt[key][ind], linewidth=3)
-        ax.legend(res_opt.keys(), loc="best", fontsize=12)
-        ax.set_xlabel(r"iteration", fontsize=12)
-        ax.set_ylabel(r"capacity", fontsize=12)
-        ax.grid(
-            visible=True,
-            which="major",
-            axis="both",
-            color="lightgray",
-            linestyle="-",
-            linewidth=0.5,
-        )
-        plt.minorticks_on()
-        ax.grid(
-            visible=True,
-            which="minor",
-            axis="both",
-            color="gainsboro",
-            linestyle=":",
-            linewidth=0.5,
-        )
-        ax.set_title(title + ", lambda = " + str(format(lmbd, ".1f")), fontsize=12)
-        fig.savefig(
-            save_location + "iteration for lambda=" + str(format(lmbd, ".1f")) + ".png",
-            bbox_inches="tight",
-        )
+            fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
+            ax.plot(res_opt[key][ind], linewidth=3, label=key)
+            ax.legend(loc="best", fontsize=12)
+            ax.set_xlabel(r"iteration", fontsize=12)
+            ax.set_ylabel(r"capacity", fontsize=12)
+            ax.grid(
+                visible=True,
+                which="major",
+                axis="both",
+                color="lightgray",
+                linestyle="-",
+                linewidth=0.5,
+            )
+            plt.minorticks_on()
+            ax.grid(
+                visible=True,
+                which="minor",
+                axis="both",
+                color="gainsboro",
+                linestyle=":",
+                linewidth=0.5,
+            )
+            ax.set_title(title + ", lambda = " + str(format(lmbd, ".1f")), fontsize=12)
+            fig.savefig(
+                save_location
+                + "iteration_lambda="
+                + str(format(lmbd, ".1f"))
+                + "_"
+                + key
+                + ".png",
+                bbox_inches="tight",
+            )
 
         plt.close()
 
         list_line = ["-", "--", "-.", ":"]
+        scatter_style = ["o", "<", "x", "v"]  # ",", "^", "x", ">"]
         index = 0
 
         fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
+
+        # Check if any alphabet is complex
+        for key in res_pdf.keys():
+            if res_alph[key].is_complex():
+                complex_run = True
+                break
+
         for key in res_pdf.keys():
             key_new = key.replace("_", " ")
-            ax.plot(
-                res_alph[key],
-                res_pdf[key][ind],
-                label=key_new,
-                linestyle=list_line[index],
-                linewidth=3,
-            )
-            index += 1
+            if complex_run:
+                ax.scatter(
+                    res_alph[key].real,
+                    res_alph[key].imag,
+                    s=res_pdf[key][ind] * 200,
+                    label=key_new,
+                    marker=scatter_style[index],
+                )
+            else:
+                ax.plot(
+                    res_alph[key],
+                    res_pdf[key][ind],
+                    label=key_new,
+                    linestyle=list_line[index],
+                    linewidth=3,
+                )
+
+            index = np.mod(index + 1, len(list_line))
         ax.legend(loc="best", fontsize=12)
         ax.set_xlabel(r"X", fontsize=12)
         ax.set_ylabel(r"PDF", fontsize=12)
@@ -414,13 +436,18 @@ def plot_pdf_vs_change(
         if map_opt is not None:
             opt_cap = map_opt["Chng" + str(int(chn * 100))]
             save_new = save_location + "/opt_" + str(int(chn * 100)) + ".png"
-            plt.figure(figsize=(5, 4))
-            plt.plot(opt_cap)
-            plt.grid()
-            plt.xlabel("iteration")
-            plt.ylabel("Rate")
-            plt.savefig(save_new)
-            plt.close()
+            plot_opt(opt_cap, save_new)
+
+
+def plot_opt(opt_cap, save_new):
+
+    plt.figure(figsize=(5, 4))
+    plt.plot(opt_cap)
+    plt.grid()
+    plt.xlabel("iteration")
+    plt.ylabel("Rate")
+    plt.savefig(save_new)
+    plt.close()
 
 
 def get_max_alphabet_PP(
@@ -686,7 +713,6 @@ def get_interference_alphabet_x_y_complex(
     real_x1 = alphabet_x_1.reshape(1, -1)
     imag_x1 = alphabet_x_1.reshape(-1, 1)
     alphabet_x_2 = torch.arange(-max_x_2, max_x_2 + delta_x2 / 2, delta_x2)
-
     real_x2 = alphabet_x_2.reshape(1, -1)
     imag_x2 = alphabet_x_2.reshape(-1, 1)
 
@@ -1038,8 +1064,12 @@ def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
     )
 
     fig.savefig(
-        save_location + "/Comp" + str(config["change"]) + "_" + res_str + ".png",
+        save_location + "/Comp_" + str(config["change"]) + "_" + res_str + ".png",
         bbox_inches="tight",
+    )
+    print(
+        "Saved in ",
+        str(config["change"]) + "_" + res_str + ".png",
     )
     plt.close()
 

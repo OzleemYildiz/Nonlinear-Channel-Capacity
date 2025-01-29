@@ -60,6 +60,7 @@ def gaussian_interference_capacity(
         pdf_x_RX2 = get_gaussian_distribution(
             reg_RX2.power, reg_RX2, complex_alphabet=reg_RX2.config["complex"]
         )
+    pdf_x_RX2 = pdf_x_RX2.detach()
 
     loss, cap_RX1, cap_RX2 = loss_interference(
         pdf_x_1, pdf_x_RX2, reg_RX1, reg_RX2, int_ratio, tin_active, lmbd=0.5

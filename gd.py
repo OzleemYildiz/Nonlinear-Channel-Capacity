@@ -9,6 +9,7 @@ from utils import (
     check_pdf_x_region,
     get_regime_class_interference,
     check_pdf_x_region,
+    plot_opt,
 )
 import numpy as np
 import copy
@@ -305,9 +306,9 @@ def gradient_descent_on_interference(
                 )
                 pdf_x_RX2.requires_grad = True
                 update_RX2 = True
-                optimizer = torch.optim.Adam([pdf_x_RX1, pdf_x_RX2], lr=lr)
+                optimizer = torch.optim.AdamW([pdf_x_RX1, pdf_x_RX2], lr=lr)
             else:
-                optimizer = torch.optim.Adam([pdf_x_RX1], lr=lr)
+                optimizer = torch.optim.AdamW([pdf_x_RX1], lr=lr)
 
             opt_sum_capacity = []
             max_sum_cap_h = 0
@@ -772,30 +773,29 @@ def gradient_descent_projection_with_learning_rate(config, power, power2, lambda
     )
 
 
-def get_fixed_interferer(config, reg_RX2, x2_type):
+def get_fixed_interferer(config, regime, x_type, save_location=None):
 
-    if x2_type == 0:
+    if x_type == 0:
         print(" +++----- X2 Distribution is Gaussian ------ +++")
 
-        pdf_x_RX2 = get_gaussian_distribution(
-            reg_RX2.power,
-            reg_RX2,
+        pdf_x = get_gaussian_distribution(
+            regime.power,
+            regime,
             complex_alphabet=config["complex"],
             # optimum_power=True, #!!NOTE:It could be added later
         )
-    elif x2_type == 1:
+    elif x_type == 1:
         print(" +++----- X2 Distribution is calculated ------ +++")
 
-        _, pdf_x_RX2, _, _ = gd_capacity(config, reg_RX2.power, reg_RX2)
+        _, pdf_x, _, opt_capacity = gd_capacity(config, regime.power, regime)
+        plot_opt(opt_capacity, save_location)
 
     else:
         raise ValueError("Interferer type not defined")
-    pdf_x_RX2 = (pdf_x_RX2 / torch.sum(pdf_x_RX2)).to(torch.float32)
-    pdf_x_RX2 = project_pdf(
-        pdf_x_RX2, config["cons_type"], reg_RX2.alphabet_x, reg_RX2.power
-    )
+    pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
+    pdf_x = project_pdf(pdf_x, config["cons_type"], regime.alphabet_x, regime.power)
 
-    return pdf_x_RX2
+    return pdf_x
 
 
 def main():
