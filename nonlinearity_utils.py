@@ -48,8 +48,9 @@ def return_nonlinear_fn(config, tanh_factor=None):
         raise ValueError("Nonlinearity not defined")
     return nonlinear_fn
 
-#NOT USED
-def return_derivative_of_nonlinear_fn(config):
+
+# NOT USED
+def return_derivative_of_nonlinear_fn(config, tanh_factor=None):
     # This function is numpy
 
     # 0:linear
@@ -61,7 +62,9 @@ def return_derivative_of_nonlinear_fn(config):
         )
     # 3:nonlinear tanh(X)
     elif config["nonlinearity"] == 3:
-        nonlinear_fn = lambda x: (1 / np.cosh(x / config["tanh_factor"])) ** 2
+        if tanh_factor is None:
+            raise ValueError("Tanh factor not defined")
+        nonlinear_fn = lambda x: (1 / np.cosh(x / tanh_factor)) ** 2
     # 4:nonlinear x4: x/(1 + x^4)^1/4
     elif config["nonlinearity"] == 4:
         nonlinear_fn = lambda x: 1 / (1 + x**4) ** (5 / 4)
@@ -78,7 +81,7 @@ def return_derivative_of_nonlinear_fn(config):
     return nonlinear_fn
 
 
-def return_nonlinear_fn_numpy(config, tanh_factor=None):    
+def return_nonlinear_fn_numpy(config, tanh_factor=None):
     # 0:linear
     if config["nonlinearity"] == 0:
         nonlinear_fn = lambda x: x
@@ -92,9 +95,7 @@ def return_nonlinear_fn_numpy(config, tanh_factor=None):
     elif config["nonlinearity"] == 3:
         if tanh_factor is None:
             raise ValueError("Tanh factor not defined")
-        nonlinear_fn = lambda x: tanh_factor * np.tanh(
-            x / tanh_factor
-        )
+        nonlinear_fn = lambda x: tanh_factor * np.tanh(x / tanh_factor)
     # 4:nonlinear x4: x/(1 + x^4)^1/4
     elif config["nonlinearity"] == 4:
         nonlinear_fn = lambda x: x / ((1 + x**4) ** (1 / 4))

@@ -8,6 +8,7 @@ from utils import (
     plot_R1_vs_change,
     get_interference_alphabet_x_y_complex,
     get_regime_class_interference,
+    loss,
 )
 import numpy as np
 from gaussian_capacity import (
@@ -20,8 +21,11 @@ from scipy import io
 from gd import (
     gradient_descent_on_interference,
     gradient_descent_projection_with_learning_rate,
+    get_fixed_interferer,
 )
 import time
+from nonlinearity_utils import return_derivative_of_nonlinear_fn
+import torch
 
 
 def define_save_location(config):
@@ -40,11 +44,10 @@ def define_save_location(config):
         save_location
         + "_regime="
         + str(config["regime"])
-        + "_max_iter="
-        + str(config["max_iter"])
-        + "_lr="
-        + str(config["lr"])
+        + "_N="
+        + str(config["min_samples"])
     )
+
     if config["regime"] == 1:
         save_location = (
             save_location
@@ -67,8 +70,15 @@ def define_save_location(config):
         )
 
     if config["gd_active"]:
-        save_location = save_location + "_gd_" + str(config["gd_active"])
+        save_location = (
+            save_location
+            + "_max_iter="
+            + str(config["max_iter"])
+            + "_lr="
+            + str(config["lr"])
+        )
         if config["x2_fixed"]:
+
             save_location = save_location + "_x2_fixed"
             save_location = save_location + "_x2=" + str(config["x2_type"])
 
@@ -129,6 +139,7 @@ def get_run_parameters(config, chng):
     tanh_factor = config["min_tanh_factor"]
     tanh_factor2 = config["min_tanh_factor_2"]
     if config["change"] == "pw1":
+        print("Power1: ", chng)
         power1 = chng
         res_str = (
             "pw2="
@@ -142,6 +153,7 @@ def get_run_parameters(config, chng):
         )
         res_str_run = res_str + "_pw1=" + str(round(power1, 3))
     elif config["change"] == "pw2":
+        print("Power2: ", chng)
         power2 = chng
         res_str = (
             "pw1="
@@ -155,6 +167,7 @@ def get_run_parameters(config, chng):
         )
         res_str_run = res_str + "_pw2=" + str(round(power2, 3))
     elif config["change"] == "a":
+        print("Int Ratio: ", chng)
         int_ratio = chng
         res_str = (
             "pw1="
@@ -168,6 +181,7 @@ def get_run_parameters(config, chng):
         )
         res_str_run = res_str + "_a=" + str(int_ratio)
     elif config["change"] == "k":
+        print("Tanh Factor: ", chng)
         tanh_factor = chng
         res_str = (
             "pw1="
@@ -181,6 +195,7 @@ def get_run_parameters(config, chng):
         )
         res_str_run = res_str + "_k=" + str(tanh_factor)
     elif config["change"] == "k2":
+        print("Tanh Factor2: ", chng)
         tanh_factor2 = chng
         res_str = (
             "pw1="
@@ -236,6 +251,52 @@ def get_linear_interference_capacity(power1, power2, int_ratio, config):
     return linear_tin, linear_ki
 
 
+def get_linear_approximation_capacity(regime_RX2, config, power1, pdf_x_RX2):
+
+    deriv_func = return_derivative_of_nonlinear_fn(
+        config, tanh_factor=regime_RX2.tanh_factor
+    )
+    if config["complex"]:
+        d_phi_s = (
+            abs(
+                deriv_func(abs(regime_RX2.alphabet_x))
+                * torch.exp(1j * torch.angle(regime_RX2.alphabet_x))
+            )
+            ** 2
+        )
+    else:
+        d_phi_s = abs(deriv_func(regime_RX2.alphabet_x)) ** 2
+    approx_cap1 = torch.mean(
+        torch.log(
+            1
+            + (d_phi_s * power1)
+            / (config["sigma_11"] ** 2 * d_phi_s + config["sigma_12"] ** 2)
+        )
+        * pdf_x_RX2
+    )
+    if not config["complex"]:
+        approx_cap1 = approx_cap1 / 2
+
+    return approx_cap1.numpy()
+
+
+def get_tdm_capacity_with_optimized_dist(regime_RX1, regime_RX2, config, pdf_x_RX2):
+    print("---- TDM Capacity ----")
+    if config["x2_type"] == 0:
+        pdf_x_RX2 = get_fixed_interferer(config, regime_RX2, 1)  # optimized X2
+    cap_RX2 = -loss(pdf_x_RX2, regime_RX2)
+
+    pdf_x_RX1 = get_fixed_interferer(config, regime_RX1, 1)  # optimized X1
+    cap_RX1 = -loss(pdf_x_RX1, regime_RX1)
+
+    time_lambda = np.linspace(0, 1, 100)
+
+    res_tdm = {}
+    res_tdm["R1"] = cap_RX1.detach().numpy() * time_lambda
+    res_tdm["R2"] = cap_RX2.detach().numpy() * (1 - time_lambda)
+    return res_tdm
+
+
 def main():
     # First and Third regime implementation
     # ----System Model--- Z channel
@@ -262,13 +323,17 @@ def main():
 
     change_range = change_parameters_range(config)
     res_change = {
-        "Learned_TIN": [],
         "Linear_TIN": [],
         "Gaussian_TIN": [],
-        "Learned_KI": [],
         "Linear_KI": [],
         "Gaussian_KI": [],
     }
+    if config["regime"] == 3:
+        res_change["Linear_Approx"] = []
+
+    if config["gd_active"]:
+        res_change["Learned_KI"] = []
+        res_change["Learned_TIN"] = []
 
     for ind, chng in enumerate(change_range):
         power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str, res_str_run = (
@@ -342,14 +407,38 @@ def main():
                 tanh_factor=tanh_factor,
                 tanh_factor2=tanh_factor2,
             )
+        if config["x2_fixed"]:
+            pdf_x_RX2 = get_fixed_interferer(config, regime_RX2, config["x2_type"])
+        else:
+            pdf_x_RX2 = None
 
-        # ---
+        res_tdm = get_tdm_capacity_with_optimized_dist(
+            regime_RX1, regime_RX2, config, pdf_x_RX2
+        )
+
+        # Approximated Capacity
+        if config["regime"] == 3:
+            if config["x2_fixed"]:
+                approx_cap1 = get_linear_approximation_capacity(
+                    regime_RX2, config, power1, pdf_x_RX2
+                )
+            else:
+                gaus_pdf_x_RX2 = get_fixed_interferer(
+                    config, regime_RX2, 0
+                )  # give gaussian - not fixed
+                approx_cap1 = get_linear_approximation_capacity(
+                    regime_RX2, config, power1, gaus_pdf_x_RX2
+                )
+            res_change["Linear_Approx"].append(approx_cap1)
+
+        # --- Gaussian Capacity
         res_gaus = {}
         cap1_g, cap2_g = gaussian_interference_capacity(
             reg_RX1=regime_RX1,
             reg_RX2=regime_RX2,
             int_ratio=int_ratio,
             tin_active=True,  # First, we apply tin
+            pdf_x_RX2=pdf_x_RX2,
         )
         if config["x2_fixed"]:
             res["R1"]["Gaussian_TIN"] = cap1_g
@@ -361,6 +450,7 @@ def main():
                 reg_RX2=regime_RX2,
                 int_ratio=int_ratio,
                 tin_active=False,  # Then, we apply ki
+                pdf_x_RX2=pdf_x_RX2,
             )
             res["R1"]["Gaussian_KI"] = cap1_g
             res["R2"]["Gaussian_KI"] = cap2_g
@@ -403,10 +493,12 @@ def main():
                 lambda_sweep=lambda_sweep,
                 int_ratio=int_ratio,
                 tin_active=True,  # First, we apply tin
+                pdf_x_RX2=pdf_x_RX2,
             )
 
             if config["x2_fixed"]:
                 res["R1"]["Learned_TIN"] = max_cap_RX1
+                res["R2"]["Learned_TIN"] = max_cap_RX2
                 # if max_cap_RX1 > res_change["Linear_TIN"][-1]:
                 #     breakpoint()
                 res_change["Learned_TIN"].append(max_cap_RX1)
@@ -433,9 +525,10 @@ def main():
                     lambda_sweep=lambda_sweep,
                     int_ratio=int_ratio,
                     tin_active=False,  # Then, we apply ki
+                    pdf_x_RX2=pdf_x_RX2,
                 )
-
                 res["R1"]["Learned_KI"] = max_cap_RX1
+                res["R2"]["Learned_KI"] = max_cap_RX2
                 res_change["Learned_KI"].append(max_cap_RX1)
                 res_pdf_ki = {
                     "RX1_ki": max_pdf_x_RX1,
@@ -450,6 +543,7 @@ def main():
                 res_opt = {"tin": save_opt_sum_capacity, "ki": save_opt_sum_capacity2}
             else:
                 res["R1"]["Learned"] = max_cap_RX1
+                res["R2"]["Learned"] = max_cap_RX2
                 res_pdf = {
                     "RX1": max_pdf_x_RX1,
                     "RX2": max_pdf_x_RX2,
@@ -459,8 +553,6 @@ def main():
                     "RX2": alphabet_x_RX2,
                 }
                 res_opt = {"opt": save_opt_sum_capacity}
-
-            res["R2"]["Learned"] = max_cap_RX2
 
             io.savemat(
                 update_save_location + "pdf.mat",
@@ -480,7 +572,13 @@ def main():
                 res_str_run,
             )
         plot_R1_R2_curve(
-            res, power1, power2, update_save_location, config=config, res_gaus=res_gaus
+            res,
+            power1,
+            power2,
+            update_save_location,
+            config=config,
+            res_gaus=res_gaus,
+            res_tdm=res_tdm,
         )
 
         io.savemat(
@@ -511,6 +609,7 @@ def main():
             )
 
     if config["x2_fixed"]:
+
         plot_R1_vs_change(res_change, change_range, config, save_location, res_str)
         res_change["change_range"] = change_range
         res_change["change_over"] = config["change"]

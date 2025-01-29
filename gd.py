@@ -248,6 +248,7 @@ def gradient_descent_on_interference(
     lambda_sweep,
     int_ratio,
     tin_active,
+    pdf_x_RX2=None,
 ):
     # It should return R1 and R2 pairs for different lambda values
     # The loss function is lambda*Rate1 + (1-lambda)*Rate2
@@ -269,7 +270,6 @@ def gradient_descent_on_interference(
     save_opt_sum_capacity = []
 
     if config["x2_fixed"]:
-        pdf_x_RX2 = get_fixed_interferer(config, reg_RX2)
         update_RX2 = False
 
     for ind, lmbd in enumerate(lambda_sweep):
@@ -327,10 +327,18 @@ def gradient_descent_on_interference(
                     upd_RX2=update_RX2,
                 )
 
-                loss.backward(retain_graph=True)
-                optimizer.step()
                 sum_capacity = loss.detach().clone()
                 opt_sum_capacity.append(-sum_capacity.detach().numpy())
+
+                if opt_sum_capacity[-1] > max_sum_cap_h:
+                    max_sum_cap_h = opt_sum_capacity[-1]
+                    max_pdf_x_RX1_h = pdf_x_RX1.clone().detach()
+                    max_pdf_x_RX2_h = pdf_x_RX2.clone().detach()
+                    max_cap_RX1_h = cap_RX1.clone().detach().numpy()
+                    max_cap_RX2_h = cap_RX2.clone().detach().numpy()
+
+                loss.backward(retain_graph=True)
+                optimizer.step()
 
                 if i % 100 == 0:
                     print(
@@ -343,13 +351,12 @@ def gradient_descent_on_interference(
                         " R2:",
                         cap_RX2,
                     )
-                if opt_sum_capacity[-1] > max_sum_cap_h:
-                    max_sum_cap_h = opt_sum_capacity[-1]
-                    max_pdf_x_RX1_h = pdf_x_RX1.clone().detach()
-                    max_pdf_x_RX2_h = pdf_x_RX2.clone().detach()
-                    max_cap_RX1_h = cap_RX1.clone().detach().numpy()
-                    max_cap_RX2_h = cap_RX2.clone().detach().numpy()
-
+                # if opt_sum_capacity[-1] > max_sum_cap_h:
+                #     max_sum_cap_h = opt_sum_capacity[-1]
+                #     max_pdf_x_RX1_h = pdf_x_RX1.clone().detach()
+                #     max_pdf_x_RX2_h = pdf_x_RX2.clone().detach()
+                #     max_cap_RX1_h = cap_RX1.clone().detach().numpy()
+                #     max_cap_RX2_h = cap_RX2.clone().detach().numpy()
                 if (
                     i > 100
                     and np.abs(
@@ -765,9 +772,9 @@ def gradient_descent_projection_with_learning_rate(config, power, power2, lambda
     )
 
 
-def get_fixed_interferer(config, reg_RX2):
+def get_fixed_interferer(config, reg_RX2, x2_type):
 
-    if config["x2_type"] == 0:
+    if x2_type == 0:
         print(" +++----- X2 Distribution is Gaussian ------ +++")
 
         pdf_x_RX2 = get_gaussian_distribution(
@@ -776,7 +783,7 @@ def get_fixed_interferer(config, reg_RX2):
             complex_alphabet=config["complex"],
             # optimum_power=True, #!!NOTE:It could be added later
         )
-    elif config["x2_type"] == 1:
+    elif x2_type == 1:
         print(" +++----- X2 Distribution is calculated ------ +++")
 
         _, pdf_x_RX2, _, _ = gd_capacity(config, reg_RX2.power, reg_RX2)

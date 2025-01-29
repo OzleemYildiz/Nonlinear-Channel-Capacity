@@ -120,7 +120,7 @@ class First_Regime:
                     / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
                     * torch.exp(
                         -0.5
-                        * (
+                        * abs(
                             (self.alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1))
                             ** 2
                         )
@@ -205,7 +205,10 @@ class First_Regime:
                 / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
                 * torch.exp(
                     -0.5
-                    * ((self.alphabet_y.reshape(-1, 1, 1) - mean_random_x2_and_x1) ** 2)
+                    * (
+                        abs(self.alphabet_y.reshape(-1, 1, 1) - mean_random_x2_and_x1)
+                        ** 2
+                    )
                     / self.sigma_2**2
                 )
             )

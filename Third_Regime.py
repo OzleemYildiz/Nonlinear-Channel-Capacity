@@ -193,7 +193,10 @@ class Third_Regime:
                     * torch.exp(
                         -0.5
                         * (
-                            (self.alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1))
+                            abs(
+                                self.alphabet_y.reshape(-1, 1)
+                                - alphabet_v.reshape(1, -1)
+                            )
                             ** 2
                         )
                         / self.sigma_2**2
@@ -276,7 +279,7 @@ class Third_Regime:
                     * torch.exp(
                         -0.5
                         * (
-                            (
+                            abs(
                                 self.alphabet_y.reshape(
                                     -1,
                                     1,

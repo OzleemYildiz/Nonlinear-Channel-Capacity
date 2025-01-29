@@ -47,18 +47,22 @@ def gaussian_with_l1_norm(alphabet_x, alphabet_y, power, config):
     return cap_r
 
 
-def gaussian_interference_capacity(reg_RX1, reg_RX2, int_ratio, tin_active):
+def gaussian_interference_capacity(
+    reg_RX1, reg_RX2, int_ratio, tin_active, pdf_x_RX2=None
+):
     # Second User does not have interference
 
     pdf_x_1 = get_gaussian_distribution(
         reg_RX1.power, reg_RX1, complex_alphabet=reg_RX1.config["complex"]
     )
-    pdf_x_2 = get_gaussian_distribution(
-        reg_RX2.power, reg_RX2, complex_alphabet=reg_RX2.config["complex"]
-    )
+
+    if pdf_x_RX2 is None:
+        pdf_x_RX2 = get_gaussian_distribution(
+            reg_RX2.power, reg_RX2, complex_alphabet=reg_RX2.config["complex"]
+        )
 
     loss, cap_RX1, cap_RX2 = loss_interference(
-        pdf_x_1, pdf_x_2, reg_RX1, reg_RX2, int_ratio, tin_active, lmbd=0.5
+        pdf_x_1, pdf_x_RX2, reg_RX1, reg_RX2, int_ratio, tin_active, lmbd=0.5
     )
 
     return cap_RX1, cap_RX2

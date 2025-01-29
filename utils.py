@@ -754,10 +754,11 @@ def plot_R1_R2_curve(
     save_location,
     config,
     res_gaus=None,
+    res_tdm=None,
 ):
-    if config["x2_fixed"]:
-        return
-    fig, ax = plt.figure(figsize=(5, 4), tight_layout=True)
+    markers = [".", ",", "o", "v", "^", "<", ">", "x"]
+    ind = 0
+    fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
     # See how many plot we need to do
     hold_keys = []
     for keys in res["R1"].keys():
@@ -765,12 +766,21 @@ def plot_R1_R2_curve(
 
     for keys in hold_keys:
         keys_new = keys.replace("_", " ")
-        ax.plot(res["R1"][keys], res["R2"][keys], label=keys_new, linewidth=3)
+        ax.scatter(
+            res["R1"][keys], res["R2"][keys], label=keys_new, marker=markers[ind]
+        )
+        ind = np.mod(ind + 1, len(markers))
 
-    if res_gaus is not None:
-        for keys in res_gaus.keys():
-            keys_new = keys.replace("_", " ")
-            ax.scatter(res_gaus[keys][0], res_gaus[keys][1], label=keys)
+    # if res_gaus is not None:
+    #     for keys in res_gaus.keys():
+    #         keys_new = keys.replace("_", " ")
+    #         ax.scatter(
+    #             res_gaus[keys][0], res_gaus[keys][1], label=keys, marker=markers[ind]
+    #         )
+    #         ind = np.mod(ind + 1, len(markers))
+
+    if res_tdm is not None:
+        ax.plot(res_tdm["R1"], res_tdm["R2"], label="TDM", linewidth=3)
 
     ax.set_xlabel(r"Rate 1", fontsize=12)
     ax.set_ylabel(r"Rate 2", fontsize=12)
@@ -990,6 +1000,7 @@ def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
 
     fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
     index = 0
+
     for keys in res_change.keys():
         keys_new = keys.replace("_", " ")
         ax.plot(
