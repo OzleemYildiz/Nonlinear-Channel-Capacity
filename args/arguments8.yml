@@ -1,4 +1,4 @@
-min_power_cons : 10
+min_power_cons : 30
 max_power_cons : 100
 sigma_1 : 1
 sigma_2 : 1
@@ -21,8 +21,8 @@ gd_initial_ba : False # It has to be peak power constraint
 bound_active: False
 ba_active : False # Blahut Arimoto - only works with the peak power constraint
 time_division_active: True # When this is active, I have only one SNR is active - forced in the code
-n_time_division: 10
+n_time_division: 
 power_change_active: True # R1 and R2 boosts their power according to the time allocated to them to use the same power for the total duration
 gd_nostop_cond : False  #epsilon is useless if it's true
-complex : True # complex alphabet and pdf
+complex : False # complex alphabet and pdf
 x2_fixed : False

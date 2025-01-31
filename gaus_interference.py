@@ -32,8 +32,6 @@ def define_save_location(config):
         + str(config["power_2"])
         + "_int_ratio="
         + str(config["int_ratio"])
-        + "_delta_y="
-        + str(config["delta_y"])
         + "_max_iter="
         + str(config["max_iter"])
         + "_lr="
@@ -70,9 +68,9 @@ def main():
     os.makedirs(save_location, exist_ok=True)
     print("Save Location: ", save_location)
 
-    power = config["min_power_cons"] #
-    
-    cap_gaus_RX1, cap_gaus_RX2 = gaus_interference_R1_R2_curve(config, power)#
+    power = config["min_power_cons"]  #
+
+    cap_gaus_RX1, cap_gaus_RX2 = gaus_interference_R1_R2_curve(config, power)  #
     io.savemat(save_location + "cap_gaus_RX1.mat", {"cap_gaus_RX1": cap_gaus_RX1})
     io.savemat(save_location + "cap_gaus_RX2.mat", {"cap_gaus_RX2": cap_gaus_RX2})
     plt.figure()

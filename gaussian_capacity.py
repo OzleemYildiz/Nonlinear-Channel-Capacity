@@ -14,7 +14,6 @@ from nonlinearity_utils import return_nonlinear_fn
 def gaussian_capacity(regime_class, power, complex_alphabet=False):
     # print("Gaussian Capacity Calculation")
     pdf_x = get_gaussian_distribution(power, regime_class, complex_alphabet)
-
     loss_g = loss(
         pdf_x,
         regime_class,
@@ -182,7 +181,7 @@ def get_gaussian_distribution(
         )
         pdf_x_imag = (pdf_x_imag / torch.sum(pdf_x_imag)).to(torch.float32)
 
-        pdf_x = pdf_x_re * pdf_x_imag
+        pdf_x = pdf_x_re.reshape(-1, 1) * pdf_x_imag.reshape(1, -1)
         pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
         pdf_x = pdf_x.reshape(-1)
 
@@ -194,4 +193,4 @@ def get_gaussian_distribution(
         )
         pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
 
-    return pdf_x
+    return pdf_x.reshape(-1)

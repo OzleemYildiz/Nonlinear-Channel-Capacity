@@ -23,7 +23,7 @@ clipping_limit_y : 3 # the limit for the clipping if nonlinear is clip (5)
 output_dir : 'Res-Int2' # file name to save the results
 regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(IX+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
-gd_active : True
+gd_active : False
 epsilon : 0.00005 #convergence criteria
 lr : [0.0000001] # learning rate
 max_iter : 20000 # maximum number of iterations
@@ -31,5 +31,5 @@ max_seq_iter : 20 # px1 anId px2 are updated alternatively, this is the maximum 
 n_lmbd : 5 # number of lambdas
 x2_fixed : True # if True, px2 is fixed and px1 is updated
 x2_type : 1 # 0: Gaussian, 1: Optimized
-gd_nostop_cond : True # if True, the gd will not stop until max_iter
+gd_nostop_cond : False # if True, the gd will not stop until max_iter
 complex : True # if True, the complex alphabet is used

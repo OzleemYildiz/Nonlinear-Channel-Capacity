@@ -8,7 +8,7 @@ from gaussian_capacity import (
     gaussian_with_l1_norm,
     find_best_gaussian,
 )
-from gd import gd_capacity, gd_on_alphabet_capacity
+from gd import gd_capacity
 from utils import (
     get_alphabet_x_y,
     plot_vs_change,
@@ -99,10 +99,7 @@ def define_save_location(config):
         save_location = save_location + "_gd=" + str(config["gd_active"])
         if config["gd_initial_ba"]:
             save_location = save_location + "_initial_ba"
-    if config["gd_alphabet_active"]:
-        save_location = (
-            save_location + "_gd_alphabet_" + str(config["gd_alphabet_active"])
-        )
+
     if config["nonlinearity"] == 5:
         save_location = (
             save_location
@@ -131,6 +128,22 @@ def define_save_location(config):
 
 def main():
     config = read_config()
+
+    # Title for PP has been updated
+    if config["regime"] == 1:
+        config["title"] = config["title"] + " sigma_2=" + str(config["sigma_2"])
+    elif config["regime"] == 3:
+        config["title"] = (
+            config["title"]
+            + " sigma_1="
+            + str(config["sigma_1"])
+            + " sigma_2="
+            + str(config["sigma_2"])
+        )
+    if config["nonlinearity"] == 3:
+        config["title"] = config["title"] + " tanh factor=" + str(config["tanh_factor"])
+    elif config["nonlinearity"] == 5:
+        config["title"] = config["title"] + " clip=" + str(config["clipping_limit_x"])
 
     print(
         "**** AWGN Channel with Nonlinearity: ",
@@ -183,8 +196,9 @@ def main():
         # Fill this if and only time division is active
         rate_1_tau_gaussian = []
         rate_2_tau_gaussian = []
-        rate_1_tau_learned = []
-        rate_2_tau_learned = []
+        if config["gd_active"]:
+            rate_1_tau_learned = []
+            rate_2_tau_learned = []
     else:
         tau_list = np.array([1])
     power_change = []
@@ -211,9 +225,9 @@ def main():
                 if ind == 0:  # keeping record of only tau results for demonstration
                     # 1-tau is for R1 and R2 curve
                     if config["complex"]:
-                        calc_logsnr.append(np.log(1 + power / (noise_power)))
+                        calc_logsnr.append(tau * np.log(1 + power / (noise_power)))
                     else:
-                        calc_logsnr.append(np.log(1 + power / (noise_power)) / 2)
+                        calc_logsnr.append(tau * np.log(1 + power / (noise_power)) / 2)
                 print("Linear Capacity :", calc_logsnr[-1])
 
                 # Complex Alphabet is on
@@ -287,7 +301,7 @@ def main():
                 if ind == 0:  # keeping record of only tau results for demonstration
 
                     capacity_gaussian = bound_backtracing_check(
-                        capacity_gaussian, cap_g
+                        capacity_gaussian, tau * cap_g
                     )
 
                     # capacity_gaussian.append(cap_g)
@@ -320,12 +334,14 @@ def main():
 
                 # Gradient Descent
                 if config["gd_active"]:
+
                     cap_learned, max_pdf_x, max_alphabet_x, opt_capacity = gd_capacity(
                         config, power, regime_class
                     )
 
                     if ind == 0:  # keeping record of only tau results for demonstration
-                        capacity_learned.append(cap_learned)
+                        capacity_learned.append(tau * cap_learned)
+
                     max_pdf_x = project_pdf(
                         max_pdf_x, config["cons_type"], max_alphabet_x, power
                     )
@@ -337,28 +353,22 @@ def main():
                                 max_pdf_x.detach().numpy(),
                                 max_alphabet_x.detach().numpy(),
                             ]
+                            map_opt[
+                                "Chng" + str(int(tau * 100)) + "ind=" + str(ind)
+                            ] = opt_capacity
                         else:
                             map_pdf["Chng" + str(int(tau * 100))] = [
                                 max_pdf_x.detach().numpy(),
                                 max_alphabet_x.detach().numpy(),
                             ]
+                            map_opt["Chng" + str(int(tau * 100))] = opt_capacity
                     else:
                         map_pdf["Chng" + str(int((snr * 100)))] = [
                             max_pdf_x.detach().numpy(),
                             max_alphabet_x.detach().numpy(),
                         ]
                         map_opt["Chng" + str(int((snr * 100)))] = opt_capacity
-                # Gradient Descent on Alphabet X for Peak Power Constraint
-                # TODO: Not working for TDM
-                if config["gd_alphabet_active"] and config["cons_type"] == 0:
-                    cap_learned, max_pdf_x, max_alphabet_x = gd_on_alphabet_capacity(
-                        max_x, config, power, regime_class
-                    )
-                    capacity_learned_over_alphabet.append(cap_learned)
-                    map_pdf["Chng" + str(int(snr * 100))] = [
-                        max_pdf_x.detach().numpy(),
-                        max_alphabet_x.detach().numpy(),
-                    ]
+
                 if config["complex"]:
                     del real_x, imag_x, real_y, imag_y, regime_class
                 else:
@@ -370,20 +380,23 @@ def main():
                     if config["power_change_active"]:
                         if ind == 0:
                             rate_1_tau_gaussian.append(tau * cap_g)
-                            rate_1_tau_learned.append(tau * cap_learned)
+                            if config["gd_active"]:
+                                rate_1_tau_learned.append(tau * cap_learned)
                         if ind == 1:
                             rate_2_tau_gaussian.append((1 - tau) * cap_g)
-                            rate_2_tau_learned.append((1 - tau) * cap_learned)
+                            if config["gd_active"]:
+                                rate_2_tau_learned.append((1 - tau) * cap_learned)
                     else:
                         # Since we only have one SNR value that we learn the distribution for, we can break here
                         rate_1_tau_gaussian.append((tau_list * cap_g.numpy()))
                         rate_1_tau_gaussian = rate_1_tau_gaussian[0]
                         rate_2_tau_gaussian.append((1 - tau_list) * cap_g.numpy())
                         rate_2_tau_gaussian = rate_2_tau_gaussian[0]
-                        rate_1_tau_learned.append(tau_list * cap_learned)
-                        rate_1_tau_learned = rate_1_tau_learned[0]
-                        rate_2_tau_learned.append((1 - tau_list) * cap_learned)
-                        rate_2_tau_learned = rate_2_tau_learned[0]
+                        if config["gd_active"]:
+                            rate_1_tau_learned.append(tau_list * cap_learned)
+                            rate_1_tau_learned = rate_1_tau_learned[0]
+                            rate_2_tau_learned.append((1 - tau_list) * cap_learned)
+                            rate_2_tau_learned = rate_2_tau_learned[0]
 
             if config["time_division_active"] and not config["power_change_active"]:
                 break
@@ -391,8 +404,9 @@ def main():
         if config["time_division_active"]:
             res_tau["R1"]["Gaussian"] = rate_1_tau_gaussian
             res_tau["R2"]["Gaussian"] = rate_2_tau_gaussian
-            res_tau["R1"]["Learned"] = rate_1_tau_learned
-            res_tau["R2"]["Learned"] = rate_2_tau_learned
+            if config["gd_active"]:
+                res_tau["R1"]["Learned"] = rate_1_tau_learned
+                res_tau["R2"]["Learned"] = rate_2_tau_learned
 
             pow_original = (10 ** (snr / 10)) * noise_power
             plot_R1_R2_curve(  # TODO: Check why this exists - it must be because of the time division
@@ -439,8 +453,6 @@ def main():
     }
     if config["gd_active"]:
         res["Learned_Capacity"] = capacity_learned
-    if config["gd_alphabet_active"] and config["cons_type"] == 0:
-        res["Learned_Capacity_Over_Alphabet"] = capacity_learned_over_alphabet
     if config["bound_active"]:
         if config["regime"] == 1 and config["cons_type"] == 1:
             res["Upper_Bound_by_Tarokh"] = up_tarokh
@@ -529,6 +541,7 @@ def main():
                 config,
                 save_location=save_location,
                 file_name="pdf_snr_gd.png",
+                map_opt=map_opt,
             )
         if config["ba_active"] and config["cons_type"] == 0:
             plot_pdf_vs_change(

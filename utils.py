@@ -87,7 +87,9 @@ def loss(
         )
     if torch.sum(pdf_x < 0) > 0:
         pdf_x = torch.relu(pdf_x) + 1e-20
+
     cap = regime_class.new_capacity(pdf_x)
+    # cap = regime_class.capacity_like_ba(pdf_x)
     # print("What they did", cap)
     loss = -cap
 
@@ -261,17 +263,9 @@ def plot_vs_change(
         linestyle=":",
         linewidth=0.5,
     )
+
     ax.set_title(
-        r"Regime: "
-        + str(config["regime"])
-        + ", phi =  "
-        + str(config["nonlinearity"])
-        + ", sigma_1 = "
-        + str(config["sigma_1"])
-        + ", sigma_2 = "
-        + str(config["sigma_2"])
-        + ", N = "
-        + str(config["min_samples"]),
+        config["title"],
         fontsize=12,
     )
 
@@ -311,7 +305,26 @@ def plot_pdf_vs_change(
     fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
     if config["time_division_active"] and not config["power_change_active"]:
         range_change = [range_change[0]]  # Because I only ran the code for one value
-    for chn in range_change:
+
+    markers = [
+        "<",
+        ",",
+        "^",
+        "o",
+        "v",
+        ">",
+        "x",
+        ".",
+    ]
+    if config["time_division_active"] and config["power_change_active"]:
+        str_change = "alpha= "
+    elif not config["time_division_active"]:
+        str_change = "SNR= "
+    else:
+        return  # No need to plot anything because it's TDM without power change - pdf has already been plotted
+
+    for ind, chn in enumerate(range_change):
+
         if config["power_change_active"]:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100)) + "ind=0"]
         else:
@@ -324,16 +337,36 @@ def plot_pdf_vs_change(
 
         act_pdf_x = pdf_x > 0
         act_alp = alphabet_x[act_pdf_x]
-        ax.scatter(
-            chn * np.ones_like(act_alp),
-            act_alp,
-            s=pdf_x[act_pdf_x] * 100,
-        )
-    if not config["time_division_active"]:
+
+        if not config["complex"]:  # Real Domain
+            ax.scatter(
+                chn * np.ones_like(act_alp),
+                act_alp,
+                s=pdf_x[act_pdf_x] * 100,
+            )
+
+        else:  # Complex Domain
+            alphabet_x_re = np.real(act_alp)
+            alphabet_x_im = np.imag(act_alp)
+            ax.scatter(
+                alphabet_x_re,
+                alphabet_x_im,
+                s=pdf_x[act_pdf_x] * 200,
+                label=str_change + str(round(chn, 2)),
+                marker=markers[ind % len(markers)],
+            )
+
+    if not config["time_division_active"] and not config["complex"]:
         ax.set_xlabel(r"SNR (dB)")
-    else:
+        ax.set_ylabel(r"X", fontsize=12)
+    elif config["time_division_active"] and not config["complex"]:
         ax.set_xlabel(r"Time Division Ratio", fontsize=12)
-    ax.set_ylabel(r"X", fontsize=12)
+        ax.set_ylabel(r"X", fontsize=12)
+    else:  # Complex Domain
+        ax.legend(loc="best", fontsize=12)
+        ax.set_xlabel(r"Re(X)", fontsize=12)
+        ax.set_ylabel(r"Im(X)", fontsize=12)
+
     ax.grid(
         visible=True,
         which="minor",
@@ -351,17 +384,9 @@ def plot_pdf_vs_change(
         linestyle="-",
         linewidth=0.5,
     )
+
     ax.set_title(
-        r"Regime "
-        + str(config["regime"])
-        + " phi =  "
-        + str(config["nonlinearity"])
-        + " sigma_1 = "
-        + str(config["sigma_1"])
-        + " sigma_2 = "
-        + str(config["sigma_2"])
-        + " N = "
-        + str(config["min_samples"]),
+        config["title"],
         fontsize=12,
     )
     if save_location == None:
@@ -397,7 +422,7 @@ def plot_pdf_vs_change(
             ax.set_xlabel(r"Re(X)", fontsize=12)
             ax.set_ylabel(r"Im(X)", fontsize=12)
         else:
-            ax.plot(alphabet_x, pdf_x, linewidth=3)
+            ax.bar(alphabet_x, pdf_x, linewidth=3)
             ax.set_xlabel(r"X", fontsize=12)
             ax.set_ylabel(r"PDF", fontsize=12)
         ax.grid(
@@ -417,36 +442,50 @@ def plot_pdf_vs_change(
             linewidth=0.5,
         )
         plt.minorticks_on()
+        title = config["title"] + " SNR = " + str(round(chn, 2))
         ax.set_title(
-            r"Regime "
-            + str(config["regime"])
-            + ", phi =  "
-            + str(config["nonlinearity"])
-            + ", sigma_1 = "
-            + str(config["sigma_1"])
-            + ", sigma_2 = "
-            + str(config["sigma_2"])
-            + ", N = "
-            + str(config["min_samples"]),
+            title,
             fontsize=12,
         )
         fig.savefig(save_new, bbox_inches="tight")
         plt.close()
 
-        if map_opt is not None:
-            opt_cap = map_opt["Chng" + str(int(chn * 100))]
+        if map_opt is not None and len(map_opt.keys()) != 0:
+            if config["power_change_active"] and config["time_division_active"]:
+                opt_cap = map_opt["Chng" + str(int(chn * 100)) + "ind=0"]
+            else:
+                opt_cap = map_opt["Chng" + str(int(chn * 100))]
             save_new = save_location + "/opt_" + str(int(chn * 100)) + ".png"
-            plot_opt(opt_cap, save_new)
+            plot_opt(opt_cap, save_new, title)
 
 
-def plot_opt(opt_cap, save_new):
+def plot_opt(opt_cap, save_new, title):
+    fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
 
-    plt.figure(figsize=(5, 4))
-    plt.plot(opt_cap)
-    plt.grid()
-    plt.xlabel("iteration")
-    plt.ylabel("Rate")
-    plt.savefig(save_new)
+    ax.plot(opt_cap)
+    ax.set_xlabel("iteration", fontsize=12)
+    ax.set_ylabel("Rate", fontsize=12)
+    ax.set_title(title, fontsize=12)
+    plt.minorticks_on()
+    ax.grid(
+        visible=True,
+        which="minor",
+        axis="both",
+        color="gainsboro",
+        linestyle=":",
+        linewidth=0.5,
+    )
+
+    ax.grid(
+        visible=True,
+        which="major",
+        axis="both",
+        color="lightgray",
+        linestyle="-",
+        linewidth=0.5,
+    )
+
+    fig.savefig(save_new, bbox_inches="tight")
     plt.close()
 
 
@@ -601,6 +640,17 @@ def read_config(args_name="arguments.yml"):
         config["cons_str"] = "Peak"
     else:
         config["cons_str"] = "First"
+
+    title = (
+        "Regime="
+        + str(config["regime"])
+        + " phi="
+        + str(config["nonlinearity"])
+        + " N="
+        + str(config["min_samples"])
+    )
+
+    config["title"] = title
 
     return config
 
@@ -925,7 +975,7 @@ def check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
     cond1 = torch.abs(torch.sum(pdf_x) - 1) < 1e-2  # sum of pdf is 1
     cond2 = torch.sum(pdf_x < 0) == 0  # pdf cannot be negative
     if cons_type == 1:
-        cond3 = torch.sum(torch.abs(alphabet_x) ** 2 * pdf_x) <= power + 1e-1
+        cond3 = torch.sum(torch.abs(alphabet_x) ** 2 * pdf_x) <= power + 1e-3
     else:
         cond3 = True
 
