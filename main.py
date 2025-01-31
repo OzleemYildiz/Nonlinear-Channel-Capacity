@@ -141,7 +141,7 @@ def main():
             + str(config["sigma_2"])
         )
     if config["nonlinearity"] == 3:
-        config["title"] = config["title"] + " tanh factor=" + str(config["tanh_factor"])
+        config["title"] = config["title"] + " k=" + str(config["tanh_factor"])
     elif config["nonlinearity"] == 5:
         config["title"] = config["title"] + " clip=" + str(config["clipping_limit_x"])
 

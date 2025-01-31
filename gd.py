@@ -83,7 +83,7 @@ def gd_capacity(config, power, regime_class):
                 max_alphabet_x = regime_class.alphabet_x.clone().detach()
                 if (i - earlier_i) > 50:
                     print("Iter:", i, "Capacity:", opt_capacity[-1])
-                earlier_i = i
+                    earlier_i = i
 
             if i % 1000 == 0:
                 print("Iter:", i, "Capacity:", opt_capacity[-1])
@@ -143,7 +143,7 @@ def gradient_descent_on_interference(
     for ind, lmbd in enumerate(lambda_sweep):
         # FIXME: currently different learning rate comparison is not supported
         print("++++++++ Lambda: ", lmbd, " ++++++++")
-
+        earlier_i = 0
         for lr in config["lr"]:
 
             # Initial distributions are uniform for peak power constraint
@@ -183,6 +183,7 @@ def gradient_descent_on_interference(
             for i in range(config["max_iter"]):
                 optimizer.zero_grad()
                 if torch.sum(pdf_x_RX1.isnan()) > 0 or torch.sum(pdf_x_RX2.isnan()) > 0:
+                    print("Nan in pdfs")
                     breakpoint()
                 loss, cap_RX1, cap_RX2 = loss_interference(
                     pdf_x_RX1,
@@ -204,11 +205,23 @@ def gradient_descent_on_interference(
                     max_pdf_x_RX2_h = pdf_x_RX2.clone().detach()
                     max_cap_RX1_h = cap_RX1.clone().detach().numpy()
                     max_cap_RX2_h = cap_RX2.clone().detach().numpy()
+                    if ind - earlier_i > 50:
+                        print(
+                            "Iter:",
+                            i,
+                            " Sum Capacity:",
+                            opt_sum_capacity[-1],
+                            " R1:",
+                            cap_RX1,
+                            " R2:",
+                            cap_RX2,
+                        )
+                        earlier_i = ind
 
                 loss.backward(retain_graph=True)
                 optimizer.step()
 
-                if i % 100 == 0:
+                if i % 1000 == 0:
                     print(
                         "Iter:",
                         i,
@@ -219,17 +232,11 @@ def gradient_descent_on_interference(
                         " R2:",
                         cap_RX2,
                     )
-                # if opt_sum_capacity[-1] > max_sum_cap_h:
-                #     max_sum_cap_h = opt_sum_capacity[-1]
-                #     max_pdf_x_RX1_h = pdf_x_RX1.clone().detach()
-                #     max_pdf_x_RX2_h = pdf_x_RX2.clone().detach()
-                #     max_cap_RX1_h = cap_RX1.clone().detach().numpy()
-                #     max_cap_RX2_h = cap_RX2.clone().detach().numpy()
+
                 if (
-                    i > 100
+                    i > 200
                     and np.abs(
-                        np.mean(opt_sum_capacity[-50:])
-                        - np.mean(opt_sum_capacity[-100:-50])
+                        opt_sum_capacity[-1] - np.mean(opt_sum_capacity[-200:-1])
                     )
                     < opt_sum_capacity[-1] * config["epsilon"]
                 ):
@@ -282,7 +289,7 @@ def get_fixed_interferer(config, regime, x_type, save_location=None):
             # optimum_power=True, #!!NOTE:It could be added later
         )
     elif x_type == 1:
-        print(" +++----- X2 Distribution is calculated ------ +++")
+        print(" +++----- PP X Distribution is calculated ------ +++")
 
         _, pdf_x, _, opt_capacity = gd_capacity(config, regime.power, regime)
 

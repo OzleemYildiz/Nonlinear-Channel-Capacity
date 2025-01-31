@@ -20,7 +20,6 @@ import os
 from scipy import io
 from gd import (
     gradient_descent_on_interference,
-    gradient_descent_projection_with_learning_rate,
     get_fixed_interferer,
 )
 import time
@@ -151,7 +150,7 @@ def get_run_parameters(config, chng):
             + "_k2="
             + str(tanh_factor2)
         )
-        res_str_run = res_str + "_pw1=" + str(round(power1, 3))
+        res_str_run = "_pw1=" + str(round(power1, 3))
     elif config["change"] == "pw2":
         print("Power2: ", chng)
         power2 = chng
@@ -165,7 +164,7 @@ def get_run_parameters(config, chng):
             + "_k2="
             + str(tanh_factor2)
         )
-        res_str_run = res_str + "_pw2=" + str(round(power2, 3))
+        res_str_run = "_pw2=" + str(round(power2, 3))
     elif config["change"] == "a":
         print("Int Ratio: ", chng)
         int_ratio = chng
@@ -179,7 +178,7 @@ def get_run_parameters(config, chng):
             + "_k2="
             + str(tanh_factor2)
         )
-        res_str_run = res_str + "_a=" + str(int_ratio)
+        res_str_run = "_a=" + str(int_ratio)
     elif config["change"] == "k":
         print("Tanh Factor: ", chng)
         tanh_factor = chng
@@ -193,7 +192,7 @@ def get_run_parameters(config, chng):
             + "_a="
             + str(int_ratio)
         )
-        res_str_run = res_str + "_k=" + str(tanh_factor)
+        res_str_run = "_k=" + str(tanh_factor)
     elif config["change"] == "k2":
         print("Tanh Factor2: ", chng)
         tanh_factor2 = chng
@@ -207,7 +206,7 @@ def get_run_parameters(config, chng):
             + "_a="
             + str(int_ratio)
         )
-        res_str_run = res_str + "_k2=" + str(tanh_factor2)
+        res_str_run = "_k2=" + str(tanh_factor2)
 
     return power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str, res_str_run
 
@@ -304,7 +303,7 @@ def get_tdm_capacity_with_optimized_dist(
     print("---- TDM Capacity ----")
 
     if (
-        config["x2_type"] == 0
+        config["x2_type"] == 0 or not config["x2_fixed"]
     ):  # calculated pdf_x_RX2 is gaussian and I need an optimized distribution
         save_rx2 = save_location + "/TDM_pdf_x_RX2_opt.png"
         pdf_x_RX2 = get_fixed_interferer(
@@ -333,6 +332,29 @@ def main():
 
     st = time.time()
     config = read_config()
+
+    # Add sigmas to the title of the config
+    if config["regime"] == 1:  # Y = phi(X1) + N2
+        config["title"] = (
+            config["title"]
+            + "_sigma12="
+            + str(config["sigma_12"])
+            + "_sigma22="
+            + str(config["sigma_22"])
+        )
+    elif config["regime"] == 3:  # Y = phi(X1 + N1) + N2
+        config["title"] = (
+            config["title"]
+            + "_sigma11="
+            + str(config["sigma_11"])
+            + "_sigma12="
+            + str(config["sigma_12"])
+            + "_sigma21="
+            + str(config["sigma_21"])
+            + "_sigma22="
+            + str(config["sigma_22"])
+        )
+
     print(
         "**** AWGN Interference Channel with Nonlinearity: ",
         config["nonlinearity"],
@@ -362,11 +384,15 @@ def main():
     if config["gd_active"]:
         res_change["Learned_KI"] = []
         res_change["Learned_TIN"] = []
-
+    old_config_title = config["title"]
     for ind, chng in enumerate(change_range):
         power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str, res_str_run = (
             get_run_parameters(config, chng)
         )
+
+        # Update Title in Config for the case of Interference
+        config["title"] = config["title"] + "" + res_str
+
         res = {"R1": {}, "R2": {}}
         linear_tin, linear_ki = get_linear_interference_capacity(
             power1, power2, int_ratio, config
@@ -610,7 +636,7 @@ def main():
                 res_alph,
                 update_save_location,
                 lambda_sweep,
-                res_str_run,
+                res_str + res_str_run,
             )
         plot_R1_R2_curve(
             res,

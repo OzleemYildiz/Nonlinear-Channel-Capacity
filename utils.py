@@ -154,6 +154,7 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
         fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
 
         # Check if any alphabet is complex
+        complex_run = False
         for key in res_pdf.keys():
             if res_alph[key].is_complex():
                 complex_run = True
