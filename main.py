@@ -51,16 +51,18 @@ from blahut_arimoto_capacity import apply_blahut_arimoto
 
 
 def define_save_location(config):
-    save_location = config["output_dir"]
+    save_location = config["output_dir"] + "/"
     if config["time_division_active"]:
-        save_location = save_location + "-TDM"
+        save_location = save_location + "TDM"
         if config["power_change_active"]:
-            save_location = save_location + "-PB"
+            save_location = save_location + "_PB"
     if config["complex"]:
-        save_location = save_location + "-Complex"
+        if config["time_division_active"]:
+            save_location = save_location + "_"
+        save_location = save_location + "Complex"
 
     save_location = save_location + (
-        "/"
+        "_"
         + config["cons_str"]
         + "_phi="
         + str(config["nonlinearity"])
@@ -212,7 +214,9 @@ def main():
 
         for tau in tau_list:
             print("----------Time Division: ", tau, "----------")
-            if config["power_change_active"]:
+            if (
+                config["power_change_active"] and config["time_division_active"]
+            ):  # For power boost, time division should be active
                 tau_power_list = [power / tau, power / (1 - tau)]
             else:
                 tau_power_list = [power]  # No power boost
@@ -232,6 +236,8 @@ def main():
 
                 # Complex Alphabet is on
                 if config["complex"]:
+                    if np.isnan(power) or np.isinf(power):
+                        breakpoint()
                     real_x, imag_x, real_y, imag_y = get_PP_complex_alphabet_x_y(
                         config, power, tanh_factor
                     )

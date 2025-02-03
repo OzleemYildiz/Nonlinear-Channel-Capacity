@@ -326,7 +326,7 @@ def plot_pdf_vs_change(
 
     for ind, chn in enumerate(range_change):
 
-        if config["power_change_active"]:
+        if config["power_change_active"] and config["time_division_active"]:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100)) + "ind=0"]
         else:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100))]
@@ -410,7 +410,7 @@ def plot_pdf_vs_change(
     plt.close()
 
     for chn in range_change:
-        if config["power_change_active"]:
+        if config["power_change_active"] and config["time_division_active"]:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100)) + "ind=0"]
         else:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100))]
@@ -754,9 +754,15 @@ def get_interference_alphabet_x_y(
 def get_interference_alphabet_x_y_complex(
     config, power1, power2, int_ratio, tanh_factor, tanh_factor2
 ):
+
     max_x_1, max_y_1, delta_x1, max_x_2, max_y_2, delta_x2 = (
         get_max_alphabet_interference(
-            config, power1, power2, int_ratio, tanh_factor, tanh_factor2
+            config,
+            power1 / 2,
+            power2 / 2,
+            int_ratio,
+            tanh_factor,
+            tanh_factor2,
         )
     )
     # Create the alphabet with the fixed delta
@@ -984,8 +990,11 @@ def check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
 
 
 def get_PP_complex_alphabet_x_y(config, power, tanh_factor, bound=False):
+    if np.isnan(power) or power == np.inf:
+        breakpoint()
+
     max_x, max_y, delta_y = get_max_alphabet_PP(
-        config, power, tanh_factor, config["min_samples"], bound
+        config, power / 2, tanh_factor, config["min_samples"], bound
     )
     alphabet_x = torch.linspace(-max_x, max_x, config["min_samples"])
     delta = alphabet_x[1] - alphabet_x[0]
@@ -993,8 +1002,11 @@ def get_PP_complex_alphabet_x_y(config, power, tanh_factor, bound=False):
     real_x = alphabet_x
     imag_x = alphabet_x.reshape(-1, 1)
 
-    # FIXME: Not sure if avoiding zero is a good idea -- Check this
-    alphabet_y = torch.arange(-max_y, max_y, delta)
+    try:
+        # FIXME: Not sure if avoiding zero is a good idea -- Check this
+        alphabet_y = torch.arange(-max_y, max_y, delta)
+    except:
+        breakpoint()
     # real_y, imag_y = torch.meshgrid([alphabet_y, alphabet_y])
     real_y = alphabet_y
     imag_y = alphabet_y.reshape(-1, 1)

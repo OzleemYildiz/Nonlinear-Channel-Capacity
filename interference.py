@@ -29,12 +29,12 @@ import torch
 
 def define_save_location(config):
 
-    save_location = config["output_dir"]
+    save_location = config["output_dir"] + "/"
     if config["complex"]:
-        save_location = save_location + "-Complex"
+        save_location = save_location + "Complex_"
 
     save_location = (
-        save_location + "/" + config["cons_str"] + "_phi=" + str(config["nonlinearity"])
+        save_location + config["cons_str"] + "_phi=" + str(config["nonlinearity"])
     )
     if config["nonlinearity"] == 5:
         save_location = save_location + "_clip=" + str(config["clipping_limit_x"])
@@ -81,7 +81,7 @@ def define_save_location(config):
             save_location = save_location + "_x2_fixed"
             save_location = save_location + "_x2=" + str(config["x2_type"])
 
-    save_location = save_location + "/"
+    save_location = save_location + "_" + config["change"] + "/"
 
     return save_location
 
