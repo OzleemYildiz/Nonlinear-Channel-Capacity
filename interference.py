@@ -408,24 +408,7 @@ def main():
         res_change["Linear_TIN"].append(linear_tin)
         res_change["Linear_KI"].append(linear_ki)
 
-        update_save_location = (
-            save_location
-            + "power1="
-            + str(round(power1, 5))
-            + "/"
-            + "power2="
-            + str(round(power2, 5))
-            + "/"
-            + "int_ratio="
-            + str(round(int_ratio, 5))
-            + "/"
-            + "tanh_factor="
-            + str(round(tanh_factor, 5))
-            + "/"
-            + "tanh_factor2="
-            + str(round(tanh_factor2, 5))
-            + "/"
-        )
+        update_save_location = save_location + config["change"] + "=" + str(chng) + "/"
 
         os.makedirs(update_save_location, exist_ok=True)
         print("----------", str(config["change"]), ":", chng, "-----------")
