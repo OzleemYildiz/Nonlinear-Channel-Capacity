@@ -26,6 +26,7 @@ def project_pdf(pdf_x, cons_type, alphabet_x, power):
 
     n, m = len(alphabet_x), 1
     if n == 0:
+        print("While Projecting, alphabet_x is empty")
         breakpoint()
         raise ValueError("Alphabet_x is empty")
     p_hat = cp.Variable(n)
@@ -52,6 +53,7 @@ def project_pdf(pdf_x, cons_type, alphabet_x, power):
         try:
             (solution,) = cvxpylayer(A_x, power, pdf_x)
         except:
+            print("Error in Projecting- Solution cannot be found")
             breakpoint()
     elif cons_type == 0:  # peak power
         cvxpylayer = CvxpyLayer(problem, parameters=[p], variables=[p_hat])
@@ -99,6 +101,7 @@ def loss(
         or torch.sum(cap.isnan()) > 0
         or torch.sum(pdf_x < 0) > 0
     ):
+        print("Error in loss function - pdf_x or cap is nan or there is <0 in pdf_x")
         breakpoint()
 
     return loss
@@ -534,6 +537,7 @@ def get_max_alphabet_PP(
         )
 
     # Keep the number of samples fixed instead of delta
+
     delta_y = 2 * max_x / min_samples
     # if delta_y > config["delta_y"]:
     #     delta_y = config["delta_y"]
@@ -561,8 +565,8 @@ def get_alphabet_x_y(config, power, tanh_factor, bound=False):
     # Create the alphabet with the fixed delta
     alphabet_x = torch.arange(-max_x, max_x + delta_y / 2, delta_y)
     alphabet_y = torch.arange(-max_y, max_y + delta_y / 2, delta_y)
-
     if len(alphabet_x) == 0:
+        print("Alphabet X is empty, while creating alphabet")
         breakpoint()
     return alphabet_x, alphabet_y, max_x, max_y
 
@@ -929,6 +933,7 @@ def loss_interference(
 ):
     # Interference loss function for GD
     if torch.sum(pdf_x_RX1.isnan()) > 0 or torch.sum(pdf_x_RX2.isnan()) > 0:
+        print("Nan in Pdfs - Loss Interference")
         breakpoint()
     if upd_RX1:
         pdf_x_RX1 = project_pdf(
@@ -971,6 +976,7 @@ def loss_interference(
     cap_RX2 = reg_RX2.new_capacity(pdf_x_RX2)
 
     if torch.isnan(cap_RX1) or torch.isnan(cap_RX2):
+        print("Nan in Capacity - Loss Interference")
         breakpoint()
 
     sum_capacity = lmbd * cap_RX1 + (1 - lmbd) * cap_RX2
@@ -991,6 +997,7 @@ def check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
 
 def get_PP_complex_alphabet_x_y(config, power, tanh_factor, bound=False):
     if np.isnan(power) or power == np.inf:
+        print("Power is nan or inf- complex alphabet creation")
         breakpoint()
 
     max_x, max_y, delta_y = get_max_alphabet_PP(
@@ -1006,6 +1013,7 @@ def get_PP_complex_alphabet_x_y(config, power, tanh_factor, bound=False):
         # FIXME: Not sure if avoiding zero is a good idea -- Check this
         alphabet_y = torch.arange(-max_y, max_y, delta)
     except:
+        print("Error in creating alphabet y- complex alphabet")
         breakpoint()
     # real_y, imag_y = torch.meshgrid([alphabet_y, alphabet_y])
     real_y = alphabet_y

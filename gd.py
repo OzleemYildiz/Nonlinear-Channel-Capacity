@@ -58,6 +58,7 @@ def gd_capacity(config, power, regime_class):
         max_capacity = loss(pdf_x, regime_class, project_active=True)
 
         if len(alphabet_x) == 0:
+            print("GD Capacity- Alphabet X is empty")
             breakpoint()
         # pdf_x = project_pdf(pdf_x, config["cons_type"], alphabet_x, power) -> this projection makes the capacity worse - like double projection since it's also in the loss function
 
@@ -183,7 +184,7 @@ def gradient_descent_on_interference(
             for i in range(config["max_iter"]):
                 optimizer.zero_grad()
                 if torch.sum(pdf_x_RX1.isnan()) > 0 or torch.sum(pdf_x_RX2.isnan()) > 0:
-                    print("Nan in pdfs")
+                    print("Nan in pdfs - GD on Interference")
                     breakpoint()
                 loss, cap_RX1, cap_RX2 = loss_interference(
                     pdf_x_RX1,

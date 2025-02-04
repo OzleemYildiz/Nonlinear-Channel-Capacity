@@ -1,0 +1,20 @@
+cons_type : 1 
+regime : 3
+min_samples : 16
+nonlinearity : 3
+tanh_factor1 : 5
+power1 : 10
+power2 : 10
+sigma_1 : 1
+sigma_2 : 1
+sigma_21 : 1 # necessary if interference
+sigma_22 : 1 # necessary if interference
+interference_active : False
+stop_sd : 4
+complex : False
+lr : 0.00001
+batch_size : 100
+num_epochs : 100
+training_size : 30000
+hidden_size : 200
+

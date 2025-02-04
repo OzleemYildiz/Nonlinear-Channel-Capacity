@@ -132,8 +132,10 @@ class Third_Regime:
             alphabet_v = self.nonlinear_fn(alphabet_u)
         return alphabet_v
 
-    def new_capacity(self, pdf_x, eps=1e-20):
-        pdf_y_given_x = self.get_pdf_y_given_x()
+    def new_capacity(self, pdf_x, eps=1e-20, pdf_y_given_x=None):
+        if pdf_y_given_x is None:
+            pdf_y_given_x = self.get_pdf_y_given_x()
+
         # pdf_y = torch.zeros_like(self.alphabet_y)
         # entropy_y_given_x = 0
 

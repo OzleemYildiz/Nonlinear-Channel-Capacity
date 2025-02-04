@@ -12,3 +12,6 @@ HPC
 *.mlx
 Fall/
 outs/
+Prob_Compare/
+NN/
+NN3/
