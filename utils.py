@@ -694,17 +694,41 @@ def get_max_alphabet_interference(
         max_x2 = config["stop_sd"] * power2
 
     if int_ratio > 0 and int_ratio <= 1:
-        delta_y = 2 * max_x2 / config["min_samples"]  # !!! Changed this
-        # if delta_y > config["delta_y"]:
-        #     delta_y = config["delta_y"]
-        delta_x2 = delta_y
-        delta_x1 = int_ratio * delta_x2
+        delta = min(
+            2 * max_x2 / config["min_samples"],
+            2 * max_x / (config["min_samples"] * int_ratio),
+        )
+
+        # Regime 3 requires us to discretize Z11 as well
+        if config["regime"] == 3:
+            max_z11 = config["stop_sd"] * config["sigma_11"] ** 2
+            max_z21 = config["stop_sd"] * config["sigma_21"] ** 2
+            delta = min(
+                delta,
+                2 * max_z11 / config["min_samples"],
+                2 * max_z21 / config["min_samples"],
+            )
+
+        delta_x2 = delta
+        delta_x1 = int_ratio * delta
+
     elif int_ratio > 1:
-        delta_y = 2 * max_x / config["min_samples"]  # !!! Changed this
-        # if delta_y > config["delta_y"]:
-        #     delta_y = config["delta_y"]
-        delta_x1 = delta_y
-        delta_x2 = delta_x1 / int_ratio
+        delta = min(
+            2 * int_ratio * max_x2 / config["min_samples"],
+            2 * max_x / config["min_samples"],
+        )
+        # Regime 3 requires us to discretize Z11 as well
+        if config["regime"] == 3:
+            max_z11 = config["stop_sd"] * config["sigma_11"] ** 2
+            max_z21 = config["stop_sd"] * config["sigma_21"] ** 2
+            delta = min(
+                delta,
+                2 * max_z11 / config["min_samples"],
+                2 * max_z21 / config["min_samples"],
+            )
+
+        delta_x1 = delta
+        delta_x2 = delta / int_ratio
     else:
         raise ValueError("Interference ratio must be positive")
 

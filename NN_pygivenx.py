@@ -40,7 +40,7 @@ def train(model, criterion, optimizer, data_loader, num_epochs=10):
         for inputs, labels in data_loader:
             optimizer.zero_grad()
             outputs = model(inputs)
-            loss = criterion(outputs, labels)
+            loss = criterion(outputs, labels) 
             loss.backward()
             optimizer.step()
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
@@ -58,7 +58,7 @@ def get_pdf_y_given_x(alphabet_x, alphabet_y, config):
 
 
 def plot_comparison(
-    alphabet_x,
+    alphabet_x, 
     alphabet_y_comp,
     pdf_y_given_x_comp,
     alphabet_y,
@@ -120,6 +120,22 @@ if __name__ == "__main__":
     alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(
         config, config["power1"], config["tanh_factor1"]
     )
+    print("**** Training NN to approximate p(y|x) ****")
+    print(
+        "Sample:"
+        + str(config["min_samples"])
+        + " Regime:"
+        + str(config["regime"])
+        + " Power:"
+        + str(config["power1"])
+        + " tanh_factor:"
+        + str(config["tanh_factor1"])
+    )
+    print("**** Training size:", config["training_size"])
+    print("**** Batch size:", config["batch_size"])
+    print("**** Learning rate:", config["lr"])
+    print("**** Number of epochs:", config["num_epochs"])
+    print("**** Hidden size:", config["hidden_size"])
     y_boundaries = alphabet_y[1:] - (alphabet_y[1] - alphabet_y[0]) / 2
     # B = alphabet_y + (alphabet_y[1] - alphabet_y[0]) / 2
     # y_boundaries = torch.cat((A, B), 0)
@@ -137,7 +153,7 @@ if __name__ == "__main__":
     sigma_1, sigma_2 = 1, 1  # Noise standard deviations
 
     # X should be within [-max_x, max_x] while torch.rand is [0,1)
-
+    max_x = 2 * max_x
     x_train = torch.rand(config["training_size"], input_size) * 2 * max_x - max_x
     N1 = torch.randn_like(x_train) * sigma_1  # Input noise
     N2 = torch.randn(config["training_size"], 1) * sigma_2  # Output noise
@@ -159,8 +175,16 @@ if __name__ == "__main__":
 
     print("Training complete!")
     save_location = (
-        "NN/Sample="
+        "NN/Regime="
+        + str(config["regime"])
+        + "_Sample="
         + str(config["min_samples"])
+        + "_Power="
+        + str(config["power1"])
+        + "_tanh_factor="
+        + str(config["tanh_factor1"])
+        + "stop="
+        + str(config["stop_sd"])
         + "/lr="
         + str(config["lr"])
         + "_batch="

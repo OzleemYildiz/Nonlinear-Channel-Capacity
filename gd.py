@@ -82,7 +82,7 @@ def gd_capacity(config, power, regime_class):
                 max_capacity = opt_capacity[-1]
                 max_pdf_x = pdf_x.clone().detach()
                 max_alphabet_x = regime_class.alphabet_x.clone().detach()
-                if (i - earlier_i) > 50:
+                if (i - earlier_i) > 200:
                     print("Iter:", i, "Capacity:", opt_capacity[-1])
                     earlier_i = i
 
@@ -206,7 +206,7 @@ def gradient_descent_on_interference(
                     max_pdf_x_RX2_h = pdf_x_RX2.clone().detach()
                     max_cap_RX1_h = cap_RX1.clone().detach().numpy()
                     max_cap_RX2_h = cap_RX2.clone().detach().numpy()
-                    if ind - earlier_i > 50:
+                    if ind - earlier_i > 200:
                         print(
                             "Iter:",
                             i,

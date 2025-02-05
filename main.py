@@ -241,6 +241,7 @@ def main():
                     real_x, imag_x, real_y, imag_y = get_PP_complex_alphabet_x_y(
                         config, power, tanh_factor
                     )
+
                     regime_class = get_regime_class(
                         config=config,
                         alphabet_x=real_x,

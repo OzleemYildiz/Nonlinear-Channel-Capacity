@@ -34,6 +34,9 @@ class Third_Regime:
         self.pdf_y_given_x = None
         self.pdf_y_given_x_int = None
         self.get_x_and_y_alphabet()
+        self.pdf_z1 = None
+        self.alphabet_z1 = None
+        self.pdf_y_given_x_and_x2 = None
 
     def get_z1_pdf_and_alphabet(self):
         max_z1 = self.config["stop_sd"] * self.sigma_1**2
@@ -155,65 +158,60 @@ class Third_Regime:
 
         return cap
 
-    def get_pdf_y_given_x_with_interference(self, pdf_x2, alphabet_x2, int_ratio):
-        pdf_y_given_x = torch.zeros(
-            (self.alphabet_y.shape[0], self.alphabet_x.shape[0])
-        )
-        # Z1 <- Gaussian noise with variance sigma_1^2
-        # X2 <- given by the user
-
+    def get_pdf_y_given_x1_and_x2(self, alphabet_x2, int_ratio):
         pdf_z1, alphabet_z1 = self.get_z1_pdf_and_alphabet()
-
-        # Z_1 and X_2 are independent
-        # Make sure that the pdf_x2 is normalized
-
-        pdf_x2_and_z1 = pdf_x2[:, None] * pdf_z1[None, :]
+        self.pdf_z1 = pdf_z1
+        self.alphabet_z1 = alphabet_z1
+        pdf_y_given_x_and_x2 = torch.zeros(
+            self.alphabet_y.shape[0], self.alphabet_x.shape[0], len(alphabet_x2)
+        )
 
         for ind, x in enumerate(self.alphabet_x):
             # U = X + Z_1 + aX_2
-            alphabet_u = alphabet_z1[None, :] + x + int_ratio * alphabet_x2[:, None]
+            alphabet_u = (
+                alphabet_z1[None, None, :] + x + int_ratio * alphabet_x2[None, :, None]
+            )
             # V = phi(U)
 
             alphabet_v = self.get_out_nonlinear(alphabet_u)
             if self.config["complex"]:
-                pdf_y_given_x_z1_x2 = (
+                pdf_y_given_x_x2_z1 = (
                     1
                     / (torch.pi * self.sigma_2**2)
                     * torch.exp(
                         -1
-                        * abs(
-                            self.alphabet_y.reshape(-1, 1) - alphabet_v.reshape(1, -1)
-                        )
-                        ** 2
+                        * abs(self.alphabet_y.reshape(-1, 1, 1) - alphabet_v) ** 2
                         / self.sigma_2**2
                     )
                 )
             else:
-                pdf_y_given_x_z1_x2 = (
+                pdf_y_given_x_x2_z1 = (
                     1
                     / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
                     * torch.exp(
                         -0.5
-                        * (
-                            abs(
-                                self.alphabet_y.reshape(-1, 1)
-                                - alphabet_v.reshape(1, -1)
-                            )
-                            ** 2
-                        )
+                        * (abs(self.alphabet_y.reshape(-1, 1, 1) - alphabet_v) ** 2)
                         / self.sigma_2**2
                     )
                 )
-            pdf_y_given_x_z1_x2 = pdf_y_given_x_z1_x2 / (
-                torch.sum(pdf_y_given_x_z1_x2, axis=0) + 1e-30
-            )
-            pdf_y_given_x_temp = (pdf_y_given_x_z1_x2 @ pdf_x2_and_z1.reshape(-1, 1))[
-                :, 0
-            ]
-            pdf_y_given_x[:, ind] = pdf_y_given_x_temp / (
-                torch.sum(pdf_y_given_x_temp) + 1e-30
+
+            pdf_y_given_x_x2_z1 = pdf_y_given_x_x2_z1 / (
+                torch.sum(pdf_y_given_x_x2_z1, axis=0) + 1e-30
             )
 
+            pdf_y_given_x_and_x2[:, ind, :] = pdf_y_given_x_x2_z1 @ pdf_z1
+
+        pdf_y_given_x_and_x2 = pdf_y_given_x_and_x2 / (
+            torch.sum(pdf_y_given_x_and_x2, axis=0) + 1e-30
+        )
+        self.pdf_y_given_x_and_x2 = pdf_y_given_x_and_x2
+
+    def get_pdf_y_given_x_with_interference(self, pdf_x2, alphabet_x2, int_ratio):
+
+        if self.pdf_y_given_x_and_x2 is None:
+            self.get_pdf_y_given_x1_and_x2(alphabet_x2, int_ratio)
+
+        pdf_y_given_x = self.pdf_y_given_x_and_x2 @ pdf_x2
         self.pdf_y_given_x_int = pdf_y_given_x
         return pdf_y_given_x
 
@@ -226,6 +224,7 @@ class Third_Regime:
     ):
         if self.config["x2_fixed"] and self.pdf_y_given_x_int is not None:
             pdf_y_given_x = self.pdf_y_given_x_int
+            breakpoint()
         else:
             # pdf_y_given_x = self.get_pdf_y_given_x_with_interference_nofor(
             #     pdf_x2, alphabet_x2, int_ratio
@@ -244,7 +243,6 @@ class Third_Regime:
         return cap
 
     def get_pdfs_for_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
-
         pdf_z1, alphabet_z1 = self.get_z1_pdf_and_alphabet()
         pdf_y_given_x2 = torch.zeros(len(self.alphabet_y), len(alphabet_x2))
         pdf_y_given_x2_and_x1 = torch.zeros(
@@ -309,13 +307,19 @@ class Third_Regime:
         return pdf_y_given_x2_and_x1, pdf_y_given_x2
 
     def capacity_with_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
-        pdf_y_given_x2_and_x1, pdf_y_given_x2 = self.get_pdfs_for_known_interference(
-            pdf_x, pdf_x2, alphabet_x2, int_ratio
-        )
+        # pdf_y_given_x2_and_x1A, pdf_y_given_x2A = self.get_pdfs_for_known_interference(
+        #     pdf_x, pdf_x2, alphabet_x2, int_ratio
+        # )
         # pdf_y_given_x2_and_x1, pdf_y_given_x2 = (
         #     self.get_pdfs_for_known_interference_nofor(pdf_x, pdf_x2, alphabet_x2, int_ratio)
         # )
         # I(X1,Y1 | X2) = H(Y1|X2) - H(Y1|X1,X2)
+
+        if self.pdf_y_given_x_and_x2 is None:
+            self.get_pdf_y_given_x1_and_x2(alphabet_x2, int_ratio)
+        pdf_y_given_x2_and_x1 = torch.movedim(self.pdf_y_given_x_and_x2, 1, 2)
+
+        pdf_y_given_x2 = pdf_y_given_x2_and_x1 @ pdf_x
 
         entropy_y_given_x2 = -torch.sum(
             (pdf_y_given_x2 * torch.log(pdf_y_given_x2 + 1e-20)) @ pdf_x2

@@ -32,44 +32,51 @@ class First_Regime:
         self.get_x_v_and_y_alphabet()
         self.pdf_y_given_x = None
 
-    def new_capacity(self, pdf_x):
-        if self.pdf_y_given_x is None:
-            if self.config["complex"]:
-                pdf_y_given_x = (
-                    1
-                    / (torch.pi * self.sigma_2**2)
-                    * torch.exp(
-                        -1
-                        * (
-                            abs(
-                                self.alphabet_y.reshape(-1, 1)
-                                - self.alphabet_v.reshape(1, -1)
-                            )
-                            ** 2
+    def get_pdf_y_given_x(self):
+        if self.config["complex"]:
+            pdf_y_given_x = (
+                1
+                / (torch.pi * self.sigma_2**2)
+                * torch.exp(
+                    -1
+                    * (
+                        abs(
+                            self.alphabet_y.reshape(-1, 1)
+                            - self.alphabet_v.reshape(1, -1)
                         )
-                        / self.sigma_2**2
+                        ** 2
                     )
+                    / self.sigma_2**2
                 )
-            else:
-                pdf_y_given_x = (
-                    1
-                    / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
-                    * torch.exp(
-                        -0.5
-                        * (
-                            abs(
-                                self.alphabet_y.reshape(-1, 1)
-                                - self.alphabet_v.reshape(1, -1)
-                            )
-                            ** 2
+            )
+        else:
+            pdf_y_given_x = (
+                1
+                / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
+                * torch.exp(
+                    -0.5
+                    * (
+                        abs(
+                            self.alphabet_y.reshape(-1, 1)
+                            - self.alphabet_v.reshape(1, -1)
                         )
-                        / self.sigma_2**2
+                        ** 2
                     )
+                    / self.sigma_2**2
                 )
+            )
 
-            pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
+        pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
 
+        self.pdf_y_given_x = pdf_y_given_x
+        return pdf_y_given_x
+
+    def new_capacity(self, pdf_x, pdf_y_given_x=None):
+        if pdf_y_given_x is not None:  # For the case of known interference
             self.pdf_y_given_x = pdf_y_given_x
+
+        if self.pdf_y_given_x is None:
+            self.get_pdf_y_given_x()
         py_x_logpy_x = self.pdf_y_given_x * torch.log(self.pdf_y_given_x + 1e-20)
         px_py_x_logpy_x = py_x_logpy_x @ pdf_x
         f_term = torch.sum(px_py_x_logpy_x)
