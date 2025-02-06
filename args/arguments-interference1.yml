@@ -1,10 +1,10 @@
-min_power1 : 1
+min_power1 : 2
 max_power1 : 100
 min_power2 : 20
 max_power2 : 100
 min_tanh_factor : 4 # k when the nonlinearity is ktanh(x/k)
 max_tanh_factor : 10 # k when the nonlinearity is ktanh(x/k)
-min_tanh_factor_2 : 3 # k when the nonlinearity is ktanh(x/k) for User 2
+min_tanh_factor_2 : 1 # k when the nonlinearity is ktanh(x/k) for User 2
 max_tanh_factor_2 : 5 # k when the nonlinearity is ktanh(x/k) for User 2
 min_int_ratio : 1
 max_int_ratio : 4
@@ -28,7 +28,7 @@ epsilon : 0.000005 #convergence criteria
 lr : [0.0001] # learning rate
 max_iter : 10000 # maximum number of iterations
 n_lmbd : 5  # number of lambdas  - when x2 not fixed
-x2_fixed : False # if True, px2 is fixed and px1 is updated
+x2_fixed : True # if True, px2 is fixed and px1 is updated
 x2_type : 1 # 0: Gaussian, 1: Optimized
 gd_nostop_cond : False # if True, the gd will not stop until max_iter
 complex : True # if True, the complex alphabet is used

@@ -621,6 +621,7 @@ def main():
                 lambda_sweep,
                 res_str + res_str_run,
             )
+
         plot_R1_R2_curve(
             res,
             power1,
@@ -629,6 +630,7 @@ def main():
             config=config,
             res_gaus=res_gaus,
             res_tdm=res_tdm,
+            res_str=res_str,
         )
 
         io.savemat(

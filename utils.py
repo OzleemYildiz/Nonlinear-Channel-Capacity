@@ -143,7 +143,7 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
                 + "iteration_lambda="
                 + str(format(lmbd, ".1f"))
                 + "_"
-                + key
+                + res_str
                 + ".png",
                 bbox_inches="tight",
             )
@@ -205,7 +205,11 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
         )
         ax.set_title(title + ", lambda = " + str(format(lmbd, ".1f")), fontsize=12)
         fig.savefig(
-            save_location + "pdfx_lambda=" + str(format(lmbd, ".1f")) + ".png",
+            save_location
+            + "pdfx_lambda="
+            + str(format(lmbd, ".1f"))
+            + res_str
+            + ".png",
             bbox_inches="tight",
         )
         plt.close()
@@ -866,6 +870,7 @@ def plot_R1_R2_curve(
     config,
     res_gaus=None,
     res_tdm=None,
+    res_str="",
 ):
     markers = [".", ",", "o", "v", "^", "<", ">", "x"]
     ind = 0
@@ -906,6 +911,9 @@ def plot_R1_R2_curve(
         )
     else:
         ax.set_title(r"Power = " + str(int(power1)), fontsize=12)
+    if res_str != "":
+        title = res_str.replace("_", ", ")
+        ax.set_title(title, fontsize=12)
 
     ax.legend(loc="best", fontsize=12)
     ax.grid(
@@ -927,15 +935,21 @@ def plot_R1_R2_curve(
     )
 
     if power2 is not None:
-        fig.savefig(
-            save_location
-            + "/R1_R2_pow1="
-            + str(int(power1))
-            + "_pow2="
-            + str(int(power2))
-            + ".png",
-            bbox_inches="tight",
-        )
+        if res_str != "":
+            fig.savefig(
+                save_location + "/R1_R2_" + res_str + ".png",
+                bbox_inches="tight",
+            )
+        else:
+            fig.savefig(
+                save_location
+                + "/R1_R2_pow1="
+                + str(int(power1))
+                + "_pow2="
+                + str(int(power2))
+                + ".png",
+                bbox_inches="tight",
+            )
     else:
         fig.savefig(
             save_location + "/R1_R2_pow=" + str(int(power1)) + ".png",
