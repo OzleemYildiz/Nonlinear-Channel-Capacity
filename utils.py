@@ -542,33 +542,32 @@ def get_max_alphabet_PP(
 
     # Keep the number of samples fixed instead of delta
 
-    delta_y = 2 * max_x / min_samples
+    delta = min(2 * max_x / min_samples, 2 * max_y / min_samples)
+    breakpoint()
     # if delta_y > config["delta_y"]:
     #     delta_y = config["delta_y"]
 
     # Check if Z1 will have enough samples - It gets included only for 3rd Regime
     if config["regime"] == 3:
         max_z1 = config["stop_sd"] * config["sigma_1"] ** 2
-        sample_num = math.ceil(2 * max_z1 / delta_y) + 1
-        if sample_num < min_samples:
-            delta_y = 2 * max_z1 / min_samples
+        delta = min(delta, 2 * max_z1 / min_samples)
 
     # else:
     #     delta_y = config["delta_y"]
 
-    max_y = max_y + (delta_y - (max_y % delta_y))
-    max_x = max_x + (delta_y - (max_x % delta_y))
+    max_y = max_y + (delta - (max_y % delta))
+    max_x = max_x + (delta - (max_x % delta))
 
-    return max_x, max_y, delta_y
+    return max_x, max_y, delta
 
 
 def get_alphabet_x_y(config, power, tanh_factor, bound=False):
-    max_x, max_y, delta_y = get_max_alphabet_PP(
+    max_x, max_y, delta = get_max_alphabet_PP(
         config, power, tanh_factor, config["min_samples"], bound
     )
     # Create the alphabet with the fixed delta
-    alphabet_x = torch.arange(-max_x, max_x + delta_y / 2, delta_y)
-    alphabet_y = torch.arange(-max_y, max_y + delta_y / 2, delta_y)
+    alphabet_x = torch.arange(-max_x, max_x + delta / 2, delta)
+    alphabet_y = torch.arange(-max_y, max_y + delta / 2, delta)
     if len(alphabet_x) == 0:
         print("Alphabet X is empty, while creating alphabet")
         breakpoint()
@@ -678,6 +677,7 @@ def interference_dependent_snr(config, power):
 def get_max_alphabet_interference(
     config, power1, power2, int_ratio, tanh_factor, tanh_factor2
 ):
+    # Maximum value that x should take
     nonlinear_func1 = return_nonlinear_fn(config, tanh_factor)
     nonlinear_func2 = return_nonlinear_fn(config, tanh_factor2)
     if config["cons_type"] == 0:  # peak power
@@ -697,6 +697,29 @@ def get_max_alphabet_interference(
         max_x = config["stop_sd"] * first_moment
         max_x2 = config["stop_sd"] * power2
 
+    # Maximum value that y should take
+    if config["regime"] == 1:
+        # Note that both X1 and X2 are the same power
+        max_y_1 = (
+            nonlinear_func1(max_x_1 + int_ratio * max_x_2)
+            + config["sigma_12"] * config["stop_sd"]
+        )
+        max_y_2 = nonlinear_func2(max_x_2) + config["sigma_22"] * config["stop_sd"]
+    elif config["regime"] == 3:
+        max_y_1 = (
+            nonlinear_func1(
+                max_x_1 + int_ratio * max_x_2 + config["sigma_11"] * config["stop_sd"]
+            )
+            + config["sigma_12"] * config["stop_sd"]
+        )
+        max_y_2 = (
+            nonlinear_func2(max_x_2 + config["sigma_21"] * config["stop_sd"])
+            + config["sigma_22"] * config["stop_sd"]
+        )
+    else:
+        raise ValueError("Regime not defined")
+
+    # The necessary separation between the points
     if int_ratio > 0 and int_ratio <= 1:
         delta = min(
             2 * max_x2 / config["min_samples"],
@@ -738,27 +761,6 @@ def get_max_alphabet_interference(
 
     max_x_1 = max_x + (delta_x1 - (max_x % delta_x1))
     max_x_2 = max_x2 + (delta_x2 - (max_x2 % delta_x2))
-
-    if config["regime"] == 1:
-        # Note that both X1 and X2 are the same power
-        max_y_1 = (
-            nonlinear_func1(max_x_1 + int_ratio * max_x_2)
-            + config["sigma_12"] * config["stop_sd"]
-        )
-        max_y_2 = nonlinear_func2(max_x_2) + config["sigma_22"] * config["stop_sd"]
-    elif config["regime"] == 3:
-        max_y_1 = (
-            nonlinear_func1(
-                max_x_1 + int_ratio * max_x_2 + config["sigma_11"] * config["stop_sd"]
-            )
-            + config["sigma_12"] * config["stop_sd"]
-        )
-        max_y_2 = (
-            nonlinear_func2(max_x_2 + config["sigma_21"] * config["stop_sd"])
-            + config["sigma_22"] * config["stop_sd"]
-        )
-    else:
-        raise ValueError("Regime not defined")
 
     max_y_1 = max_y_1 + (delta_x1 - (max_y_1 % delta_x1))
     max_y_2 = max_y_2 + (delta_x2 - (max_y_2 % delta_x2))
@@ -1038,21 +1040,18 @@ def get_PP_complex_alphabet_x_y(config, power, tanh_factor, bound=False):
         print("Power is nan or inf- complex alphabet creation")
         breakpoint()
 
-    max_x, max_y, delta_y = get_max_alphabet_PP(
+    max_x, max_y, delta = get_max_alphabet_PP(
         config, power / 2, tanh_factor, config["min_samples"], bound
     )
-    alphabet_x = torch.linspace(-max_x, max_x, config["min_samples"])
+
+    alphabet_x = torch.arange(-max_x, max_x + delta / 2, delta)
     delta = alphabet_x[1] - alphabet_x[0]
     # real_x, imag_x = torch.meshgrid([alphabet_x, alphabet_x])
     real_x = alphabet_x
     imag_x = alphabet_x.reshape(-1, 1)
 
-    try:
-        # FIXME: Not sure if avoiding zero is a good idea -- Check this
-        alphabet_y = torch.arange(-max_y, max_y, delta)
-    except:
-        print("Error in creating alphabet y- complex alphabet")
-        breakpoint()
+    alphabet_y = torch.arange(-max_y, max_y + delta / 2, delta)
+
     # real_y, imag_y = torch.meshgrid([alphabet_y, alphabet_y])
     real_y = alphabet_y
     imag_y = alphabet_y.reshape(-1, 1)
