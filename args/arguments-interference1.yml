@@ -1,10 +1,10 @@
-min_power1 : 2
+min_power1 : 5
 max_power1 : 100
 min_power2 : 20
 max_power2 : 100
 min_tanh_factor : 4 # k when the nonlinearity is ktanh(x/k)
 max_tanh_factor : 10 # k when the nonlinearity is ktanh(x/k)
-min_tanh_factor_2 : 1 # k when the nonlinearity is ktanh(x/k) for User 2
+min_tanh_factor_2 : 4 # k when the nonlinearity is ktanh(x/k) for User 2
 max_tanh_factor_2 : 5 # k when the nonlinearity is ktanh(x/k) for User 2
 min_int_ratio : 1
 max_int_ratio : 4
