@@ -543,7 +543,7 @@ def get_max_alphabet_PP(
     # Keep the number of samples fixed instead of delta
 
     delta = min(2 * max_x / min_samples, 2 * max_y / min_samples)
-    breakpoint()
+
     # if delta_y > config["delta_y"]:
     #     delta_y = config["delta_y"]
 

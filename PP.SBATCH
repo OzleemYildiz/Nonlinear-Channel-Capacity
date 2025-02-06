@@ -3,8 +3,8 @@
 #SBATCH --ntasks-per-node=2              # runs 2 tasks on each server
 #SBATCH --cpus-per-task=5                # uses 1 compute core per task
 #SBATCH --time=80:00:00
-#SBATCH --mem=600GB
-#SBATCH --job-name=pp
+#SBATCH --mem=100GB
+#SBATCH --job-namI=pp
 #SBATCH --account=pr_215_general
 #SBATCH --output=outs/pp/%A_%a.out
 
