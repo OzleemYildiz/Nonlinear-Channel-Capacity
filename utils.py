@@ -701,19 +701,19 @@ def get_max_alphabet_interference(
     if config["regime"] == 1:
         # Note that both X1 and X2 are the same power
         max_y_1 = (
-            nonlinear_func1(max_x_1 + int_ratio * max_x_2)
+            nonlinear_func1(max_x + int_ratio * max_x2)
             + config["sigma_12"] * config["stop_sd"]
         )
-        max_y_2 = nonlinear_func2(max_x_2) + config["sigma_22"] * config["stop_sd"]
+        max_y_2 = nonlinear_func2(max_x2) + config["sigma_22"] * config["stop_sd"]
     elif config["regime"] == 3:
         max_y_1 = (
             nonlinear_func1(
-                max_x_1 + int_ratio * max_x_2 + config["sigma_11"] * config["stop_sd"]
+                max_x + int_ratio * max_x2 + config["sigma_11"] * config["stop_sd"]
             )
             + config["sigma_12"] * config["stop_sd"]
         )
         max_y_2 = (
-            nonlinear_func2(max_x_2 + config["sigma_21"] * config["stop_sd"])
+            nonlinear_func2(max_x2 + config["sigma_21"] * config["stop_sd"])
             + config["sigma_22"] * config["stop_sd"]
         )
     else:
@@ -724,6 +724,8 @@ def get_max_alphabet_interference(
         delta = min(
             2 * max_x2 / config["min_samples"],
             2 * max_x / (config["min_samples"] * int_ratio),
+            2 * max_y_1 / config["min_samples"],
+            2 * max_y_2 / config["min_samples"],
         )
 
         # Regime 3 requires us to discretize Z11 as well
@@ -743,6 +745,8 @@ def get_max_alphabet_interference(
         delta = min(
             2 * int_ratio * max_x2 / config["min_samples"],
             2 * max_x / config["min_samples"],
+            2 * max_y_1 / config["min_samples"],
+            2 * max_y_2 / config["min_samples"],
         )
         # Regime 3 requires us to discretize Z11 as well
         if config["regime"] == 3:

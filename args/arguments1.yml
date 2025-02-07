@@ -1,5 +1,5 @@
-min_power_cons : 100
-max_power_cons : 900
+min_power_cons : 1
+max_power_cons : 100
 sigma_1 : 1
 sigma_2 : 1
 epsilon : 0.000005 #convergence criteria
