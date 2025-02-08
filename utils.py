@@ -117,9 +117,9 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
         for key in res_opt.keys():
             fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
             ax.plot(res_opt[key][ind], linewidth=3, label=key)
-            ax.legend(loc="best", fontsize=12)
-            ax.set_xlabel(r"iteration", fontsize=12)
-            ax.set_ylabel(r"capacity", fontsize=12)
+            ax.legend(loc="best", fontsize=10)
+            ax.set_xlabel(r"iteration", fontsize=10)
+            ax.set_ylabel(r"capacity", fontsize=10)
             ax.grid(
                 visible=True,
                 which="major",
@@ -137,7 +137,7 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
                 linestyle=":",
                 linewidth=0.5,
             )
-            ax.set_title(title + ", lambda = " + str(format(lmbd, ".1f")), fontsize=12)
+            ax.set_title(title + ", lambda = " + str(format(lmbd, ".1f")), fontsize=10)
             fig.savefig(
                 save_location
                 + "iteration_lambda="
@@ -183,9 +183,9 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
                 )
 
             index = np.mod(index + 1, len(list_line))
-        ax.legend(loc="best", fontsize=12)
-        ax.set_xlabel(r"X", fontsize=12)
-        ax.set_ylabel(r"PDF", fontsize=12)
+        ax.legend(loc="best", fontsize=10)
+        ax.set_xlabel(r"X", fontsize=10)
+        ax.set_ylabel(r"PDF", fontsize=10)
         ax.grid(
             visible=True,
             which="major",
@@ -203,7 +203,7 @@ def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
             linestyle=":",
             linewidth=0.5,
         )
-        ax.set_title(title + ", lambda = " + str(format(lmbd, ".1f")), fontsize=12)
+        ax.set_title(title + ", lambda = " + str(format(lmbd, ".1f")), fontsize=10)
         fig.savefig(
             save_location
             + "pdfx_lambda="
@@ -238,7 +238,7 @@ def plot_vs_change(
     ind = 0
     for keys in res.keys():
         ax.plot(change_range, res[keys], linewidth=3, linestyle=line_styles[ind])
-        ind += 1
+        ind = np.mod(ind + 1, len(line_styles))
         leg_str.append(keys)
 
     if low_tarokh is not None and (config["regime"] == 1 or config["regime"] == 3):
@@ -247,13 +247,13 @@ def plot_vs_change(
 
     leg_str_new = [ind.replace("_", " ") for ind in leg_str]
 
-    ax.legend(leg_str_new, loc="best", fontsize=12)
+    ax.legend(leg_str_new, loc="best", fontsize=10)
     if not config["time_division_active"]:
-        ax.set_xlabel(r"SNR (dB)", fontsize=12)
+        ax.set_xlabel(r"SNR (dB)", fontsize=10)
     else:
-        ax.set_xlabel(r"Time Division Ratio", fontsize=12)
+        ax.set_xlabel(r"Time Division Ratio", fontsize=10)
 
-    ax.set_ylabel(r"Rate", fontsize=12)
+    ax.set_ylabel(r"Rate", fontsize=10)
     plt.minorticks_on()
     ax.grid(
         visible=True,
@@ -274,7 +274,7 @@ def plot_vs_change(
 
     ax.set_title(
         config["title"],
-        fontsize=12,
+        fontsize=10,
     )
 
     if save_location == None:
@@ -366,14 +366,14 @@ def plot_pdf_vs_change(
 
     if not config["time_division_active"] and not config["complex"]:
         ax.set_xlabel(r"SNR (dB)")
-        ax.set_ylabel(r"X", fontsize=12)
+        ax.set_ylabel(r"X", fontsize=10)
     elif config["time_division_active"] and not config["complex"]:
-        ax.set_xlabel(r"Time Division Ratio", fontsize=12)
-        ax.set_ylabel(r"X", fontsize=12)
+        ax.set_xlabel(r"Time Division Ratio", fontsize=10)
+        ax.set_ylabel(r"X", fontsize=10)
     else:  # Complex Domain
-        ax.legend(loc="best", fontsize=12)
-        ax.set_xlabel(r"Re(X)", fontsize=12)
-        ax.set_ylabel(r"Im(X)", fontsize=12)
+        ax.legend(loc="best", fontsize=10)
+        ax.set_xlabel(r"Re(X)", fontsize=10)
+        ax.set_ylabel(r"Im(X)", fontsize=10)
 
     ax.grid(
         visible=True,
@@ -395,7 +395,7 @@ def plot_pdf_vs_change(
 
     ax.set_title(
         config["title"],
-        fontsize=12,
+        fontsize=10,
     )
     if save_location == None:
         fig.savefig(
@@ -427,12 +427,12 @@ def plot_pdf_vs_change(
             alphabet_x_re = np.real(alphabet_x)
             alphabet_x_im = np.imag(alphabet_x)
             ax.scatter(alphabet_x_re, alphabet_x_im, s=pdf_x * 100)
-            ax.set_xlabel(r"Re(X)", fontsize=12)
-            ax.set_ylabel(r"Im(X)", fontsize=12)
+            ax.set_xlabel(r"Re(X)", fontsize=10)
+            ax.set_ylabel(r"Im(X)", fontsize=10)
         else:
             ax.bar(alphabet_x, pdf_x, linewidth=3)
-            ax.set_xlabel(r"X", fontsize=12)
-            ax.set_ylabel(r"PDF", fontsize=12)
+            ax.set_xlabel(r"X", fontsize=10)
+            ax.set_ylabel(r"PDF", fontsize=10)
         ax.grid(
             visible=True,
             which="minor",
@@ -453,7 +453,7 @@ def plot_pdf_vs_change(
         title = config["title"] + " SNR = " + str(round(chn, 2))
         ax.set_title(
             title,
-            fontsize=12,
+            fontsize=10,
         )
         fig.savefig(save_new, bbox_inches="tight")
         plt.close()
@@ -471,9 +471,9 @@ def plot_opt(opt_cap, save_new, title):
     fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
 
     ax.plot(opt_cap)
-    ax.set_xlabel("iteration", fontsize=12)
-    ax.set_ylabel("Rate", fontsize=12)
-    ax.set_title(title, fontsize=12)
+    ax.set_xlabel("iteration", fontsize=10)
+    ax.set_ylabel("Rate", fontsize=10)
+    ax.set_title(title, fontsize=10)
     plt.minorticks_on()
     ax.grid(
         visible=True,
@@ -832,9 +832,9 @@ def plot_interference(res, config, save_location):
     for keys in res.keys():
         ax.plot(power_range, res[keys], linewidth=3)
         leg_str.append(keys)
-    ax.set_xlabel(r"Average Power", fontsize=12)
-    ax.set_ylabel(r"Capacity", fontsize=12)
-    ax.legend(leg_str, loc="best", fontsize=12)
+    ax.set_xlabel(r"Average Power", fontsize=10)
+    ax.set_ylabel(r"Capacity", fontsize=10)
+    ax.legend(leg_str, loc="best", fontsize=10)
     ax.grid(
         visible=True,
         which="major",
@@ -904,8 +904,8 @@ def plot_R1_R2_curve(
     if res_tdm is not None:
         ax.plot(res_tdm["R1"], res_tdm["R2"], label="TDM", linewidth=3)
 
-    ax.set_xlabel(r"Rate 1", fontsize=12)
-    ax.set_ylabel(r"Rate 2", fontsize=12)
+    ax.set_xlabel(r"Rate 1", fontsize=10)
+    ax.set_ylabel(r"Rate 2", fontsize=10)
 
     if power2 is not None:
         ax.set_title(
@@ -913,15 +913,15 @@ def plot_R1_R2_curve(
             + str(int(power1))
             + " Power User 2 = "
             + str(int(power2)),
-            fontsize=12,
+            fontsize=10,
         )
     else:
-        ax.set_title(r"Power = " + str(int(power1)), fontsize=12)
+        ax.set_title(r"Power = " + str(int(power1)), fontsize=10)
     if res_str != "":
         title = res_str.replace("_", ", ")
-        ax.set_title(title, fontsize=12)
+        ax.set_title(title, fontsize=10)
 
-    ax.legend(loc="best", fontsize=12)
+    ax.legend(loc="best", fontsize=10)
     ax.grid(
         visible=True,
         which="major",
@@ -1150,13 +1150,13 @@ def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
         )
         index = np.mod(index + 1, 4)
 
-    ax.legend(loc="best", fontsize=12)
-    ax.set_xlabel(str(config["change"]), fontsize=12)
+    ax.legend(loc="best", fontsize=10)
+    ax.set_xlabel(str(config["change"]), fontsize=10)
 
     res_str_new = res_str.replace("_", ", ")
 
-    ax.set_title(res_str_new, fontsize=12)
-    ax.set_ylabel(r"R1", fontsize=12)
+    ax.set_title(res_str_new, fontsize=10)
+    ax.set_ylabel(r"R1", fontsize=10)
     plt.minorticks_on()
     ax.grid(
         visible=True,

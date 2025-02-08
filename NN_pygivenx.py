@@ -40,7 +40,7 @@ def train(model, criterion, optimizer, data_loader, num_epochs=10):
         for inputs, labels in data_loader:
             optimizer.zero_grad()
             outputs = model(inputs)
-            loss = criterion(outputs, labels) 
+            loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
@@ -58,7 +58,7 @@ def get_pdf_y_given_x(alphabet_x, alphabet_y, config):
 
 
 def plot_comparison(
-    alphabet_x, 
+    alphabet_x,
     alphabet_y_comp,
     pdf_y_given_x_comp,
     alphabet_y,
@@ -78,9 +78,9 @@ def plot_comparison(
         pdf_y_given_x[:, ind],
         label="Analytical",
     )
-    ax.set_xlabel("y", fontsize=12)
-    ax.set_ylabel("pdf(y|x)", fontsize=12)
-    ax.legend(loc="best", fontsize=12)
+    ax.set_xlabel("y", fontsize=10)
+    ax.set_ylabel("pdf(y|x)", fontsize=10)
+    ax.legend(loc="best", fontsize=10)
     ax.grid(
         visible=True,
         which="major",

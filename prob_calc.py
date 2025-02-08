@@ -119,9 +119,9 @@ def run_comp(config, save_location):
             pdf_y_given_x_calculated[:, ind],
             label="Analytical",
         )
-        ax.set_xlabel("y", fontsize=12)
-        ax.set_ylabel("pdf(y|x)", fontsize=12)
-        ax.legend(loc="best", fontsize=12)
+        ax.set_xlabel("y", fontsize=10)
+        ax.set_ylabel("pdf(y|x)", fontsize=10)
+        ax.legend(loc="best", fontsize=10)
         ax.grid(
             visible=True,
             which="major",
@@ -171,9 +171,9 @@ def plot_res(rand_n, min_sample, main_save_location):
     fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(10, 4), tight_layout=True)
 
     ax1.plot(rand_n, error, label="Error")
-    ax1.set_xlabel("# of Random", fontsize=12)
-    ax1.set_ylabel("Error in Mutual Information Calculation", fontsize=12)
-    ax1.legend(loc="best", fontsize=12)
+    ax1.set_xlabel("# of Random", fontsize=10)
+    ax1.set_ylabel("Error in Mutual Information Calculation", fontsize=10)
+    ax1.legend(loc="best", fontsize=10)
     ax1.set_title("Min Sample: " + str(min_sample))
     ax1.grid(
         visible=True,
@@ -194,9 +194,9 @@ def plot_res(rand_n, min_sample, main_save_location):
     )
     ax2.plot(rand_n, time_mc, label="MC Time")
     ax2.plot(rand_n, time_analytical, label="Analytical Time")
-    ax2.set_xlabel("Number of Random Number Generations", fontsize=12)
-    ax2.set_ylabel("Time (s)", fontsize=12)
-    ax2.legend(loc="best", fontsize=12)
+    ax2.set_xlabel("Number of Random Number Generations", fontsize=10)
+    ax2.set_ylabel("Time (s)", fontsize=10)
+    ax2.legend(loc="best", fontsize=10)
     ax2.set_title("Min Sample: " + str(min_sample))
     ax2.grid(
         visible=True,

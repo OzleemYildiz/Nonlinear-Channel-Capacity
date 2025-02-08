@@ -8,12 +8,19 @@ from scipy.integrate import dblquad, nquad
 from scipy.optimize import fsolve
 from scipy.integrate import quad
 from matplotlib import pyplot as plt
-from utils import regime_dependent_snr, read_config, get_alphabet_x_y
+from utils import (
+    regime_dependent_snr,
+    read_config,
+    get_alphabet_x_y,
+    get_regime_class,
+    get_PP_complex_alphabet_x_y,
+)
 import math
 from scipy.special import erfc, erf, comb
 import torch
 import numdifftools as nd
 from sympy import Matrix, linsolve, symbols
+from gaussian_capacity import get_gaussian_distribution
 
 
 def bounds_l1_norm(power, sigma, config):
@@ -29,14 +36,18 @@ def bounds_l1_norm(power, sigma, config):
 
 
 def lower_bound_tarokh(config):
-    d_nonlinear = return_derivative_of_nonlinear_fn(config)
+    d_nonlinear = return_derivative_of_nonlinear_fn(
+        config, tanh_factor=config["tanh_factor"]
+    )
     lambda_2 = 1
     lower = []
     snr = []
+
     noise_entropy = 1 / 2 * np.log(2 * np.pi * np.exp(1) * config["sigma_2"] ** 2)
+
     plt.figure(figsize=(5, 4))
     leg_str = []
-    for lambda_2 in np.logspace(0, 4, 20):
+    for lambda_2 in np.logspace(0, 4, 100):
         fun1 = (
             lambda x, lambda_1: lambda_1 * (d_nonlinear(x)) * np.exp(-(x**2) / lambda_2)
         )
@@ -53,9 +64,12 @@ def lower_bound_tarokh(config):
         temp = quad(fun2, -np.inf, np.inf, args=(lambda_1))[0]
         entropy = -np.log(lambda_1) + (1 / (lambda_2)) * temp
 
-        lower.append(
-            1 / 2 * np.log(1 + np.exp(2 * entropy) / np.exp(2 * noise_entropy))
-        )
+        if config["complex"]:
+            lower.append(np.log(1 + np.exp(2 * entropy) / np.exp(2 * noise_entropy)))
+        else:
+            lower.append(
+                1 / 2 * np.log(1 + np.exp(2 * entropy) / np.exp(2 * noise_entropy))
+            )
         # breakpoint()
         fx_x = lambda x: lambda_1 * (d_nonlinear(x)) * np.exp(-(x**2) / lambda_2)
         delta_x = np.linspace(-5, 5, 1000)[1] - np.linspace(-5, 5, 1000)[0]
@@ -79,23 +93,29 @@ def lower_bound_tarokh(config):
     # plt.legend(leg_str)
     # plt.grid()
     # plt.show()
-    # breakpoint()
+    # last_entropy = -np.log(1 / 2)
+    # if config["complex"]:
+    #     last_entropy = 2 * last_entropy
+    #     last_lower = np.log(1 + np.exp(2 * last_entropy) / np.exp(2 * noise_entropy))
+    # else:
+    #     last_lower = (
+    #         1 / 2 * np.log(1 + np.exp(2 * last_entropy) / np.exp(2 * noise_entropy))
+    #     )
+    snr.append(10 * np.log10(config["max_power_cons"] / (config["sigma_2"] ** 2)))
+    lower.append(lower[-1])
+    # lower.append(last_lower)
 
-    last_entropy = -np.log(1 / 2)
-    last_lower = (
-        1 / 2 * np.log(1 + np.exp(2 * last_entropy) / np.exp(2 * noise_entropy))
-    )
-    snr.append(40)
-    lower.append(last_lower)
     return lower, snr
 
 
 # Regime=1
 def upper_bound_tarokh(power, config):
-    nonlinear_func = return_nonlinear_fn(config)
+    nonlinear_func = return_nonlinear_fn(config, tanh_factor=config["tanh_factor"])
     upper_bound = (
         1 / 2 * np.log(1 + nonlinear_func(np.sqrt(power)) ** 2 / config["sigma_2"] ** 2)
     )
+    if config["complex"] == True:
+        upper_bound = 2 * upper_bound
     return upper_bound
 
 
@@ -108,7 +128,7 @@ def lower_bound_tarokh_third_regime(config):
     low_bound = []
     earlier_low = 0
     for power in power_range:
-        nonlinear_func = return_nonlinear_fn(config)
+        nonlinear_func = return_nonlinear_fn(config, tanh_factor=config["tanh_factor"])
         int_fz = return_integral_fz_for_tarokh_third_regime(power, config)
         f_term = 0.5 * np.log(
             2
@@ -134,7 +154,7 @@ def lower_bound_tarokh_third_regime(config):
 
 def lower_bound_tarokh_third_regime_with_pw(power, config):
 
-    nonlinear_func = return_nonlinear_fn(config)
+    nonlinear_func = return_nonlinear_fn(config, tanh_factor=config["tanh_factor"])
     int_fz = return_integral_fz_for_tarokh_third_regime(power, config)
     print("Integral fz:", int_fz)
     f_term = 0.5 * np.log(
@@ -155,7 +175,9 @@ def lower_bound_tarokh_third_regime_with_pw(power, config):
 
 
 def calculate_l_for_third_regime_lower_bound(power, config):
-    nonlinear_func = return_nonlinear_fn_numpy(config)
+    nonlinear_func = return_nonlinear_fn_numpy(
+        config, tanh_factor=config["tanh_factor"]
+    )
     max_L = 0
     for epsilon in np.linspace(-1000, 1000, 2001):
         fun = (
@@ -171,7 +193,9 @@ def calculate_l_for_third_regime_lower_bound(power, config):
 
 
 def expectation_of_phi_v(config, epsilon):
-    nonlinear_func = return_nonlinear_fn_numpy(config)
+    nonlinear_func = return_nonlinear_fn_numpy(
+        config, tanh_factor=config["tanh_factor"]
+    )
     fun1 = (
         lambda z: nonlinear_func(z + epsilon)
         * 1
@@ -196,7 +220,7 @@ def return_integral_fz_for_tarokh_third_regime(power, config):
 
 
 def lower_bound_with_sdnr(power, config):
-    nonlinear_func = return_nonlinear_fn(config)
+    nonlinear_func = return_nonlinear_fn(config, tanh_factor=config["tanh_factor"])
     fun1 = (
         lambda x, z: x
         * nonlinear_func(x + z)
@@ -227,7 +251,7 @@ def lower_bound_with_sdnr(power, config):
 
 def simplified_first_from_third(power, config):
     d_phi = return_derivative_of_nonlinear_fn(config)
-    phi = return_nonlinear_fn_numpy(config)
+    phi = return_nonlinear_fn_numpy(config, tanh_factor=config["tanh_factor"])
     int_inside = (
         lambda x: 1
         / np.sqrt(2 * np.pi * power)
@@ -340,7 +364,7 @@ def sdnr_new(power, config):
         )[0]
 
         # print("B:", B)
-        nonlin_fn = return_nonlinear_fn(config)
+        nonlin_fn = return_nonlinear_fn(config, tanh_factor=config["tanh_factor"])
         z_calc = lambda x: (nonlin_fn(x)) ** 2 * gaus_pdf(x)
         e_z2 = quad(
             z_calc,
@@ -438,7 +462,7 @@ def sdnr_new_rayleigh(power, config):
     max_pow = power
     list_pow = np.linspace(max_pow, 0.01, 1000)
     best_cap = 0
-    func = return_nonlinear_fn(config)
+    func = return_nonlinear_fn(config, tanh_factor=config["tanh_factor"])
     for power in list_pow:
         # f_r = lambda r: (  # <- Full Power
         #     2 * r / (power * 2) * np.exp(-(r**2) / (power * 2)) if r >= 0 else 0
@@ -512,7 +536,7 @@ def sdnr_new_rayleigh(power, config):
 
 # Y = phi(X+W_1)+W_2
 def sundeep_upper_bound_third_regime(power, config):
-    func = return_nonlinear_fn(config)
+    func = return_nonlinear_fn(config, tanh_factor=config["tanh_factor"])
     expectation_X = 0
     alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
     delta_x = alphabet_x[1] - alphabet_x[0]
@@ -548,7 +572,7 @@ def sundeep_upper_bound_third_regime(power, config):
 
 
 def upper_bound_tarokh_third_regime(power, config):
-    func = return_nonlinear_fn(config)
+    func = return_nonlinear_fn(config, tanh_factor=config["tanh_factor"])
     d_func = return_derivative_of_nonlinear_fn(config)
     alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
     alphabet_x = alphabet_x.numpy()
@@ -614,7 +638,7 @@ def upper_bound_tarokh_third_regime(power, config):
 
 
 def lower_bound_by_mmse_correlation(power, config):
-    func = return_nonlinear_fn(config)
+    func = return_nonlinear_fn(config, tanh_factor=config["tanh_factor"])
 
     pdf_x = lambda x: (1 / (np.sqrt(2 * np.pi * power)) * np.exp(-0.5 * (x**2) / power))
     E_Y_f = lambda x: func(x) * pdf_x(x)
@@ -634,7 +658,7 @@ def lower_bound_by_mmse_correlation(power, config):
 
 
 def lower_bound_by_mmse_correlation_numerical(power, config):
-    func = return_nonlinear_fn_numpy(config)
+    func = return_nonlinear_fn_numpy(config, tanh_factor=config["tanh_factor"])
 
     alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
 
@@ -661,7 +685,7 @@ def lower_bound_by_mmse_correlation_numerical(power, config):
 
 
 def lower_bound_by_mmse(power, config):
-    func = return_nonlinear_fn_numpy(config)
+    func = return_nonlinear_fn_numpy(config, tanh_factor=config["tanh_factor"])
 
     alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
     alphabet_x = alphabet_x.numpy()
@@ -725,7 +749,7 @@ def lower_bound_by_mmse(power, config):
 
 
 def lower_bound_by_mmse_with_truncated_gaussian(power, config):
-    func = return_nonlinear_fn(config)
+    func = return_nonlinear_fn(config, tanh_factor=config["tanh_factor"])
     max_lower_bound = 0
 
     # power decrease might be necessary (similar to SDNR)
@@ -791,7 +815,7 @@ def lower_bound_by_mmse_with_truncated_gaussian(power, config):
 
 # Prob. Distribution f_x(x) = lambda_1*phi_d(x)*exp(-x^2*lambda_2)
 def find_lambda1_lambda2_for_dist(power, config):
-    phi = return_nonlinear_fn(config)
+    phi = return_nonlinear_fn(config, tanh_factor=config["tanh_factor"])
     phi_d = nd.Derivative(phi, n=1)
     breakpoint()
 
@@ -850,25 +874,57 @@ def find_lambda1_lambda2_for_dist(power, config):
 
 
 def reg_mmse_bound_numerical(power, config):
-    func = return_nonlinear_fn_numpy(config)
+    func = return_nonlinear_fn_numpy(config, tanh_factor=config["tanh_factor"])
 
-    alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power, bound=True)
-
-    alphabet_x = alphabet_x.numpy()
-    alphabet_y = alphabet_y.numpy()
-
-    pdf_x = 1 / (np.sqrt(2 * np.pi * power)) * np.exp(-0.5 * (alphabet_x**2) / power)
-    # breakpoint()
-    pdf_x = pdf_x / np.sum(pdf_x)
-    pdf_y_given_x = (
-        1
-        / (np.sqrt(2 * np.pi * config["sigma_2"] ** 2))
-        * np.exp(
-            -0.5
-            * (alphabet_y.reshape(-1, 1) - func(alphabet_x).reshape(1, -1)) ** 2
-            / config["sigma_2"] ** 2
+    if config["complex"]:
+        real_x, imag_x, real_y, imag_y = get_PP_complex_alphabet_x_y(
+            config, power, config["tanh_factor"]
         )
+        regime_class = get_regime_class(
+            config=config,
+            alphabet_x=real_x,
+            alphabet_y=real_y,
+            power=power,
+            tanh_factor=config["tanh_factor"],
+            alphabet_x_imag=imag_x,
+            alphabet_y_imag=imag_y,
+        )
+    else:
+        alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(
+            config, power, tanh_factor=config["tanh_factor"], bound=True
+        )
+        regime_class = get_regime_class(
+            config, alphabet_x, alphabet_y, power, config["tanh_factor"]
+        )
+    pdf_x = get_gaussian_distribution(
+        power, regime_class, complex_alphabet=config["complex"]
     )
+
+    alphabet_x = regime_class.alphabet_x.numpy()
+    alphabet_y = regime_class.alphabet_y.numpy()
+
+    pdf_x = pdf_x.numpy() / np.sum(pdf_x.numpy())
+    if config["complex"]:
+        out_nonliear = func(abs(alphabet_x)) * np.exp(1j * np.angle(alphabet_x))
+        pdf_y_given_x = (
+            1
+            / (np.pi * config["sigma_2"] ** 2)
+            * np.exp(
+                -1
+                * (np.abs(alphabet_y.reshape(-1, 1) - out_nonliear.reshape(1, -1))) ** 2
+                / config["sigma_2"] ** 2
+            )
+        )
+    else:
+        pdf_y_given_x = (
+            1
+            / (np.sqrt(2 * np.pi * config["sigma_2"] ** 2))
+            * np.exp(
+                -0.5
+                * (alphabet_y.reshape(-1, 1) - func(alphabet_x).reshape(1, -1)) ** 2
+                / config["sigma_2"] ** 2
+            )
+        )
     pdf_y_given_x = pdf_y_given_x / (np.sum(pdf_y_given_x, axis=0) + 1e-30)
 
     pdf_y = pdf_y_given_x @ pdf_x
@@ -882,18 +938,23 @@ def reg_mmse_bound_numerical(power, config):
     # breakpoint()
     E_X_given_Y = alphabet_x @ pdf_x_given_y
 
-    E_X2_given_y = (alphabet_x**2) @ pdf_x_given_y
+    E_X2_given_y = (abs(alphabet_x) ** 2) @ pdf_x_given_y
 
     # sigma_y_2 = E_X2_given_y - 2 * E_X_Xhat_given_y + E_Xhat_2_given_y
-    sigma_y_2 = E_X2_given_y - E_X_given_Y**2
+    sigma_y_2 = E_X2_given_y - abs(E_X_given_Y) ** 2
 
     upper_H_X_given_Y = 0.5 * np.log(2 * np.pi * np.exp(1) * sigma_y_2) @ pdf_y
+    if config["complex"]:
+        upper_H_X_given_Y = 2 * upper_H_X_given_Y
 
     # mse = p - 2 * E_X_Xhat + E_Xhat_2
     # H(X) = E[ln(2*pi*e*sigma_x^2)]
     # H(X|Y) = E[ln(2*pi*e*sigma_y^2)]
     # H(X) - H(X|Y) = I(X;Y)
-    lower_bound = 0.5 * np.log(2 * np.pi * np.exp(1) * power) - upper_H_X_given_Y
+    H_X = 0.5 * np.log(2 * np.pi * np.exp(1) * power)
+    if config["complex"]:
+        H_X = 2 * H_X
+    lower_bound = H_X - upper_H_X_given_Y
     # phi(X)+N =Y
     # X' = E[X|Y]
     if np.isnan(lower_bound):

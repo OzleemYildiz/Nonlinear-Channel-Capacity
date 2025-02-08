@@ -263,7 +263,6 @@ def main():
                     if config["regime"] == 1 and config["cons_type"] == 1:
                         up_tarokh.append(upper_bound_tarokh(power, config))
                         if config["nonlinearity"] == 5:
-
                             my_new_bound = bound_backtracing_check(
                                 my_new_bound,
                                 sdnr_new_with_erf_nopowchange(power, config),
@@ -277,6 +276,7 @@ def main():
                         # linear_mmse_bound = bound_backtracing_check(
                         #     linear_mmse_bound, lower_bound_by_mmse(power, config)
                         # )
+
                         mmse_minimum = bound_backtracing_check(
                             mmse_minimum, reg_mmse_bound_numerical(power, config)
                         )
@@ -466,9 +466,9 @@ def main():
                 # res["Lower_Bound_by_SDNR"] = sdnr_tarokh_low
                 res["SDNR_with_Gaussian"] = my_new_bound
             # res["MMSE_Bound"] = mmse_bound
-            res["Linear_MMSE_Bound"] = linear_mmse_bound
+            # res["Linear_MMSE_Bound"] = linear_mmse_bound
             res["MMSE_Bound_Regular"] = mmse_minimum
-            res["MMSE_Bound_Correlation"] = mmse_correlation
+            # res["MMSE_Bound_Correlation"] = mmse_correlation
             # res["MMSE_Bound_Correlation_Numerical"] = mmse_correlation_numerical
         if config["regime"] == 2 and config["cons_type"] == 1:  # average power bound
             res["Lower_Bound_with_SDNR"] = low_sdnr
@@ -497,9 +497,7 @@ def main():
             snr_change, res, config, save_location=save_location, low_tarokh=low_tarokh
         )
 
-        if config["gd_active"] or (
-            config["gd_alphabet_active"] and config["cons_type"] == 0
-        ):
+        if config["gd_active"]:
 
             plot_pdf_vs_change(
                 map_pdf,
