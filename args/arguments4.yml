@@ -1,5 +1,5 @@
 min_power_cons : 1
-max_power_cons : 200
+max_power_cons : 100
 sigma_1 : 0.7
 sigma_2 : 1
 epsilon : 0.000005 #convergence criteria
@@ -13,7 +13,7 @@ clipping_limit_x : 3 # the limit in x for the clipping if nonlinear is clip  (x_
 clipping_limit_y : 3 # the limit in y for the clipping if nonlinear is clip  (x_c)
 output_dir : 'Res-PP-1' # file name to save the results
 tanh_factor : 2.5 # k when the nonlinearity is tanh(x/k)
-regime : 1 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
+regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : True # the gradient descent is active
 gd_initial_ba : False # It has to be peak power constraint

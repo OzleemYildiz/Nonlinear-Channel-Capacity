@@ -452,6 +452,8 @@ def sdnr_new_with_erf_nopowchange(power, config):
 
     sigma_d_2 = C_z - B**2 * power
     cap = 1 / 2 * np.log(1 + B**2 * power / (sigma_d_2 + config["sigma_2"] ** 2))
+    if config["complex"]:
+        cap = 2 * cap
     if np.isnan(cap):
         breakpoint()
     return cap
@@ -943,7 +945,7 @@ def reg_mmse_bound_numerical(power, config):
     # sigma_y_2 = E_X2_given_y - 2 * E_X_Xhat_given_y + E_Xhat_2_given_y
     sigma_y_2 = E_X2_given_y - abs(E_X_given_Y) ** 2
 
-    upper_H_X_given_Y = 0.5 * np.log(2 * np.pi * np.exp(1) * sigma_y_2) @ pdf_y
+    upper_H_X_given_Y = 0.5 * np.log(2 * np.pi * np.exp(1) * sigma_y_2 + 1e-30) @ pdf_y
     if config["complex"]:
         upper_H_X_given_Y = 2 * upper_H_X_given_Y
 
@@ -969,8 +971,12 @@ def upper_bound_peak(power, config):
     if config["regime"] == 3:
         # While it's before clip: Y = X+Z_1+Z_2
         snr = power / (config["sigma_2"] ** 2 + config["sigma_1"] ** 2)
+        snr_peak = config["clipping_limit_x"] ** 2 / (
+            config["sigma_2"] ** 2 + config["sigma_1"] ** 2
+        )
     elif config["regime"] == 1:  # Y= X+Z_2
         snr = power / config["sigma_2"] ** 2
+        snr_peak = config["clipping_limit_x"] ** 2 / config["sigma_2"] ** 2
     else:
         raise ValueError("Regime not defined")
 
@@ -982,7 +988,11 @@ def upper_bound_peak(power, config):
             / (np.pi * np.exp(1))
         )
     )
+
+    pe = 1 / 2 * np.log(1 + snr_peak)  # General
+
     linear_cap = 1 / 2 * np.log(1 + snr)
+
     cap = min(peak_cap, linear_cap)
     # breakpoint()
     return cap
