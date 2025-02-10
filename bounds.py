@@ -575,8 +575,12 @@ def sundeep_upper_bound_third_regime(power, config):
 
 def upper_bound_tarokh_third_regime(power, config):
     func = return_nonlinear_fn(config, tanh_factor=config["tanh_factor"])
-    d_func = return_derivative_of_nonlinear_fn(config)
-    alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
+    d_func = return_derivative_of_nonlinear_fn(
+        config, tanh_factor=config["tanh_factor"]
+    )
+    alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(
+        config, power, tanh_factor=config["tanh_factor"]
+    )
     alphabet_x = alphabet_x.numpy()
     sum_bottom = 0
     pdf_x = (

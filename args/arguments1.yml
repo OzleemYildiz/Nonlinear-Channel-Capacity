@@ -15,7 +15,7 @@ output_dir : 'Res-PP-1' # file name to save the results
 tanh_factor : 2.5 # k when the nonlinearity is tanh(x/k)
 regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
-gd_active : False # the gradient descent is active
+gd_active : True # the gradient descent is active
 gd_initial_ba : False # It has to be peak power constraint
 bound_active: True
 ba_active : False # Blahut Arimoto - only works with the peak power constraint
@@ -23,6 +23,6 @@ time_division_active: False  # When this is active, I have only one SNR is activ
 n_time_division: 10
 power_change_active: False # R1 and R2 boosts their power according to the time allocated to them to use the same power for the total duration
 gd_nostop_cond : False  #epsilon is useless if it's true
-complex : False # complex alphabet and pdf
+complex : True # complex alphabet and pdf
 x2_fixed : False
 
