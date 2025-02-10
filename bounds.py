@@ -996,8 +996,10 @@ def upper_bound_peak(power, config):
     pe = 1 / 2 * np.log(1 + snr_peak)  # General
 
     linear_cap = 1 / 2 * np.log(1 + snr)
-
-    cap = min(peak_cap, linear_cap)
+    if config['complex']:
+        cap = min(2*pe, linear_cap)
+    else:
+        cap = min(peak_cap, linear_cap)
     # breakpoint()
     return cap
 

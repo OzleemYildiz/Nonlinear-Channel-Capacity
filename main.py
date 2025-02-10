@@ -293,7 +293,7 @@ def main():
                             tarokh_upper.append(
                                 upper_bound_tarokh_third_regime(power, config)
                             )
-                    if config["nonlinearity"] == 5 and not config["complex"]:
+                    if config["nonlinearity"] == 5:
                         up_peak.append(upper_bound_peak(power, config))
 
                 # Gaussian Capacity
