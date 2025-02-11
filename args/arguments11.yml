@@ -1,7 +1,7 @@
 min_power_cons : 1
 max_power_cons : 300
 sigma_1 : 1
-sigma_2 : 1
+sigma_2 : 0.5
 epsilon : 0.000005 #convergence criteria
 lr : [0.0001] # learning rate
 max_iter : 10000 # maximum number of iterations
@@ -12,7 +12,7 @@ nonlinearity : 3 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C
 clipping_limit_x : 2.5 # the limit in x for the clipping if nonlinear is clip  (x_c)
 clipping_limit_y : 2.5 # the limit in y for the clipping if nonlinear is clip  (x_c)
 output_dir : 'Res-PP-P' # file name to save the results
-tanh_factor : 10 # k when the nonlinearity is tanh(x/k)
+tanh_factor : 1 # k when the nonlinearity is tanh(x/k)
 regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : True # the gradient descent is active
