@@ -267,6 +267,11 @@ def main():
                                 my_new_bound,
                                 sdnr_new_with_erf_nopowchange(power, config),
                             )
+                            if config["complex"]:
+                                sdnr_tarokh_low = bound_backtracing_check(
+                                    sdnr_tarokh_low,
+                                    sdnr_bound_regime_1_tarokh_ref7(power, config),
+                                )
 
                         # mmse_correlation = bound_backtracing_check(
                         #     mmse_correlation,
@@ -369,11 +374,11 @@ def main():
                             ]
                             map_opt["Chng" + str(int(tau * 100))] = opt_capacity
                     else:
-                        map_pdf["Chng" + str(int((snr * 100)))] = [
+                        map_pdf["Chng" + str(int((power*10)))] = [
                             max_pdf_x.detach().numpy(),
                             max_alphabet_x.detach().numpy(),
                         ]
-                        map_opt["Chng" + str(int((snr * 100)))] = opt_capacity
+                        map_opt["Chng" + str(int((power*10)))] = opt_capacity
 
                 if config["complex"]:
                     del real_x, imag_x, real_y, imag_y, regime_class
@@ -463,7 +468,8 @@ def main():
         if config["regime"] == 1 and config["cons_type"] == 1:
             res["Upper_Bound_by_Tarokh"] = up_tarokh
             if config["nonlinearity"] == 5:
-                # res["Lower_Bound_by_SDNR"] = sdnr_tarokh_low
+                if config["complex"]:
+                    res["Lower_Bound_by_SDNR"] = sdnr_tarokh_low
                 res["SDNR_with_Gaussian"] = my_new_bound
             # res["MMSE_Bound"] = mmse_bound
             # res["Linear_MMSE_Bound"] = linear_mmse_bound

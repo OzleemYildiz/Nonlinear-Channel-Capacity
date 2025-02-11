@@ -331,12 +331,14 @@ def plot_pdf_vs_change(
     else:
         return  # No need to plot anything because it's TDM without power change - pdf has already been plotted
 
+    snr_change, noise_power = regime_dependent_snr(config)
     for ind, chn in enumerate(range_change):
+        power = (10 ** (chn / 10)) * noise_power
 
         if config["power_change_active"] and config["time_division_active"]:
-            pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100)) + "ind=0"]
+            pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn)) + "ind=0"]
         else:
-            pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100))]
+            pdf_x, alphabet_x = map_pdf["Chng" + str(int(power * 10))]
 
         if not isinstance(pdf_x, np.ndarray):
             pdf_x = pdf_x.detach().numpy()
@@ -417,10 +419,11 @@ def plot_pdf_vs_change(
     plt.close()
 
     for chn in range_change:
+        power = (10 ** (chn / 10)) * noise_power
         if config["power_change_active"] and config["time_division_active"]:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100)) + "ind=0"]
         else:
-            pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100))]
+            pdf_x, alphabet_x = map_pdf["Chng" + str(int(power * 10))]
         save_new = save_location + "/pdf_" + str(int(chn * 100)) + ".png"
         fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
         if config["complex"]:
@@ -462,7 +465,7 @@ def plot_pdf_vs_change(
             if config["power_change_active"] and config["time_division_active"]:
                 opt_cap = map_opt["Chng" + str(int(chn * 100)) + "ind=0"]
             else:
-                opt_cap = map_opt["Chng" + str(int(chn * 100))]
+                opt_cap = map_opt["Chng" + str(int(power * 10))]
             save_new = save_location + "/opt_" + str(int(chn * 100)) + ".png"
             plot_opt(opt_cap, save_new, title)
 

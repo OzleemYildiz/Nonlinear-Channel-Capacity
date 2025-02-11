@@ -207,7 +207,7 @@ def expectation_of_phi_v(config, epsilon):
 
 
 def return_integral_fz_for_tarokh_third_regime(power, config):
-    d_phi = return_derivative_of_nonlinear_fn(config)
+    d_phi = return_derivative_of_nonlinear_fn(config, tanh_factor=config["tanh_factor"])
 
     var_z = config["sigma_1"] ** 2 + power
     f_z = (
@@ -310,7 +310,7 @@ def sdnr_bound_regime_1_tarokh_ref7(power, config):
     gamma = A / np.sqrt(Omega)
     alpha = 1 - np.exp(-(gamma**2)) + np.sqrt(np.pi) / 2 * gamma * erfc(gamma)
     sigma_d_2 = Omega * (1 - np.exp(-(gamma**2)) - alpha**2)
-    cap = 1 / 2 * np.log(1 + alpha**2 * Omega / (sigma_d_2 + config["sigma_2"] ** 2))
+    cap = np.log(1 + alpha**2 * Omega / (sigma_d_2 + config["sigma_2"] ** 2))
     return cap
 
 
@@ -996,8 +996,8 @@ def upper_bound_peak(power, config):
     pe = 1 / 2 * np.log(1 + snr_peak)  # General
 
     linear_cap = 1 / 2 * np.log(1 + snr)
-    if config['complex']:
-        cap = min(2*pe, linear_cap)
+    if config["complex"]:
+        cap = min(2 * pe, 2 * linear_cap)
     else:
         cap = min(peak_cap, linear_cap)
     # breakpoint()
