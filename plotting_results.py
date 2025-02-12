@@ -110,6 +110,7 @@ def sigma_affect_plot():
                 bins=70,
                 kde=True,
                 ax=ax2,
+                stat="probability",
                 label="$\sigma_1=$"
                 + str(sigma_1[j])
                 + ", $\sigma_2=$"
@@ -164,7 +165,7 @@ def sigma_affect_plot():
             linestyle=":",
             linewidth=0.5,
         )
-        ax2.set_title("$P_1=$" + str(p) + ", $k=$" + str(k))
+        ax2.set_title("$P_1=$" + str(round(p, 2)) + ", $k=$" + str(k))
         fig.savefig(filepath + "pdf_" + str(int(p * 10)) + ".png")
         plt.close()
     print("Saved in", filepath)
