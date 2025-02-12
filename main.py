@@ -374,11 +374,11 @@ def main():
                             ]
                             map_opt["Chng" + str(int(tau * 100))] = opt_capacity
                     else:
-                        map_pdf["Chng" + str(int((power*10)))] = [
+                        map_pdf["Chng" + str(int((power * 10)))] = [
                             max_pdf_x.detach().numpy(),
                             max_alphabet_x.detach().numpy(),
                         ]
-                        map_opt["Chng" + str(int((power*10)))] = opt_capacity
+                        map_opt["Chng" + str(int((power * 10)))] = opt_capacity
 
                 if config["complex"]:
                     del real_x, imag_x, real_y, imag_y, regime_class
