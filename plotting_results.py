@@ -11,8 +11,8 @@ import seaborn as sns
 def sigma_affect_plot():
     filepath = "Paper_Figure/Sigma_Affect/"
     name = []
-    sigma_1 = [1, 0.5, 1, 0.5]
-    sigma_2 = [1, 1, 0.5, 0.5]
+    sigma_1 = [0.5, 2, 8]
+    sigma_2 = [1, 1, 1]
     k = 3
     for i in range(len(sigma_1)):
         name.append(
