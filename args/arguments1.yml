@@ -2,7 +2,7 @@ min_power_cons : 1
 max_power_cons : 300
 sigma_1 : 8
 sigma_2 : 1
-epsilon : 0.000005 #convergence criteria
+epsilon : 0.0000005 #convergence criteria
 lr : [0.0001] # learning rate
 max_iter : 100000 # maximum number of iterations
 min_samples: 64 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this #qam_k :  k^2 QAM modulation
