@@ -119,6 +119,14 @@ def define_save_location(config):
             + str(1 / config["tanh_factor"])
             + "x"
         )
+    elif config["nonlinearity"] == 4:
+        save_location = (
+            save_location
+            + "_sat="
+            + str(config["saturation_ssa"])
+            + "_p="
+            + str(config["smoothness_ssa"])
+        )
 
     save_location = save_location + "/"
     os.makedirs(

@@ -1189,6 +1189,27 @@ def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
     plt.close()
 
 
+def grid_minor(ax):
+    ax.grid(
+        visible=True,
+        which="major",
+        axis="both",
+        color="lightgray",
+        linestyle="-",
+        linewidth=0.5,
+    )
+    plt.minorticks_on()
+    ax.grid(
+        visible=True,
+        which="minor",
+        axis="both",
+        color="gainsboro",
+        linestyle=":",
+        linewidth=0.5,
+    )
+    return ax
+
+
 # def loss_complex(pdf_x, regime_class, project_active=True):
 #     if project_active:
 #         breakpoint()
