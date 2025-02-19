@@ -252,15 +252,18 @@ def main():
         power_change.append(power)
         print("Power: ", power)
         res_tau = {"R1": {}, "R2": {}}
-        multiplying_factor = -round(np.log10(min(power, noise_power)))
-        config["iip3"] = config["iip3"] + 10 * multiplying_factor
 
-        power = power * 10**multiplying_factor
-        noise_power = noise_power * 10**multiplying_factor
-        if config["regime"] == 1:
+        if config["hardware_params_active"]:
+            multiplying_factor = -round(np.log10(min(power, noise_power)))
+            config["iip3"] = config["iip3"] + 10 * multiplying_factor
+            power = power * 10**multiplying_factor
+            noise_power = noise_power * 10**multiplying_factor
             config["sigma_2"] = config["sigma_2"] * 10 ** (multiplying_factor / 2)
+            if config["regime"] == 3:
+                config["sigma_1"] = config["sigma_1"] * 10 ** (multiplying_factor / 2)
         else:
-            breakpoint()
+            multiplying_factor = 1
+
         # FIXME:TDM with parameters will be updated
 
         for tau in tau_list:
@@ -312,7 +315,12 @@ def main():
                     )
 
                     regime_class = get_regime_class(
-                        config, alphabet_x, alphabet_y, power, config["tanh_factor"]
+                        config=config,
+                        alphabet_x=alphabet_x,
+                        alphabet_y=alphabet_y,
+                        power=power,
+                        tanh_factor=config["tanh_factor"],
+                        multiplying_factor=multiplying_factor,
                     )
 
                 # FIXME: Currently, the bounds are not calculated for TDM and Complex
@@ -366,6 +374,7 @@ def main():
                         regime_class, power, complex_alphabet=config["complex"]
                     ),
                 )
+                print("Gaussian Capacity: ", cap_g[-1])
 
                 if ind == 0:  # keeping record of only tau results for demonstration
 
@@ -445,15 +454,18 @@ def main():
                     del real_x, imag_x, real_y, imag_y, regime_class
                 else:
                     del regime_class, alphabet_x, alphabet_y
-                power = power / 10**multiplying_factor
-                noise_power = noise_power / 10**multiplying_factor
-                if config["regime"] == 1:
+                if config["hardware_params_active"]:
+                    power = power / 10**multiplying_factor
+                    noise_power = noise_power / 10**multiplying_factor
+                    if config["regime"] == 3:
+                        config["sigma_1"] = config["sigma_1"] / 10 ** (
+                            multiplying_factor / 2
+                        )
                     config["sigma_2"] = config["sigma_2"] / 10 ** (
                         multiplying_factor / 2
                     )
-                else:
-                    breakpoint()
-                config["iip3"] = config["iip3"] - 10 * multiplying_factor
+
+                    config["iip3"] = config["iip3"] - 10 * multiplying_factor
 
                 end = time.time()
 

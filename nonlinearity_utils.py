@@ -160,6 +160,8 @@ class Hardware_Nonlinear_and_Noise:
         self.bandwidth = config["bandwidth"]  # Hz, bandwidth of the LNA
         self.tsamp = 1 / self.bandwidth  # s, sampling time
 
+        self.snr_range = config["snr_range"]
+        self.SNR_min_dB = config["SNR_min_dB"]
         """
         Calibrate the saturation level for the tanh nonlinearity
         
@@ -204,11 +206,11 @@ class Hardware_Nonlinear_and_Noise:
         self.noise2_std = np.sqrt(self.EkT_lin * (self.f2_lin - 1))
         return self.noise1_std, self.noise2_std
 
-    def get_min_max_power(self, SNR_min_dB=6):
+    def get_min_max_power(self):
         P_N_dBm = 10 * np.log10(self.noise1_std**2) + 10 * np.log10(self.bandwidth)
-        P_in_min_dBm = P_N_dBm + SNR_min_dB
+        P_in_min_dBm = P_N_dBm + self.SNR_min_dB
         # P_in_max_dBm = (2*self.iip3 - P_N_dBm) / 3
-        P_in_max_dBm = P_in_min_dBm + 25
+        P_in_max_dBm = P_in_min_dBm + self.snr_range
 
         P_in_min_dBm = P_in_min_dBm + 10 * np.log10(self.tsamp)
         P_in_max_dBm = P_in_max_dBm + 10 * np.log10(self.tsamp)

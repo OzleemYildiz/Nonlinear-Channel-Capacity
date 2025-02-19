@@ -19,6 +19,7 @@ class Third_Regime:
         sigma_2,
         alphabet_x_imag=0,
         alphabet_y_imag=0,
+        multiplying_factor=1,
     ):
         self.alphabet_x_re = alphabet_x.reshape(-1, 1)
         self.alphabet_x_im = alphabet_x_imag.reshape(1, -1) if config["complex"] else 0
@@ -37,8 +38,11 @@ class Third_Regime:
         self.pdf_z1 = None
         self.alphabet_z1 = None
         self.pdf_y_given_x_and_x2 = None
+        self.multiplying_factor = multiplying_factor
 
     def get_z1_pdf_and_alphabet(self):
+        if self.pdf_z1 is not None:
+            return self.pdf_z1, self.alphabet_z1
         max_z1 = self.config["stop_sd"] * self.sigma_1**2
 
         delta_z1 = (self.alphabet_x_re[1] - self.alphabet_x_re[0])[0]
@@ -135,7 +139,29 @@ class Third_Regime:
             alphabet_v = self.nonlinear_fn(alphabet_u)
         return alphabet_v
 
+    def fix_with_multiplying(self):
+        if self.multiplying_factor == 1:
+            return
+        self.alphabet_x = self.alphabet_x / (10 ** (self.multiplying_factor / 2))
+        self.alphabet_y = self.alphabet_y / (10 ** (self.multiplying_factor / 2))
+        self.sigma_1 = self.sigma_1 / (10 ** (self.multiplying_factor / 2))
+        self.sigma_2 = self.sigma_2 / (10 ** (self.multiplying_factor / 2))
+        self.config["iip3"] = self.config["iip3"] - 10 * self.multiplying_factor
+        self.nonlinear_fn = return_nonlinear_fn(self.config)
+
+    def unfix_with_multiplying(self):
+        if self.multiplying_factor == 1:
+            return
+        self.alphabet_x = self.alphabet_x * (10 ** (self.multiplying_factor / 2))
+        self.alphabet_y = self.alphabet_y * (10 ** (self.multiplying_factor / 2))
+        self.sigma_1 = self.sigma_1 * (10 ** (self.multiplying_factor / 2))
+        self.sigma_2 = self.sigma_2 * (10 ** (self.multiplying_factor / 2))
+        self.config["iip3"] = self.config["iip3"] + 10 * self.multiplying_factor
+        self.nonlinear_fn = return_nonlinear_fn(self.config)
+
     def new_capacity(self, pdf_x, eps=1e-20, pdf_y_given_x=None):
+        self.fix_with_multiplying()
+
         if pdf_y_given_x is None:
             pdf_y_given_x = self.get_pdf_y_given_x()
 
@@ -156,6 +182,7 @@ class Third_Regime:
         pdf_y = pdf_y / (torch.sum(pdf_y) + 1e-30)
         cap = entropy_y_given_x - torch.sum(pdf_y * torch.log(pdf_y + 1e-20))
 
+        self.unfix_with_multiplying()
         return cap
 
     def get_pdf_y_given_x1_and_x2(self, alphabet_x2, int_ratio):

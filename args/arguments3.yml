@@ -15,7 +15,7 @@ smoothness_ssa : 1
 saturation_ssa : 4
 tanh_factor : 0.2 # k when the nonlinearity is tanh(x/k)
 output_dir : 'Res-PP-H' # file name to save the results
-regime : 1 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
+regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : True # the gradient descent is active
 gd_initial_ba : False # It has to be peak power constraint
@@ -36,3 +36,4 @@ iip3 : -1.22 # dBm IIP3 of the LNA
 bandwidth : 580000000 # Hz bandwidth of the LNA
 bits : 8 # bits of the ADC !! Currently not active
 snr_range : 40
+SNR_min_dB : 10

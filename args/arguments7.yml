@@ -35,4 +35,5 @@ gain : 15.83 # dB gain of the LNA
 iip3 : -4.32 # dBm IIP3 of the LNA
 bandwidth : 500000000 # Hz bandwidth of the LNA
 bits : 8 # bits of the ADC !! Currently not active
-snr_range : 40
+snr_range : 40 #Usually around 90 maximum range of the receiver can afford
+SNR_min_dB : 10

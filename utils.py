@@ -334,7 +334,6 @@ def plot_pdf_vs_change(
     snr_change, noise_power = regime_dependent_snr(config)
     for ind, chn in enumerate(range_change):
         power = (10 ** (chn / 10)) * noise_power
-        
 
         if config["power_change_active"] and config["time_division_active"]:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn)) + "ind=0"]
@@ -509,6 +508,7 @@ def get_max_alphabet_PP(
     bound=False,
 ):
     nonlinear_func = return_nonlinear_fn(config, tanh_factor)
+
     if config["cons_type"] == 0:  # peak power
         peak_power = power
         # snr = peak_power/std
@@ -586,6 +586,7 @@ def get_regime_class(
     tanh_factor,
     alphabet_x_imag=0,
     alphabet_y_imag=0,
+    multiplying_factor=1,
 ):
     if config["regime"] == 1:
         regime_class = First_Regime(
@@ -611,6 +612,7 @@ def get_regime_class(
             sigma_2=config["sigma_2"],
             alphabet_x_imag=alphabet_x_imag,
             alphabet_y_imag=alphabet_y_imag,
+            multiplying_factor=multiplying_factor,
         )
     else:
         raise ValueError("Regime not defined")
