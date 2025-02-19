@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --nodes=1                        # requests 3 compute servers
 #SBATCH --ntasks-per-node=2              # runs 2 tasks on each server
-#SBATCH --cpus-per-task=5                # uses 1 compute core per task
+#SBATCH --cpus-per-task=10                # uses 1 compute core per task
 #SBATCH --time=80:00:00
-#SBATCH --mem=200GB
+#SBATCH --mem=1000GB
 #SBATCH --job-name=pp-memory
 #SBATCH --account=pr_215_general
 #SBATCH --output=outs/pp/%A_%a.out
