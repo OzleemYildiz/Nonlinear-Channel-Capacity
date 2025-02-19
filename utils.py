@@ -334,11 +334,12 @@ def plot_pdf_vs_change(
     snr_change, noise_power = regime_dependent_snr(config)
     for ind, chn in enumerate(range_change):
         power = (10 ** (chn / 10)) * noise_power
+        
 
         if config["power_change_active"] and config["time_division_active"]:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn)) + "ind=0"]
         else:
-            pdf_x, alphabet_x = map_pdf["Chng" + str(int(power * 10))]
+            pdf_x, alphabet_x = map_pdf["Chng" + str(power)]
 
         if not isinstance(pdf_x, np.ndarray):
             pdf_x = pdf_x.detach().numpy()
@@ -423,7 +424,7 @@ def plot_pdf_vs_change(
         if config["power_change_active"] and config["time_division_active"]:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100)) + "ind=0"]
         else:
-            pdf_x, alphabet_x = map_pdf["Chng" + str(int(power * 10))]
+            pdf_x, alphabet_x = map_pdf["Chng" + str(power)]
         save_new = save_location + "/pdf_" + str(int(chn * 100)) + ".png"
         fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
         if config["complex"]:
@@ -465,7 +466,7 @@ def plot_pdf_vs_change(
             if config["power_change_active"] and config["time_division_active"]:
                 opt_cap = map_opt["Chng" + str(int(chn * 100)) + "ind=0"]
             else:
-                opt_cap = map_opt["Chng" + str(int(power * 10))]
+                opt_cap = map_opt["Chng" + str(power)]
             save_new = save_location + "/opt_" + str(int(chn * 100)) + ".png"
             plot_opt(opt_cap, save_new, title)
 
@@ -1035,10 +1036,10 @@ def check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
     cond1 = torch.abs(torch.sum(pdf_x) - 1) < 1e-2  # sum of pdf is 1
     cond2 = torch.sum(pdf_x < 0) == 0  # pdf cannot be negative
     if cons_type == 1:
-        cond3 = torch.sum(torch.abs(alphabet_x) ** 2 * pdf_x) <= power + 1e-3
+        cond3 = torch.sum(torch.abs(alphabet_x) ** 2 * pdf_x) <= power * (1 + 1e-4)
+
     else:
         cond3 = True
-
     return cond1 and cond2 and cond3
 
 
@@ -1046,7 +1047,7 @@ def get_PP_complex_alphabet_x_y(config, power, tanh_factor, bound=False):
     if np.isnan(power) or power == np.inf:
         print("Power is nan or inf- complex alphabet creation")
         breakpoint()
-
+    breakpoint()
     max_x, max_y, delta = get_max_alphabet_PP(
         config, power / 2, tanh_factor, config["min_samples"], bound
     )

@@ -77,6 +77,7 @@ class First_Regime:
 
         if self.pdf_y_given_x is None:
             self.get_pdf_y_given_x()
+
         py_x_logpy_x = self.pdf_y_given_x * torch.log(self.pdf_y_given_x + 1e-20)
         px_py_x_logpy_x = py_x_logpy_x @ pdf_x
         f_term = torch.sum(px_py_x_logpy_x)

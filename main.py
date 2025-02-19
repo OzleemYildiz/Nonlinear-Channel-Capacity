@@ -62,12 +62,12 @@ def define_save_location(config):
             save_location = save_location + "_"
         save_location = save_location + "Complex"
 
+    save_location = save_location + ("_" + config["cons_str"])
+    if not config["hardware_params_active"]:
+        save_location = save_location + "_phi=" + str(config["nonlinearity"])
+
     save_location = save_location + (
-        "_"
-        + config["cons_str"]
-        + "_phi="
-        + str(config["nonlinearity"])
-        + "_regime="
+        "_regime="
         + str(config["regime"])
         + "_min_samples="
         + str(config["min_samples"])
@@ -250,7 +250,18 @@ def main():
         print("-------SNR in dB:", snr, "--------")
         power = (10 ** (snr / 10)) * noise_power
         power_change.append(power)
+        print("Power: ", power)
         res_tau = {"R1": {}, "R2": {}}
+        multiplying_factor = -round(np.log10(min(power, noise_power)))
+        config["iip3"] = config["iip3"] + 10 * multiplying_factor
+
+        power = power * 10**multiplying_factor
+        noise_power = noise_power * 10**multiplying_factor
+        if config["regime"] == 1:
+            config["sigma_2"] = config["sigma_2"] * 10 ** (multiplying_factor / 2)
+        else:
+            breakpoint()
+        # FIXME:TDM with parameters will be updated
 
         for tau in tau_list:
             print("----------Time Division: ", tau, "----------")
@@ -285,6 +296,7 @@ def main():
                     real_x, imag_x, real_y, imag_y = get_PP_complex_alphabet_x_y(
                         config, power, tanh_factor
                     )
+
                     regime_class = get_regime_class(
                         config=config,
                         alphabet_x=real_x,
@@ -298,6 +310,7 @@ def main():
                     alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(
                         config, power, tanh_factor
                     )
+
                     regime_class = get_regime_class(
                         config, alphabet_x, alphabet_y, power, config["tanh_factor"]
                     )
@@ -353,6 +366,7 @@ def main():
                         regime_class, power, complex_alphabet=config["complex"]
                     ),
                 )
+
                 if ind == 0:  # keeping record of only tau results for demonstration
 
                     capacity_gaussian = bound_backtracing_check(
@@ -400,6 +414,7 @@ def main():
                     max_pdf_x = project_pdf(
                         max_pdf_x, config["cons_type"], max_alphabet_x, power
                     )
+
                     if config["time_division_active"]:
                         if config["power_change_active"]:
                             map_pdf[
@@ -418,16 +433,28 @@ def main():
                             ]
                             map_opt["Chng" + str(int(tau * 100))] = opt_capacity
                     else:
-                        map_pdf["Chng" + str(int((power * 10)))] = [
+                        map_pdf["Chng" + str(power / 10**multiplying_factor)] = [
                             max_pdf_x.detach().numpy(),
                             max_alphabet_x.detach().numpy(),
                         ]
-                        map_opt["Chng" + str(int((power * 10)))] = opt_capacity
+                        map_opt["Chng" + str(power / 10**multiplying_factor)] = (
+                            opt_capacity
+                        )
 
                 if config["complex"]:
                     del real_x, imag_x, real_y, imag_y, regime_class
                 else:
                     del regime_class, alphabet_x, alphabet_y
+                power = power / 10**multiplying_factor
+                noise_power = noise_power / 10**multiplying_factor
+                if config["regime"] == 1:
+                    config["sigma_2"] = config["sigma_2"] / 10 ** (
+                        multiplying_factor / 2
+                    )
+                else:
+                    breakpoint()
+                config["iip3"] = config["iip3"] - 10 * multiplying_factor
+
                 end = time.time()
 
                 # Time Division Active Calculation

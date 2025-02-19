@@ -80,8 +80,9 @@ def distribution_plot():
         w = 1
         for j in range(len(name)):
             try:
-                pdf_x, alph_x = pdf[j]["Chng" + str(int(p * 10))]
+                pdf_x, alph_x = pdf[j]["Chng" + str(p*10)]
             except:
+                breakpoint()
                 pdf_x, alph_x = pdf[j]["Chng" + str(int(p * 10 - 1))]
 
             # to make sure that comparison is fair with the same alphabet
