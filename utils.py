@@ -301,7 +301,13 @@ def plot_vs_change(
 
 
 def plot_pdf_vs_change(
-    map_pdf, range_change, config, save_location=None, file_name=None, map_opt=None
+    map_pdf,
+    range_change,
+    config,
+    save_location=None,
+    file_name=None,
+    map_opt=None,
+    multiplying_factor=None,
 ):
 
     if file_name is None:
@@ -338,7 +344,10 @@ def plot_pdf_vs_change(
         if config["power_change_active"] and config["time_division_active"]:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn)) + "ind=0"]
         else:
-            pdf_x, alphabet_x = map_pdf["Chng" + str(power)]
+            if config["hardware_params_active"]:
+                power = power * 10 ** multiplying_factor[ind]
+
+            pdf_x, alphabet_x = map_pdf["Chng" + str(int(power * 10))]
 
         if not isinstance(pdf_x, np.ndarray):
             pdf_x = pdf_x.detach().numpy()
@@ -418,12 +427,15 @@ def plot_pdf_vs_change(
         fig.savefig(save_location + "/" + file_name, bbox_inches="tight")
     plt.close()
 
-    for chn in range_change:
+    for ind, chn in enumerate(range_change):
         power = (10 ** (chn / 10)) * noise_power
         if config["power_change_active"] and config["time_division_active"]:
             pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100)) + "ind=0"]
         else:
-            pdf_x, alphabet_x = map_pdf["Chng" + str(power)]
+            if config["hardware_params_active"]:
+                power = power * 10 ** multiplying_factor[ind]
+
+            pdf_x, alphabet_x = map_pdf["Chng" + str(int(power * 10))]
         save_new = save_location + "/pdf_" + str(int(chn * 100)) + ".png"
         fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
         if config["complex"]:
@@ -436,23 +448,8 @@ def plot_pdf_vs_change(
             ax.bar(alphabet_x, pdf_x, linewidth=3)
             ax.set_xlabel(r"X", fontsize=10)
             ax.set_ylabel(r"PDF", fontsize=10)
-        ax.grid(
-            visible=True,
-            which="minor",
-            axis="both",
-            color="gainsboro",
-            linestyle=":",
-            linewidth=0.5,
-        )
-        ax.grid(
-            visible=True,
-            which="major",
-            axis="both",
-            color="lightgray",
-            linestyle="-",
-            linewidth=0.5,
-        )
-        plt.minorticks_on()
+
+        ax = grid_minor(ax)
         title = config["title"] + " SNR = " + str(round(chn, 2))
         ax.set_title(
             title,
@@ -465,7 +462,7 @@ def plot_pdf_vs_change(
             if config["power_change_active"] and config["time_division_active"]:
                 opt_cap = map_opt["Chng" + str(int(chn * 100)) + "ind=0"]
             else:
-                opt_cap = map_opt["Chng" + str(power)]
+                opt_cap = map_opt["Chng" + str(int(power * 10))]
             save_new = save_location + "/opt_" + str(int(chn * 100)) + ".png"
             plot_opt(opt_cap, save_new, title)
 
@@ -1049,7 +1046,7 @@ def get_PP_complex_alphabet_x_y(config, power, tanh_factor, bound=False):
     if np.isnan(power) or power == np.inf:
         print("Power is nan or inf- complex alphabet creation")
         breakpoint()
-    breakpoint()
+
     max_x, max_y, delta = get_max_alphabet_PP(
         config, power / 2, tanh_factor, config["min_samples"], bound
     )

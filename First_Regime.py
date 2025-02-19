@@ -77,22 +77,26 @@ class First_Regime:
         # FIXME: Complex case is not handled
         if self.multiplying_factor == 1:
             return
-        self.alphabet_x = self.alphabet_x / (10 ** (self.multiplying_factor / 2))
-        self.alphabet_y = self.alphabet_y / (10 ** (self.multiplying_factor / 2))
+        self.alphabet_x_re = self.alphabet_x_re / (10 ** (self.multiplying_factor / 2))
+        self.alphabet_y_re = self.alphabet_y_re / (10 ** (self.multiplying_factor / 2))
+        self.alphabet_x_im = self.alphabet_x_im / (10 ** (self.multiplying_factor / 2))
+        self.alphabet_y_im = self.alphabet_y_im / (10 ** (self.multiplying_factor / 2))
         self.sigma_2 = self.sigma_2 / (10 ** (self.multiplying_factor / 2))
         self.config["iip3"] = self.config["iip3"] - 10 * self.multiplying_factor
         self.nonlinear_fn = return_nonlinear_fn(self.config)
-        self.alphabet_v = self.nonlinear_func(self.alphabet_x)
+        self.get_x_v_and_y_alphabet()
 
     def unfix_with_multiplying(self):
         if self.multiplying_factor == 1:
             return
-        self.alphabet_x = self.alphabet_x * (10 ** (self.multiplying_factor / 2))
-        self.alphabet_y = self.alphabet_y * (10 ** (self.multiplying_factor / 2))
+        self.alphabet_x_re = self.alphabet_x_re * (10 ** (self.multiplying_factor / 2))
+        self.alphabet_y_re = self.alphabet_y_re * (10 ** (self.multiplying_factor / 2))
+        self.alphabet_x_im = self.alphabet_x_im * (10 ** (self.multiplying_factor / 2))
+        self.alphabet_y_im = self.alphabet_y_im * (10 ** (self.multiplying_factor / 2))
         self.sigma_2 = self.sigma_2 * (10 ** (self.multiplying_factor / 2))
         self.config["iip3"] = self.config["iip3"] + 10 * self.multiplying_factor
         self.nonlinear_fn = return_nonlinear_fn(self.config)
-        self.alphabet_v = self.nonlinear_func(self.alphabet_x)
+        self.get_x_v_and_y_alphabet()
 
     def new_capacity(self, pdf_x, pdf_y_given_x=None):
         self.fix_with_multiplying()

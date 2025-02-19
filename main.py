@@ -233,6 +233,8 @@ def main():
     mmse_correlation = []
     up_peak = []
 
+    mul_fac = []
+
     if config["time_division_active"]:
         tau_list = np.linspace(0.01, 0.99, config["n_time_division"])
         # Fill this if and only time division is active
@@ -255,6 +257,7 @@ def main():
 
         if config["hardware_params_active"]:
             multiplying_factor = -round(np.log10(min(power, noise_power)))
+            mul_fac.append(multiplying_factor)
             config["iip3"] = config["iip3"] + 10 * multiplying_factor
             power = power * 10**multiplying_factor
             noise_power = noise_power * 10**multiplying_factor
@@ -442,13 +445,11 @@ def main():
                             ]
                             map_opt["Chng" + str(int(tau * 100))] = opt_capacity
                     else:
-                        map_pdf["Chng" + str(power / 10**multiplying_factor)] = [
+                        map_pdf["Chng" + str(int(power*10))] = [
                             max_pdf_x.detach().numpy(),
                             max_alphabet_x.detach().numpy(),
                         ]
-                        map_opt["Chng" + str(power / 10**multiplying_factor)] = (
-                            opt_capacity
-                        )
+                        map_opt["Chng" + str(int(power*10))] = opt_capacity
 
                 if config["complex"]:
                     del real_x, imag_x, real_y, imag_y, regime_class
@@ -595,6 +596,7 @@ def main():
                 save_location=save_location,
                 file_name="pdf_snr_gd.png",
                 map_opt=map_opt,
+                multiplying_factor=mul_fac,
             )
         if config["ba_active"] and config["cons_type"] == 0:
             plot_pdf_vs_change(
@@ -635,6 +637,7 @@ def main():
                 save_location=save_location,
                 file_name="pdf_snr_gd.png",
                 map_opt=map_opt,
+                multiplying_factor=mul_fac,
             )
         if config["ba_active"] and config["cons_type"] == 0:
             plot_pdf_vs_change(

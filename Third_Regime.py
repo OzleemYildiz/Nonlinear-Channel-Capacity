@@ -140,7 +140,6 @@ class Third_Regime:
         return alphabet_v
 
     def fix_with_multiplying(self):
-        # FIXME: Complex case is not handled
         if self.multiplying_factor == 1:
             return
         self.alphabet_x = self.alphabet_x / (10 ** (self.multiplying_factor / 2))
