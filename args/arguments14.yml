@@ -14,7 +14,7 @@ clipping_limit_y : 2.5 # the limit in y for the clipping if nonlinear is clip  (
 smoothness_ssa : 1
 saturation_ssa : 4
 tanh_factor : 0.2 # k when the nonlinearity is tanh(x/k)
-output_dir : 'Res-PP-H' # file name to save the results
+output_dir : 'Res-PP-HN' # file name to save the results
 regime : 1 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : True # the gradient descent is active
