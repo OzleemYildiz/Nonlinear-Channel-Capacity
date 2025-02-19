@@ -268,10 +268,14 @@ def main():
                     print("Power Kept Constant: ", power)
                 if ind == 0:  # keeping record of only tau results for demonstration
                     # 1-tau is for R1 and R2 curve
+                    if config["hardware_params_active"]:
+                        power_snr = power * hn.gain_lin
                     if config["complex"]:
-                        calc_logsnr.append(tau * np.log(1 + power / (noise_power)))
+                        calc_logsnr.append(tau * np.log(1 + power_snr / (noise_power)))
                     else:
-                        calc_logsnr.append(tau * np.log(1 + power / (noise_power)) / 2)
+                        calc_logsnr.append(
+                            tau * np.log(1 + power_snr / (noise_power)) / 2
+                        )
                 print("Linear Capacity :", calc_logsnr[-1])
 
                 # Complex Alphabet is on

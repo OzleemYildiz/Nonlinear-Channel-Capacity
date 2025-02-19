@@ -204,10 +204,11 @@ class Hardware_Nonlinear_and_Noise:
         self.noise2_std = np.sqrt(self.EkT_lin * (self.f2_lin - 1))
         return self.noise1_std, self.noise2_std
 
-    def get_min_max_power(self, SNR_min_dB=10):
+    def get_min_max_power(self, SNR_min_dB=6):
         P_N_dBm = 10 * np.log10(self.noise1_std**2) + 10 * np.log10(self.bandwidth)
         P_in_min_dBm = P_N_dBm + SNR_min_dB
-        P_in_max_dBm = (2 * self.iip3 - P_N_dBm) / 3
+        # P_in_max_dBm = (2*self.iip3 - P_N_dBm) / 3
+        P_in_max_dBm = P_in_min_dBm + 25
 
         P_in_min_dBm = P_in_min_dBm + 10 * np.log10(self.tsamp)
         P_in_max_dBm = P_in_max_dBm + 10 * np.log10(self.tsamp)
