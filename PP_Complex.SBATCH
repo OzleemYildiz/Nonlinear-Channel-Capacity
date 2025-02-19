@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=5                # uses 1 compute core per task
 #SBATCH --time=80:00:00
 #SBATCH --mem=200GB
-#SBATCH --job-name=pp-c
+#SBATCH --job-name=pp-memory
 #SBATCH --account=pr_215_general
 #SBATCH --output=outs/pp/%A_%a.out
 

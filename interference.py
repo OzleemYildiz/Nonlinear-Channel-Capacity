@@ -385,6 +385,10 @@ def main():
         res_change["Learned_KI"] = []
         res_change["Learned_TIN"] = []
     old_config_title = config["title"]
+    _, _, _, _, _, res_str, _ = get_run_parameters(config, change_range[0])
+
+    save_location = save_location + res_str + "/"
+    os.makedirs(save_location, exist_ok=True)
     for ind, chng in enumerate(change_range):
         power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str, res_str_run = (
             get_run_parameters(config, chng)

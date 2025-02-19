@@ -48,6 +48,7 @@ from bounds import (
 from scipy import io
 import time
 from blahut_arimoto_capacity import apply_blahut_arimoto
+from nonlinearity_utils import Hardware_Nonlinear_and_Noise
 
 
 def define_save_location(config):
@@ -102,31 +103,38 @@ def define_save_location(config):
         if config["gd_initial_ba"]:
             save_location = save_location + "_initial_ba"
 
-    if config["nonlinearity"] == 5:
-        save_location = (
-            save_location
-            + "_clipx="
-            + str(config["clipping_limit_x"])
-            + "_clipy="
-            + str(config["clipping_limit_y"])
-        )
-    elif config["nonlinearity"] == 3:
-        save_location = (
-            save_location
-            + "_"
-            + str(config["tanh_factor"])
-            + "tanh"
-            + str(1 / config["tanh_factor"])
-            + "x"
-        )
-    elif config["nonlinearity"] == 4:
-        save_location = (
-            save_location
-            + "_sat="
-            + str(config["saturation_ssa"])
-            + "_p="
-            + str(config["smoothness_ssa"])
-        )
+    if config["hardware_params_active"]:
+        save_location = save_location + "_hardware_nf1=" + str(config["noise_figure1"])
+        save_location = save_location + "_nf2=" + str(config["noise_figure2"])
+        save_location = save_location + "_bw=" + str(config["bandwidth"])
+        save_location = save_location + "_iip3=" + str(config["iip3"])
+        save_location = save_location + "_gain=" + str(config["gain"])
+    else:
+        if config["nonlinearity"] == 5:
+            save_location = (
+                save_location
+                + "_clipx="
+                + str(config["clipping_limit_x"])
+                + "_clipy="
+                + str(config["clipping_limit_y"])
+            )
+        elif config["nonlinearity"] == 3:
+            save_location = (
+                save_location
+                + "_"
+                + str(config["tanh_factor"])
+                + "tanh"
+                + str(1 / config["tanh_factor"])
+                + "x"
+            )
+        elif config["nonlinearity"] == 4:
+            save_location = (
+                save_location
+                + "_sat="
+                + str(config["saturation_ssa"])
+                + "_p="
+                + str(config["smoothness_ssa"])
+            )
 
     save_location = save_location + "/"
     os.makedirs(
@@ -138,6 +146,10 @@ def define_save_location(config):
 
 def main():
     config = read_config()
+    if config["hardware_params_active"]:
+        hn = Hardware_Nonlinear_and_Noise(config)
+        config["sigma_1"], config["sigma_2"] = hn.get_noise_vars()
+        config["min_power_cons"], config["max_power_cons"] = hn.get_min_max_power()
 
     # Title for PP has been updated
     if config["regime"] == 1:
@@ -150,18 +162,38 @@ def main():
             + " sigma_2="
             + str(config["sigma_2"])
         )
-    if config["nonlinearity"] == 3:
-        config["title"] = config["title"] + " k=" + str(config["tanh_factor"])
-    elif config["nonlinearity"] == 5:
-        config["title"] = config["title"] + " clip=" + str(config["clipping_limit_x"])
+    if config["hardware_params_active"]:
+        config["title"] = (
+            config["title"]
+            + " Hardware Parameters, IIP3: "
+            + str(config["iip3"])
+            + " BW: "
+            + str(config["bandwidth"])
+            + " NF1: "
+            + str(config["noise_figure1"])
+            + " NF2: "
+            + str(config["noise_figure2"])
+            + " Gain: "
+            + str(config["gain"])
+        )
+        print(
+            "*** AWGN Channel with Hardware Parameters for Regime: ", config["regime"]
+        )
+    else:
+        if config["nonlinearity"] == 3:
+            config["title"] = config["title"] + " k=" + str(config["tanh_factor"])
+        elif config["nonlinearity"] == 5:
+            config["title"] = (
+                config["title"] + " clip=" + str(config["clipping_limit_x"])
+            )
 
-    print(
-        "**** AWGN Channel with Nonlinearity: ",
-        config["nonlinearity"],
-        "for Regime: ",
-        config["regime"],
-        "****",
-    )
+        print(
+            "**** AWGN Channel with Nonlinearity: ",
+            config["nonlinearity"],
+            "for Regime: ",
+            config["regime"],
+            "****",
+        )
 
     # Since we are looking at TDM - SNR needs to be fixed so we only take one SNR value
     if config["time_division_active"]:
