@@ -19,6 +19,7 @@ class First_Regime:
         sigma_2,
         alphabet_x_imag=0,
         alphabet_y_imag=0,
+        multiplying_factor=1,
     ):
         self.alphabet_x_re = alphabet_x.reshape(-1, 1)
         self.alphabet_x_im = alphabet_x_imag.reshape(1, -1) if config["complex"] else 0
@@ -31,6 +32,7 @@ class First_Regime:
         self.tanh_factor = tanh_factor
         self.get_x_v_and_y_alphabet()
         self.pdf_y_given_x = None
+        self.multiplying_factor = multiplying_factor
 
     def get_pdf_y_given_x(self):
         if self.config["complex"]:
@@ -71,7 +73,29 @@ class First_Regime:
         self.pdf_y_given_x = pdf_y_given_x
         return pdf_y_given_x
 
+    def fix_with_multiplying(self):
+        # FIXME: Complex case is not handled
+        if self.multiplying_factor == 1:
+            return
+        self.alphabet_x = self.alphabet_x / (10 ** (self.multiplying_factor / 2))
+        self.alphabet_y = self.alphabet_y / (10 ** (self.multiplying_factor / 2))
+        self.sigma_2 = self.sigma_2 / (10 ** (self.multiplying_factor / 2))
+        self.config["iip3"] = self.config["iip3"] - 10 * self.multiplying_factor
+        self.nonlinear_fn = return_nonlinear_fn(self.config)
+        self.alphabet_v = self.nonlinear_func(self.alphabet_x)
+
+    def unfix_with_multiplying(self):
+        if self.multiplying_factor == 1:
+            return
+        self.alphabet_x = self.alphabet_x * (10 ** (self.multiplying_factor / 2))
+        self.alphabet_y = self.alphabet_y * (10 ** (self.multiplying_factor / 2))
+        self.sigma_2 = self.sigma_2 * (10 ** (self.multiplying_factor / 2))
+        self.config["iip3"] = self.config["iip3"] + 10 * self.multiplying_factor
+        self.nonlinear_fn = return_nonlinear_fn(self.config)
+        self.alphabet_v = self.nonlinear_func(self.alphabet_x)
+
     def new_capacity(self, pdf_x, pdf_y_given_x=None):
+        self.fix_with_multiplying()
         if pdf_y_given_x is not None:  # For the case of known interference
             self.pdf_y_given_x = pdf_y_given_x
 
@@ -83,6 +107,7 @@ class First_Regime:
         f_term = torch.sum(px_py_x_logpy_x)
         py = self.pdf_y_given_x @ pdf_x
         s_term = torch.sum(py * torch.log(py + 1e-20))
+        self.unfix_with_multiplying()
         return f_term - s_term
 
     def capacity_with_interference(

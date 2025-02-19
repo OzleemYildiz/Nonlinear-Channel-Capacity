@@ -374,7 +374,7 @@ def main():
                         regime_class, power, complex_alphabet=config["complex"]
                     ),
                 )
-                print("Gaussian Capacity: ", cap_g[-1])
+                print("Gaussian Capacity: ", cap_g)
 
                 if ind == 0:  # keeping record of only tau results for demonstration
 
