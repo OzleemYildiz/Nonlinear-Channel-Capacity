@@ -148,6 +148,7 @@ def main():
     config = read_config()
     if config["hardware_params_active"]:
         hn = Hardware_Nonlinear_and_Noise(config)
+        config["E_sat"] = hn.Esat_lin
         config["sigma_1"], config["sigma_2"] = hn.get_noise_vars()
         config["min_power_cons"], config["max_power_cons"] = hn.get_min_max_power()
 
@@ -165,7 +166,9 @@ def main():
     if config["hardware_params_active"]:
         config["title"] = (
             config["title"]
-            + " Hardware Parameters, IIP3: "
+            + " Hardware Parameters, Esat: "
+            + str(config["E_sat"])
+            + " IIP3: "
             + str(config["iip3"])
             + " BW: "
             + str(config["bandwidth"])
@@ -445,11 +448,11 @@ def main():
                             ]
                             map_opt["Chng" + str(int(tau * 100))] = opt_capacity
                     else:
-                        map_pdf["Chng" + str(int(power*10))] = [
+                        map_pdf["Chng" + str(int(power * 10))] = [
                             max_pdf_x.detach().numpy(),
                             max_alphabet_x.detach().numpy(),
                         ]
-                        map_opt["Chng" + str(int(power*10))] = opt_capacity
+                        map_opt["Chng" + str(int(power * 10))] = opt_capacity
 
                 if config["complex"]:
                     del real_x, imag_x, real_y, imag_y, regime_class
