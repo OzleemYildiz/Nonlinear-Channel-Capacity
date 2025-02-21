@@ -23,7 +23,7 @@ from gd import (
     get_fixed_interferer,
 )
 import time
-from nonlinearity_utils import return_derivative_of_nonlinear_fn
+from nonlinearity_utils import get_derivative_of_nonlinear_fn
 import torch
 
 
@@ -270,7 +270,7 @@ def get_interferer_capacity(config, power2):
 
 def get_linear_approximation_capacity(regime_RX2, config, power1, pdf_x_RX2):
 
-    deriv_func = return_derivative_of_nonlinear_fn(
+    deriv_func =get_derivative_of_nonlinear_fn(
         config, tanh_factor=regime_RX2.tanh_factor
     )
     if config["complex"]:

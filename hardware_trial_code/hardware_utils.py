@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils import grid_minor
 import os
-from nonlinearity_utils import return_nonlinear_fn_numpy
+from nonlinearity_utils import get_nonlinear_fn_numpy
 
 
 def get_noise_power(noise_figure, bandwidth):
@@ -91,7 +91,7 @@ def main():
         x = np.linspace(V_in_min, 5 * k, 100)
         y = gain_voltage * k * np.tanh(x / k)
 
-        ssa_phi = return_nonlinear_fn_numpy(config)
+        ssa_phi = get_nonlinear_fn_numpy(config)
         ssa = gain_voltage * ssa_phi(x)
         tanh_with_A1dB = gain_voltage * A_1dB * np.tanh(x / A_1dB)
 

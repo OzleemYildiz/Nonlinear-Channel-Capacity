@@ -1,18 +1,22 @@
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
+import argparse
+import os
+import yaml
 
 
 # It is one-one function so pdf stays the alphabet changes
 def alphabet_fix_nonlinear(alphabet_x, config):
     if config["regime"] == 1:
-        nonlinear_func = return_nonlinear_fn(config)
+        nonlinear_func = get_nonlinear_fn(config)
         x_change = nonlinear_func(alphabet_x)
     elif config["regime"] == 2:
         x_change = alphabet_x  # since nonlinearity is applied to the channel output
     return x_change
 
 
-def return_nonlinear_fn(config, tanh_factor=None):
+def get_nonlinear_fn(config, tanh_factor=None):
     if config["hardware_params_active"]:  # hardware parameters
         hn = Hardware_Nonlinear_and_Noise(config)
         nonlinear_fn = hn.nonlinear_func_torch()
@@ -69,7 +73,7 @@ def return_nonlinear_fn(config, tanh_factor=None):
 
 
 # NOT USED
-def return_derivative_of_nonlinear_fn(config, tanh_factor=None):
+def get_derivative_of_nonlinear_fn(config, tanh_factor=None):
     # This function is numpy
     if config["hardware_params_active"]:  # hardware parameters
         hn = Hardware_Nonlinear_and_Noise(config)
@@ -106,7 +110,7 @@ def return_derivative_of_nonlinear_fn(config, tanh_factor=None):
     return nonlinear_fn
 
 
-def return_nonlinear_fn_numpy(config, tanh_factor=None):
+def get_nonlinear_fn_numpy(config, tanh_factor=None):
     if config["hardware_params_active"]:  # hardware parameters
         hn = Hardware_Nonlinear_and_Noise(config)
         nonlinear_fn = hn.nonlinear_func_numpy()
@@ -149,8 +153,60 @@ def return_nonlinear_fn_numpy(config, tanh_factor=None):
     return nonlinear_fn
 
 
+def get_inverse_nonlinearity(config, tanh_factor=None):
+    if config["hardware_params_active"]:
+        hn = Hardware_Nonlinear_and_Noise(config)
+        inverse_nonlinear_fn = hn.get_inverse_nonlinearity()
+    else:
+        if config["nonlinearity"] == 3:
+            inverse_nonlinear_fn = lambda x: torch.tensor(tanh_factor) * torch.atanh(
+                torch.tensor(x / tanh_factor)
+            )
+        else:
+            raise ValueError("Inverse nonlinearity is not supported")
+    return inverse_nonlinear_fn
+
+
+def get_derivative_of_inverse_nonlinearity(config, tanh_factor=None):
+    if config["hardware_params_active"]:
+        hn = Hardware_Nonlinear_and_Noise(config)
+        derivative_of_inverse_nonlinear_fn = hn.get_derivative_of_inverse_nonlinearity()
+    else:
+        if config["nonlinearity"] == 3:
+            derivative_of_inverse_nonlinear_fn = lambda x: (
+                1 / (1 - torch.tensor(x / tanh_factor) ** 2)
+            )
+        else:
+            raise ValueError("Derivative of inverse nonlinearity is not supported")
+    return derivative_of_inverse_nonlinear_fn
+
+
+def quant(distances, pdf_x, quant_locs, indices, temperature=0.01):
+    # To make it differentiable, I will try with temperature
+    # correction_term = 10 ** np.round(np.log10(torch.min(distances)))
+    weights = torch.softmax(-distances / (temperature), dim=1)
+
+    quant_pdf = torch.matmul(weights.T, pdf_x)
+
+    # # Check for temperature
+    # summed_pdf = torch.zeros_like(quant_locs, dtype=torch.float)
+    # summed_pdf.scatter_add_(0, indices, pdf_x)
+    # check_if_correct = torch.sum(abs(summed_pdf - quant_pdf)) < 10 ** (
+    #     -torch.log2(torch.tensor(quant_locs.shape))
+    # )
+
+    # if check_if_correct:
+
+    return quant_pdf
+    # else:
+    #     return quant(
+    #         distances, pdf_x, quant_locs, indices, temperature=temperature / 10
+    #     )
+
+
 class Hardware_Nonlinear_and_Noise:
     def __init__(self, config):
+        self.regime = config["regime"]
         self.f1 = config["noise_figure1"]  # dB, noise figure for the first noise source
         self.f2 = config[
             "noise_figure2"
@@ -202,19 +258,136 @@ class Hardware_Nonlinear_and_Noise:
         )
 
     def get_noise_vars(self):
-        self.noise1_std = np.sqrt(self.EkT_lin * self.f1_lin)
-        self.noise2_std = np.sqrt(self.EkT_lin * (self.f2_lin - 1))
+        if self.regime == 1:
+            self.noise1_std = 0
+            self.noise2_std = np.sqrt(self.EkT_lin * (self.f2_lin))
+        elif self.regime == 3:
+            self.noise1_std = np.sqrt(self.EkT_lin * self.f1_lin)
+            self.noise2_std = np.sqrt(self.EkT_lin * (self.f2_lin - 1))
         return self.noise1_std, self.noise2_std
 
     def get_min_max_power(self):
-        P_N_dBm = 10 * np.log10(self.noise1_std**2) + 10 * np.log10(self.bandwidth)
-        P_in_min_dBm = P_N_dBm + self.SNR_min_dB
-        # P_in_max_dBm = (2*self.iip3 - P_N_dBm) / 3
-        P_in_max_dBm = P_in_min_dBm + self.snr_range
 
-        P_in_min_dBm = P_in_min_dBm + 10 * np.log10(self.tsamp)
-        P_in_max_dBm = P_in_max_dBm + 10 * np.log10(self.tsamp)
+        if self.regime == 3:
+            P_N_dBm = 10 * np.log10(self.noise1_std**2) + 10 * np.log10(self.bandwidth)
+            P_in_min_dBm = P_N_dBm + self.SNR_min_dB
+            # P_in_max_dBm = (2*self.iip3 - P_N_dBm) / 3
+            P_in_max_dBm = P_in_min_dBm + self.snr_range
 
-        P_in_min_linear = 10 ** (P_in_min_dBm / 10)
-        P_in_max_linear = 10 ** (P_in_max_dBm / 10)
+            P_in_min_dBm = P_in_min_dBm + 10 * np.log10(self.tsamp)
+            P_in_max_dBm = P_in_max_dBm + 10 * np.log10(self.tsamp)
+
+            P_in_min_linear = 10 ** (P_in_min_dBm / 10)
+            P_in_max_linear = 10 ** (P_in_max_dBm / 10)
+
+        elif self.regime == 1:
+            P_in_min_dBm = self.SNR_min_dB
+            P_in_max_dBm = self.SNR_min_dB + self.snr_range
+
+            P_in_min_linear = 10 ** (P_in_min_dBm / 10)
+            P_in_max_linear = 10 ** (P_in_max_dBm / 10)
         return P_in_min_linear, P_in_max_linear
+
+    def get_inverse_nonlinearity(self):
+        # return (
+        #     lambda x: 1
+        #     / torch.sqrt(torch.tensor(self.gain_lin * self.Esat_lin))
+        #     * torch.tanh(torch.tensor(x) / torch.sqrt(torch.tensor(self.Esat_lin)))
+        # )
+        return lambda x: torch.sqrt(torch.tensor(self.Esat_lin)) * torch.atanh(
+            torch.tensor(x) / torch.sqrt(torch.tensor(self.gain_lin * self.Esat_lin))
+        )
+
+    def get_derivative_of_inverse_nonlinearity(self):
+        # return lambda x: -1 / (
+        #     torch.sqrt(torch.tensor(self.gain_lin))
+        #     * self.Esat_lin
+        #     * torch.sinh(torch.tensor(x) / torch.sqrt(torch.tensor(self.Esat_lin))) ** 2
+        # )
+        # return (
+        #     lambda x: torch.sqrt(torch.tensor(self.gain_lin))
+        #     * self.Esat_lin
+        #     / (self.gain_lin * self.Esat_lin - x**2)
+        # )
+        return lambda x: 1 / (
+            torch.sqrt(torch.tensor(self.gain_lin))
+            * (1 - torch.tensor(x) ** 2 / (torch.tensor(self.gain_lin * self.Esat_lin)))
+        )
+
+
+def test_nonlinearity():
+
+    def read_conf(args_name):
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--config",
+            type=str,
+            default=args_name,
+            help="Configure of post processing",
+        )
+        args = parser.parse_args()
+        config = yaml.load(open("args/" + args.config, "r"), Loader=yaml.Loader)
+        return config
+
+    sat_points = []  # lin
+    nf1s = []  # lin
+    iip3 = []
+    for i in np.linspace(1, 7, 7):
+        str_c = "arguments" + str(int(i)) + ".yml"
+        config = read_conf(str_c)
+        hn = Hardware_Nonlinear_and_Noise(config)
+        sat_points.append(hn.Esat)
+        noise1_std, noise2_std = hn.get_noise_vars()
+
+        nf1s.append(10 * np.log10(noise1_std**2))
+        iip3.append(hn.iip3)
+
+    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(10, 4), tight_layout=True)
+    ax1.scatter(iip3, sat_points)
+    ax1.set_xlabel("IIP3 (dBm)")
+    ax1.set_ylabel("Saturation Point Power (dBm)")
+    ax1.grid(
+        visible=True,
+        which="major",
+        axis="both",
+        color="lightgray",
+        linestyle="-",
+        linewidth=0.5,
+    )
+    plt.minorticks_on()
+    ax1.grid(
+        visible=True,
+        which="minor",
+        axis="both",
+        color="gainsboro",
+        linestyle=":",
+        linewidth=0.5,
+    )
+    ax2.scatter(iip3, nf1s)
+    ax2.set_xlabel("IIP3 (dBm)")
+    ax2.set_ylabel("Noise 1 Power (dBm)")
+    ax2.grid(
+        visible=True,
+        which="major",
+        axis="both",
+        color="lightgray",
+        linestyle="-",
+        linewidth=0.5,
+    )
+    plt.minorticks_on()
+    ax2.grid(
+        visible=True,
+        which="minor",
+        axis="both",
+        color="gainsboro",
+        linestyle=":",
+        linewidth=0.5,
+    )
+
+    os.makedirs("Hardware/", exist_ok=True)
+    fig.savefig("Hardware/sat_nf1_dB.png")
+    plt.close()
+
+
+if __name__ == "__main__":
+    test_nonlinearity()

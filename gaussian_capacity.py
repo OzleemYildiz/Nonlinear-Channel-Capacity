@@ -8,7 +8,7 @@ import torch
 from First_Regime import First_Regime
 import math
 import numpy as np
-from nonlinearity_utils import return_nonlinear_fn
+from nonlinearity_utils import get_nonlinear_fn
 
 
 def gaussian_capacity(regime_class, power, complex_alphabet=False):

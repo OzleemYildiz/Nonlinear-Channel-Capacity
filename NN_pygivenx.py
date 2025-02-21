@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
-from nonlinearity_utils import return_nonlinear_fn
+from nonlinearity_utils import get_nonlinear_fn
 import matplotlib.pyplot as plt
 
 from utils import read_config, get_alphabet_x_y, get_regime_class
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     N1 = torch.randn_like(x_train) * sigma_1  # Input noise
     N2 = torch.randn(config["training_size"], 1) * sigma_2  # Output noise
 
-    phi = return_nonlinear_fn(config=config, tanh_factor=config["tanh_factor1"])
+    phi = get_nonlinear_fn(config=config, tanh_factor=config["tanh_factor1"])
 
     y_train = phi(x_train + N1).sum(dim=1, keepdim=True) + N2  # Applying phi(X+N1) + N2
 

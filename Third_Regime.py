@@ -1,5 +1,11 @@
 from Second_Regime import Second_Regime
-from nonlinearity_utils import return_nonlinear_fn, return_nonlinear_fn_numpy
+from nonlinearity_utils import (
+    get_nonlinear_fn,
+    get_nonlinear_fn_numpy,
+    get_derivative_of_inverse_nonlinearity,
+    get_inverse_nonlinearity,
+    Hardware_Nonlinear_and_Noise,
+)
 from First_Regime import First_Regime
 import torch
 import time
@@ -30,7 +36,7 @@ class Third_Regime:
         self.sigma_1 = sigma_1
         self.sigma_2 = sigma_2
         self.tanh_factor = tanh_factor
-        self.nonlinear_fn = return_nonlinear_fn(self.config, tanh_factor)
+        self.nonlinear_fn = get_nonlinear_fn(self.config, tanh_factor)
         self.get_x_and_y_alphabet()
         self.pdf_y_given_x = None
         self.pdf_y_given_x_int = None
@@ -39,6 +45,8 @@ class Third_Regime:
         self.alphabet_z1 = None
         self.pdf_y_given_x_and_x2 = None
         self.multiplying_factor = multiplying_factor
+        if self.config["hardware_params_active"]:
+            self.hn = Hardware_Nonlinear_and_Noise(config)
 
     def get_z1_pdf_and_alphabet(self):
         if self.pdf_z1 is not None:
@@ -130,6 +138,61 @@ class Third_Regime:
         else:
             return self.pdf_y_given_x
 
+    # Just try real first
+    # and only hardware nonlinearity is considered
+    def get_pdf_y_given_x_new(self):
+        if self.pdf_y_given_x is None:
+            pdf_y_given_x = torch.zeros(
+                (self.alphabet_y.shape[0], self.alphabet_x.shape[0])
+            )
+            delta = self.alphabet_x[1] - self.alphabet_x[0]
+
+            # max_nonlinear = self.nonlinear_fn(np.inf)
+            max_nonlinear = self.nonlinear_fn(
+                max(self.alphabet_x) + self.sigma_1 ** self.config["stop_sd"]
+            )
+
+            alphabet_v = torch.arange(
+                -max_nonlinear * 0.9999999,
+                max_nonlinear * 0.9999999,
+                delta,
+            )
+            d_inv_nonlinear = get_derivative_of_inverse_nonlinearity(
+                self.config, self.tanh_factor
+            )
+            inv_nonlinear = get_inverse_nonlinearity(self.config, self.tanh_factor)
+            gaus_dist1 = (
+                lambda alph, x: 1
+                / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_1)
+                * torch.exp(-0.5 * (alph - x) ** 2 / self.sigma_1**2)
+            )
+
+            gaus_dist2 = (
+                lambda y, v: 1
+                / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
+                * torch.exp(
+                    -0.5 * (y.reshape(-1, 1) - v.reshape(1, -1)) ** 2 / self.sigma_2**2
+                )
+            )
+            # U = X + Z_1, V = phi(U)
+            # U|X ~ N(X, sigma_1^2)
+            # f_V|X = f_U|X (u) / |dphi/du|
+
+            for ind, x in enumerate(self.alphabet_x):
+
+                p_v_given_x = gaus_dist1(inv_nonlinear(alphabet_v), x) * abs(
+                    d_inv_nonlinear(alphabet_v)
+                )
+
+                p_v_given_x = p_v_given_x / (torch.sum(p_v_given_x, axis=0) + 1e-30)
+                breakpoint()
+                p_y_given_x = gaus_dist2(self.alphabet_y, alphabet_v) @ p_v_given_x
+                p_y_given_x = p_y_given_x / (torch.sum(p_y_given_x, axis=0) + 1e-30)
+                pdf_y_given_x[:, ind] = p_y_given_x
+            pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
+            self.pdf_y_given_x = pdf_y_given_x
+        return self.pdf_y_given_x
+
     def get_out_nonlinear(self, alphabet_u):
         if self.config["complex"]:
             r = self.nonlinear_fn(abs(alphabet_u))
@@ -147,7 +210,7 @@ class Third_Regime:
         self.sigma_1 = self.sigma_1 / (10 ** (self.multiplying_factor / 2))
         self.sigma_2 = self.sigma_2 / (10 ** (self.multiplying_factor / 2))
         self.config["iip3"] = self.config["iip3"] - 10 * self.multiplying_factor
-        self.nonlinear_fn = return_nonlinear_fn(self.config)
+        self.nonlinear_fn = get_nonlinear_fn(self.config)
 
     def unfix_with_multiplying(self):
         if self.multiplying_factor == 1:
@@ -157,13 +220,14 @@ class Third_Regime:
         self.sigma_1 = self.sigma_1 * (10 ** (self.multiplying_factor / 2))
         self.sigma_2 = self.sigma_2 * (10 ** (self.multiplying_factor / 2))
         self.config["iip3"] = self.config["iip3"] + 10 * self.multiplying_factor
-        self.nonlinear_fn = return_nonlinear_fn(self.config)
+        self.nonlinear_fn = get_nonlinear_fn(self.config)
 
     def new_capacity(self, pdf_x, eps=1e-20, pdf_y_given_x=None):
         self.fix_with_multiplying()
 
         if pdf_y_given_x is None:
-            pdf_y_given_x = self.get_pdf_y_given_x()
+            # pdf_y_given_x = self.get_pdf_y_given_x()
+            pdf_y_given_x = self.get_pdf_y_given_x_new()
 
         # pdf_y = torch.zeros_like(self.alphabet_y)
         # entropy_y_given_x = 0
@@ -183,6 +247,8 @@ class Third_Regime:
         cap = entropy_y_given_x - torch.sum(pdf_y * torch.log(pdf_y + 1e-20))
 
         self.unfix_with_multiplying()
+        if cap.isnan():
+            breakpoint()
         return cap
 
     def get_pdf_y_given_x1_and_x2(self, alphabet_x2, int_ratio):
@@ -405,7 +471,7 @@ class Third_Regime:
     #     #     * np.exp(-0.5 * (alphabet_z1) ** 2 / self.config["sigma_11"] ** 2)
     #     # )
     #     # pdf_z1 = pdf_z1 / (np.sum(pdf_z1) + 1e-30)
-    #     # np_nonlin = return_nonlinear_fn_numpy(self.config)
+    #     # np_nonlin =get_nonlinear_fn_numpy(self.config)
     #     mean_random_x1_x2_z1 = self.nonlinear_fn(
     #         self.alphabet_x[None, :, None, None]
     #         + int_ratio * np.array(alphabet_x2[None, None, :, None])

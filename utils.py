@@ -7,7 +7,7 @@ from cvxpylayers.torch import CvxpyLayer
 import cvxpy as cp
 import os
 import random
-from nonlinearity_utils import return_nonlinear_fn, return_derivative_of_nonlinear_fn
+from nonlinearity_utils import get_nonlinear_fn, get_derivative_of_nonlinear_fn
 from First_Regime import First_Regime
 from Second_Regime import Second_Regime
 from Third_Regime import Third_Regime
@@ -504,7 +504,7 @@ def get_max_alphabet_PP(
     min_samples,
     bound=False,
 ):
-    nonlinear_func = return_nonlinear_fn(config, tanh_factor)
+    nonlinear_func = get_nonlinear_fn(config, tanh_factor)
 
     if config["cons_type"] == 0:  # peak power
         peak_power = power
@@ -531,34 +531,34 @@ def get_max_alphabet_PP(
     if config["regime"] == 1:
         # 0:linear
         max_y = nonlinear_func(max_x) + config["sigma_2"] * config["stop_sd"]
+        non = nonlinear_func(max_x)
     # phi(X+Z_1)
     elif config["regime"] == 2:
         max_y = nonlinear_func(max_x + config["sigma_1"] * config["stop_sd"])
+
     # phi(X+Z_1)+Z_2
     elif config["regime"] == 3:
         max_y = (
             nonlinear_func(max_x + config["sigma_1"] * config["stop_sd"])
             + config["sigma_2"] * config["stop_sd"]
         )
+        non = nonlinear_func(max_x + config["sigma_1"] * config["stop_sd"])
 
     # Keep the number of samples fixed instead of delta
 
-    delta = min(2 * max_x / min_samples, 2 * max_y / min_samples)
-
-    # if delta_y > config["delta_y"]:
-    #     delta_y = config["delta_y"]
+    delta = min(2 * max_x / min_samples, 2 * max_y / min_samples, 2 * non / min_samples)
+    # delta = min(2 * max_x / min_samples, 2 * max_y / min_samples)
 
     # Check if Z1 will have enough samples - It gets included only for 3rd Regime
-    if config["regime"] == 3:
-        max_z1 = config["stop_sd"] * config["sigma_1"] ** 2
-        delta = min(delta, 2 * max_z1 / min_samples)
+    # if config["regime"] == 3:
+    #     max_z1 = config["stop_sd"] * config["sigma_1"] ** 2
+    #     delta = min(delta, 2 * max_z1 / min_samples)
 
     # else:
     #     delta_y = config["delta_y"]
 
     max_y = max_y + (delta - (max_y % delta))
     max_x = max_x + (delta - (max_x % delta))
-
     return max_x, max_y, delta
 
 
@@ -567,8 +567,13 @@ def get_alphabet_x_y(config, power, tanh_factor, bound=False):
         config, power, tanh_factor, config["min_samples"], bound
     )
     # Create the alphabet with the fixed delta
-    alphabet_x = torch.arange(-max_x, max_x + delta / 2, delta)
-    alphabet_y = torch.arange(-max_y, max_y + delta / 2, delta)
+    try:
+        alphabet_x = torch.arange(-max_x, max_x + delta / 2, delta)
+        alphabet_y = torch.arange(-max_y, max_y + delta / 2, delta)
+    except:
+        print("Error in creating alphabet")
+        breakpoint()
+
     if len(alphabet_x) == 0:
         print("Alphabet X is empty, while creating alphabet")
         breakpoint()
@@ -595,6 +600,7 @@ def get_regime_class(
             sigma_2=config["sigma_2"],
             alphabet_x_imag=alphabet_x_imag,
             alphabet_y_imag=alphabet_y_imag,
+            multiplying_factor=multiplying_factor,
         )
     elif config["regime"] == 2:
         regime_class = Second_Regime(alphabet_x, config, power)
@@ -681,8 +687,8 @@ def get_max_alphabet_interference(
     config, power1, power2, int_ratio, tanh_factor, tanh_factor2
 ):
     # Maximum value that x should take
-    nonlinear_func1 = return_nonlinear_fn(config, tanh_factor)
-    nonlinear_func2 = return_nonlinear_fn(config, tanh_factor2)
+    nonlinear_func1 = get_nonlinear_fn(config, tanh_factor)
+    nonlinear_func2 = get_nonlinear_fn(config, tanh_factor2)
     if config["cons_type"] == 0:  # peak power
         peak_power = power1
         max_x = np.sqrt(peak_power)

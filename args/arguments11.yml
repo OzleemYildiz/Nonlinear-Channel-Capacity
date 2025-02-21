@@ -1,20 +1,20 @@
 min_power_cons : 1
-max_power_cons : 100
+max_power_cons : 900
 sigma_1 : 1
 sigma_2 : 1
 epsilon : 0.000000005 #convergence criteria
 lr : [0.00001] # learning rate
 max_iter : 10000 # maximum number of iterations
-min_samples: 64 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this #qam_k :  k^2 QAM modulation
+min_samples: 2000 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this #qam_k :  k^2 QAM modulation
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment
-n_snr : 20 # number of SNRs
-nonlinearity : 4 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C2 (sgn(X)abs(X)^{0.9}), 3:nonlinear tanh(X), 4:nonlinear x4: x/(1 + x^4)^1/4 # 5: nonlinear clip
+n_snr : 16 # number of SNRs
+nonlinearity : 3 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C2 (sgn(X)abs(X)^{0.9}), 3:nonlinear tanh(X), 4:nonlinear x4: x/(1 + x^4)^1/4 # 5: nonlinear clip
 clipping_limit_x : 2.5 # the limit in x for the clipping if nonlinear is clip  (x_c)
 clipping_limit_y : 2.5 # the limit in y for the clipping if nonlinear is clip  (x_c)
 smoothness_ssa : 1
 saturation_ssa : 4
-tanh_factor : 0.2 # k when the nonlinearity is tanh(x/k)
-output_dir : 'Res-PP-HN' # file name to save the results
+tanh_factor : 3 # k when the nonlinearity is tanh(x/k)
+output_dir : 'Res-PP-HA' # file name to save the results
 regime : 1 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : True # the gradient descent is active
@@ -24,7 +24,7 @@ ba_active : False # Blahut Arimoto - only works with the peak power constraint
 time_division_active: False # When this is active, I have only one SNR is active - forced in the code
 n_time_division: 10
 power_change_active: False # R1 and R2 boosts their power according to the time allocated to them to use the same power for the total duration
-gd_nostop_cond : True  #epsilon is useless if it's true
+gd_nostop_cond : False  #epsilon is useless if it's true
 complex : False # complex alphabet and pdf
 x2_fixed : False
 # New params for the hardware integration
@@ -34,6 +34,7 @@ noise_figure2 : 15 # dB noise figure of the remaining circuits
 gain : 17.38 # dB gain of the LNA
 iip3 : -2.79 # dBm IIP3 of the LNA
 bandwidth : 600000000 # Hz bandwidth of the LNA
-bits : 8 # bits of the ADC !! Currently not active
-snr_range : 30
-SNR_min_dB : 6
+bits : 4 # bits of the ADC !! Currently not active
+snr_range : 20
+SNR_min_dB : -170
+ADC : True

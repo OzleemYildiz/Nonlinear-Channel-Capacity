@@ -2,7 +2,7 @@ import torch
 from nonlinearity_utils import alphabet_fix_nonlinear
 import numpy as np
 import math
-from nonlinearity_utils import return_nonlinear_fn
+from nonlinearity_utils import get_nonlinear_fn
 
 
 class Second_Regime:
@@ -12,7 +12,7 @@ class Second_Regime:
         self.alphabet_u = self.calculate_u_points()  # U = X+Z_1
         self.pdf_u_given_x = self.calculate_pdf_u_given_x()
         self.power = power
-        self.nonlinear_fn = return_nonlinear_fn(self.config)
+        self.nonlinear_fn = get_nonlinear_fn(self.config)
         self.calculate_delta_y(eps=1e-35)
 
     def calculate_u_points(self):

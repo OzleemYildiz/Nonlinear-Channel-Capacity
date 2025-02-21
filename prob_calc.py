@@ -6,7 +6,7 @@ from utils import (
     get_regime_class,
 )
 import time
-from nonlinearity_utils import return_nonlinear_fn_numpy
+from nonlinearity_utils import get_nonlinear_fn_numpy
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -35,7 +35,7 @@ def monte_carlo(config, alphabet_x, alphabet_y):
 
 
 def pass_the_channel(x, config):
-    phi = return_nonlinear_fn_numpy(config, tanh_factor=config["tanh_factor1"])
+    phi =get_nonlinear_fn_numpy(config, tanh_factor=config["tanh_factor1"])
     if config["regime"] == 3:
         n_1 = np.random.normal(0, config["sigma_1"], config["sample_num"])
         n_2 = np.random.normal(0, config["sigma_2"], config["sample_num"])

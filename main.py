@@ -135,6 +135,8 @@ def define_save_location(config):
                 + "_p="
                 + str(config["smoothness_ssa"])
             )
+    if config["ADC"]:
+        save_location = save_location + "_ADC_bits=" + str(config["bits"])
 
     save_location = save_location + "/"
     os.makedirs(
@@ -259,6 +261,7 @@ def main():
         res_tau = {"R1": {}, "R2": {}}
 
         if config["hardware_params_active"]:
+
             multiplying_factor = -round(np.log10(min(power, noise_power)))
             mul_fac.append(multiplying_factor)
             config["iip3"] = config["iip3"] + 10 * multiplying_factor
@@ -290,6 +293,8 @@ def main():
                     # 1-tau is for R1 and R2 curve
                     if config["hardware_params_active"]:
                         power_snr = power * hn.gain_lin
+                    else:
+                        power_snr = power
                     if config["complex"]:
                         calc_logsnr.append(tau * np.log(1 + power_snr / (noise_power)))
                     else:
