@@ -356,13 +356,13 @@ def get_tdm_capacity_with_optimized_dist(
             config, regime_RX2, 1, save_rx2
         )  # optimized X2
 
-    cap_RX2, q_pdf_2 = loss(pdf_x_RX2, regime_RX2)
+    cap_RX = loss(pdf_x_RX2, regime_RX2)
     cap_RX2 = -cap_RX2
 
     save_rx1 = save_location + "/TDM_pdf_x_RX1_opt.png"
 
     pdf_x_RX1 = get_fixed_interferer(config, regime_RX1, 1, save_rx1)  # optimized X1
-    cap_RX1, q_pdf_1 = loss(pdf_x_RX1, regime_RX1)
+    cap_RX1 = loss(pdf_x_RX1, regime_RX1)
     cap_RX1 = -cap_RX1
 
     time_lambda = np.linspace(0, 1, 100)

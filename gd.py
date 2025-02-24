@@ -10,7 +10,7 @@ from utils import (
     get_regime_class_interference,
     check_pdf_x_region,
     plot_opt,
-    plot_quantized,
+    plot_pdf_y,
 )
 import numpy as np
 import copy
@@ -56,8 +56,7 @@ def gd_capacity(config, power, regime_class):
         # start of the max is with the initial distribution
         max_pdf_x = pdf_x
         max_alphabet_x = alphabet_x
-        max_capacity, q_pdf_x = loss(pdf_x, regime_class, project_active=True)
-        max_q_pdf_x = q_pdf_x
+        max_capacity = loss(pdf_x, regime_class, project_active=True)
 
         if len(alphabet_x) == 0:
             print("GD Capacity- Alphabet X is empty")
@@ -76,7 +75,7 @@ def gd_capacity(config, power, regime_class):
 
             optimizer.zero_grad()
 
-            loss_it, q_pdf = loss(pdf_x, regime_class, project_active=True)
+            loss_it = loss(pdf_x, regime_class, project_active=True)
             cap = loss_it.detach().clone()
 
             opt_capacity.append(-cap.detach().numpy())
@@ -84,7 +83,7 @@ def gd_capacity(config, power, regime_class):
                 max_capacity = opt_capacity[-1]
                 max_pdf_x = pdf_x.clone().detach()
                 max_alphabet_x = regime_class.alphabet_x.clone().detach()
-                max_q_pdf_x = q_pdf.clone().detach()
+
                 if (i - earlier_i) > 200:
                     print("Iter:", i, "Capacity:", opt_capacity[-1])
                     earlier_i = i
@@ -109,13 +108,11 @@ def gd_capacity(config, power, regime_class):
 
     max_pdf_x = project_pdf(max_pdf_x, config, max_alphabet_x, power)
     print("~~~~~Max Capacity:", max_capacity, "~~~~~")
+    
+    
+    plot_pdf_y(regime_class, max_pdf_x, name_extra="GD_power=" + str(power))
 
-    if regime_class.config["ADC"]:
-        plot_quantized(
-            regime_class, max_q_pdf_x, max_pdf_x, name_extra="GD_power=" + str(power)
-        )
-
-    return max_capacity, max_pdf_x, max_alphabet_x, opt_capacity, max_q_pdf_x
+    return max_capacity, max_pdf_x, max_alphabet_x, opt_capacity
 
 
 def gradient_descent_on_interference(

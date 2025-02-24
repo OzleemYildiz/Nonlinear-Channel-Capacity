@@ -181,12 +181,12 @@ def get_derivative_of_inverse_nonlinearity(config, tanh_factor=None):
     return derivative_of_inverse_nonlinear_fn
 
 
-def quant(distances, pdf_x, quant_locs, indices, temperature=0.01):
+def quant(distances, pdf_y_given_x, quant_locs, indices, temperature=0.01):
     # To make it differentiable, I will try with temperature
-    # correction_term = 10 ** np.round(np.log10(torch.min(distances)))
-    weights = torch.softmax(-distances / (temperature), dim=1)
+    correction_term = 10 ** np.round(np.log10(torch.min(distances)))
+    weights = torch.softmax(-distances / (temperature * correction_term), dim=1)
 
-    quant_pdf = torch.matmul(weights.T, pdf_x)
+    quant_pdf = torch.matmul(weights.T, pdf_y_given_x)
 
     # # Check for temperature
     # summed_pdf = torch.zeros_like(quant_locs, dtype=torch.float)
@@ -195,13 +195,17 @@ def quant(distances, pdf_x, quant_locs, indices, temperature=0.01):
     #     -torch.log2(torch.tensor(quant_locs.shape))
     # )
 
-    # if check_if_correct:
-
     return quant_pdf
-    # else:
-    #     return quant(
-    #         distances, pdf_x, quant_locs, indices, temperature=temperature / 10
-    #     )
+
+
+def real_quant(quant_locs, indices, pdf_y_given_x):
+    summed_pdf = torch.zeros(
+        (len(quant_locs), pdf_y_given_x.shape[1]), dtype=torch.float
+    )
+    summed_pdf.scatter_add_(
+        0, indices.unsqueeze(1).expand(-1, pdf_y_given_x.shape[1]), pdf_y_given_x
+    )
+    return summed_pdf
 
 
 class Hardware_Nonlinear_and_Noise:

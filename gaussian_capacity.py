@@ -3,7 +3,7 @@ from utils import (
     get_interference_alphabet_x_y,
     get_regime_class_interference,
     loss_interference,
-    plot_quantized,
+    plot_pdf_y,
 )
 import torch
 from First_Regime import First_Regime
@@ -15,13 +15,12 @@ from nonlinearity_utils import get_nonlinear_fn
 def gaussian_capacity(regime_class, power, complex_alphabet=False):
     # print("Gaussian Capacity Calculation")
     pdf_x = get_gaussian_distribution(power, regime_class, complex_alphabet)
-    loss_g, q_pdf = loss(
+    loss_g = loss(
         pdf_x,
         regime_class,
         # project_active=False,
     )
-    if regime_class.config["ADC"]:
-        plot_quantized(regime_class, q_pdf, pdf_x, name_extra="Gaussian")
+    plot_pdf_y(regime_class, pdf_x, name_extra="Gaussian_power=" + str(power))
 
     cap_g = -loss_g
     # print("~~~~~Gaussian Capacity:", cap_g, "~~~~~")

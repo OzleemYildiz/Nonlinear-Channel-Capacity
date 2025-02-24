@@ -85,8 +85,6 @@ def define_save_location(config):
             + str(config["power_change_active"])
         )
 
-   
-
     if config["gd_active"]:
         save_location = save_location + "_gd=" + str(config["gd_active"])
         if config["gd_initial_ba"]:
@@ -437,7 +435,6 @@ def main():
                         max_pdf_x,
                         max_alphabet_x,
                         opt_capacity,
-                        max_q_pdf_x,
                     ) = gd_capacity(config, power, regime_class)
 
                     if ind == 0:  # keeping record of only tau results for demonstration

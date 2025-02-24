@@ -1,7 +1,11 @@
 import torch
-from nonlinearity_utils import alphabet_fix_nonlinear
 import numpy as np
-from nonlinearity_utils import get_nonlinear_fn, quant
+from nonlinearity_utils import (
+    get_nonlinear_fn,
+    quant,
+    real_quant,
+    alphabet_fix_nonlinear,
+)
 import math
 from Second_Regime import Second_Regime
 from scipy.signal import fftconvolve
@@ -39,19 +43,22 @@ class First_Regime:
             self.get_quant_param()
         self.get_v_alphabet()
 
+    # Quantization is on Y
     def get_quant_param(self):
         n_levels = 2 ** self.config["bits"]
         # FIXME: It wont work with Complex
 
-        max_x = min(self.nonlinear_func(np.inf), max(abs(self.alphabet_x)))
-        delta = (2 * max_x) / (n_levels)
+        max_y = min(
+            self.nonlinear_func(np.inf), self.nonlinear_func(max(abs(self.alphabet_x)))
+        )
+        delta = (2 * max_y) / (n_levels)
         self.quant_locs = torch.linspace(
-            -max_x + delta / 2, max_x - delta / 2, n_levels
+            -max_y + delta / 2, max_y - delta / 2, n_levels
         )
 
-        self.distances = torch.abs(self.alphabet_x[:, None] - self.quant_locs[None, :])
+        self.distances = torch.abs(self.alphabet_y[:, None] - self.quant_locs[None, :])
         self.indices = torch.argmin(
-            torch.abs(self.alphabet_x[:, None] - self.quant_locs[None, :]), dim=1
+            torch.abs(self.alphabet_y[:, None] - self.quant_locs[None, :]), dim=1
         )
 
     def get_pdf_y_given_x(self):
@@ -89,14 +96,21 @@ class First_Regime:
             )
 
         pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
+        if self.config["ADC"]:
+            # self.q_pdf_y_given_x = quant(
+            #     self.distances, pdf_y_given_x, self.quant_locs, self.indices
+            # )
+            self.q_pdf_y_given_x = real_quant(
+                self.quant_locs, self.indices, pdf_y_given_x
+            )
 
         self.pdf_y_given_x = pdf_y_given_x
         return pdf_y_given_x
 
-    def fix_with_multiplying(self, alph_RX2=None):
+    def fix_with_multiplying(self):
         # FIXME: Complex case is not handled
         if self.multiplying_factor == 1:  # not hardware case
-            return alph_RX2
+            return
         self.alphabet_x_re = self.alphabet_x_re / (10 ** (self.multiplying_factor / 2))
         self.alphabet_y_re = self.alphabet_y_re / (10 ** (self.multiplying_factor / 2))
         self.alphabet_x_im = self.alphabet_x_im / (10 ** (self.multiplying_factor / 2))
@@ -109,10 +123,6 @@ class First_Regime:
         if self.config["ADC"]:
             self.get_quant_param()
         self.get_v_alphabet()
-
-        if alph_RX2 is not None:
-            alph_RX2 = alph_RX2 / (10 ** (self.multiplying_factor / 2))
-            return alph_RX2
 
     # Currently not using
     def unfix_with_multiplying(self):
@@ -131,10 +141,10 @@ class First_Regime:
         self.get_v_alphabet()
 
     def new_capacity(self, pdf_x, pdf_y_given_x=None):
-        if self.config["ADC"]:
-            q_pdf_x = quant(self.distances, pdf_x, self.quant_locs, self.indices)
-        else:
-            q_pdf_x = pdf_x
+        # if self.config["ADC"]:
+        #     q_pdf_x = quant(self.distances, pdf_x, self.quant_locs, self.indices)
+        # else:
+        #     q_pdf_x = pdf_x
         self.fix_with_multiplying()
 
         if pdf_y_given_x is not None:  # For the case of known interference
@@ -143,16 +153,21 @@ class First_Regime:
         if self.pdf_y_given_x is None:
             self.get_pdf_y_given_x()
 
-        py_x_logpy_x = self.pdf_y_given_x * torch.log(self.pdf_y_given_x + 1e-20)
-        px_py_x_logpy_x = py_x_logpy_x @ q_pdf_x
+        if self.config["ADC"]:
+            p_y_g_x = self.q_pdf_y_given_x
+        else:
+            p_y_g_x = self.pdf_y_given_x
+
+        py_x_logpy_x = p_y_g_x * torch.log(p_y_g_x + 1e-20)
+        px_py_x_logpy_x = py_x_logpy_x @ pdf_x
         f_term = torch.sum(px_py_x_logpy_x)
-        py = self.pdf_y_given_x @ q_pdf_x
+        py = p_y_g_x @ pdf_x
         s_term = torch.sum(py * torch.log(py + 1e-20))
         self.unfix_with_multiplying()
         cap = f_term - s_term
         if cap.isnan():
             breakpoint()
-        return cap, q_pdf_x
+        return cap
 
     def capacity_with_interference(
         self, pdf_x_RX1, pdf_x_RX2, alphabet_x_RX2, int_ratio
@@ -304,12 +319,10 @@ class First_Regime:
 
     def get_v_alphabet(self):
         if self.config["complex"] == False:
-            if self.config["ADC"]:
-                self.alphabet_v_re = self.nonlinear_func(self.quant_locs)
-            else:
-                self.alphabet_v_re = self.nonlinear_func(
-                    self.alphabet_x_re
-                )  # V = phi(X+Z_1) when Z_1 = 0
+
+            self.alphabet_v_re = self.nonlinear_func(
+                self.alphabet_x_re
+            )  # V = phi(X+Z_1) when Z_1 = 0
             self.alphabet_v_im = 0
             self.alphabet_v = self.alphabet_v_re.reshape(-1)
         else:
