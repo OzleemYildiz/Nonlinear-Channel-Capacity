@@ -85,18 +85,7 @@ def define_save_location(config):
             + str(config["power_change_active"])
         )
 
-    if config["regime"] == 1:
-        save_location = save_location + "_sigma2=" + str(config["sigma_2"])
-    elif config["regime"] == 2:
-        save_location = save_location + "_sigma1=" + str(config["sigma_1"])
-    elif config["regime"] == 3:
-        save_location = (
-            save_location
-            + "_sigma1="
-            + str(config["sigma_1"])
-            + "_sigma2="
-            + str(config["sigma_2"])
-        )
+   
 
     if config["gd_active"]:
         save_location = save_location + "_gd=" + str(config["gd_active"])
@@ -110,6 +99,18 @@ def define_save_location(config):
         save_location = save_location + "_iip3=" + str(config["iip3"])
         save_location = save_location + "_gain=" + str(config["gain"])
     else:
+        if config["regime"] == 1:
+            save_location = save_location + "_sigma2=" + str(config["sigma_2"])
+        elif config["regime"] == 2:
+            save_location = save_location + "_sigma1=" + str(config["sigma_1"])
+        elif config["regime"] == 3:
+            save_location = (
+                save_location
+                + "_sigma1="
+                + str(config["sigma_1"])
+                + "_sigma2="
+                + str(config["sigma_2"])
+            )
         if config["nonlinearity"] == 5:
             save_location = (
                 save_location
@@ -184,6 +185,7 @@ def main():
         print(
             "*** AWGN Channel with Hardware Parameters for Regime: ", config["regime"]
         )
+
     else:
         if config["nonlinearity"] == 3:
             config["title"] = config["title"] + " k=" + str(config["tanh_factor"])
@@ -199,6 +201,8 @@ def main():
             config["regime"],
             "****",
         )
+    if config["ADC"]:
+        config["title"] = config["title"] + " ADC: " + str(config["bits"]) + " bits"
 
     # Since we are looking at TDM - SNR needs to be fixed so we only take one SNR value
     if config["time_division_active"]:
@@ -212,6 +216,7 @@ def main():
 
     save_location = define_save_location(config)
     print("Saving in: " + save_location)
+    config["save_location"] = save_location
 
     capacity_gaussian = []
     power_gaussian = []
@@ -273,6 +278,7 @@ def main():
         else:
             multiplying_factor = 1
 
+        config["multiplying_factor"] = multiplying_factor
         # FIXME:TDM with parameters will be updated
 
         for tau in tau_list:
@@ -301,6 +307,7 @@ def main():
                         calc_logsnr.append(
                             tau * np.log(1 + power_snr / (noise_power)) / 2
                         )
+
                 print("Linear Capacity :", calc_logsnr[-1])
 
                 # Complex Alphabet is on
@@ -385,6 +392,7 @@ def main():
                         regime_class, power, complex_alphabet=config["complex"]
                     ),
                 )
+
                 print("Gaussian Capacity: ", cap_g)
 
                 if ind == 0:  # keeping record of only tau results for demonstration
@@ -424,16 +432,18 @@ def main():
                 # Gradient Descent
                 if config["gd_active"]:
 
-                    cap_learned, max_pdf_x, max_alphabet_x, opt_capacity = gd_capacity(
-                        config, power, regime_class
-                    )
+                    (
+                        cap_learned,
+                        max_pdf_x,
+                        max_alphabet_x,
+                        opt_capacity,
+                        max_q_pdf_x,
+                    ) = gd_capacity(config, power, regime_class)
 
                     if ind == 0:  # keeping record of only tau results for demonstration
                         capacity_learned.append(tau * cap_learned)
 
-                    max_pdf_x = project_pdf(
-                        max_pdf_x, config["cons_type"], max_alphabet_x, power
-                    )
+                    max_pdf_x = project_pdf(max_pdf_x, config, max_alphabet_x, power)
 
                     if config["time_division_active"]:
                         if config["power_change_active"]:

@@ -15,13 +15,18 @@ import argparse
 import yaml
 
 
-def project_pdf(pdf_x, cons_type, alphabet_x, power):
+def project_pdf(pdf_x, config, alphabet_x, power):
     # pdf cannot be negative
     # pdf_x = torch.relu(pdf_x)
     # sum of pdf is 1
     # pdf_x = pdf_x/torch.sum(pdf_x)
     # average power constraint
-    if check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
+    power = power - 1e-2  # lower to restrict more
+
+    cons_type = config["cons_type"]
+    mul_factor = config["multiplying_factor"]
+
+    if check_pdf_x_region(pdf_x, alphabet_x, cons_type, power, mul_factor):
         return pdf_x
 
     n, m = len(alphabet_x), 1
@@ -83,14 +88,14 @@ def loss(
     if project_active:
         pdf_x = project_pdf(
             pdf_x,
-            regime_class.config["cons_type"],
+            regime_class.config,
             regime_class.alphabet_x,
             regime_class.power,
         )
     if torch.sum(pdf_x < 0) > 0:
         pdf_x = torch.relu(pdf_x) + 1e-20
 
-    cap = regime_class.new_capacity(pdf_x)
+    cap, q_pdf = regime_class.new_capacity(pdf_x)
     # cap = regime_class.capacity_like_ba(pdf_x)
     # print("What they did", cap)
     loss = -cap
@@ -104,7 +109,7 @@ def loss(
         print("Error in loss function - pdf_x or cap is nan or there is <0 in pdf_x")
         breakpoint()
 
-    return loss
+    return loss, q_pdf
 
 
 def plot_res(res_opt, res_pdf, res_alph, save_location, lmbd_sweep, res_str):
@@ -789,6 +794,7 @@ def get_interference_alphabet_x_y(
             config, power1, power2, int_ratio, tanh_factor, tanh_factor2
         )
     )
+
     # Create the alphabet with the fixed delta
     alphabet_x_1 = torch.arange(-max_x_1, max_x_1 + delta_x1 / 2, delta_x1)
     alphabet_x_2 = torch.arange(-max_x_2, max_x_2 + delta_x2 / 2, delta_x2)
@@ -991,14 +997,14 @@ def loss_interference(
     if upd_RX1:
         pdf_x_RX1 = project_pdf(
             pdf_x_RX1,
-            reg_RX1.config["cons_type"],
+            reg_RX1.config,
             reg_RX1.alphabet_x,
             reg_RX1.power,
         )
     if upd_RX2:
         pdf_x_RX2 = project_pdf(
             pdf_x_RX2,
-            reg_RX2.config["cons_type"],
+            reg_RX2.config,
             reg_RX2.alphabet_x,
             reg_RX2.power,
         )
@@ -1026,7 +1032,7 @@ def loss_interference(
         cap_RX1 = reg_RX1.capacity_with_known_interference(
             pdf_x_RX1, pdf_x_RX2, reg_RX2.alphabet_x, int_ratio
         )
-    cap_RX2 = reg_RX2.new_capacity(pdf_x_RX2)
+    cap_RX2, q_pdf_x = reg_RX2.new_capacity(pdf_x_RX2)
 
     if torch.isnan(cap_RX1) or torch.isnan(cap_RX2):
         print("Nan in Capacity - Loss Interference")
@@ -1036,12 +1042,14 @@ def loss_interference(
     return -sum_capacity, cap_RX1, cap_RX2
 
 
-def check_pdf_x_region(pdf_x, alphabet_x, cons_type, power):
+def check_pdf_x_region(pdf_x, alphabet_x, cons_type, power, multiplying_factor=1):
     # We should check if the projection is necessary
     cond1 = torch.abs(torch.sum(pdf_x) - 1) < 1e-2  # sum of pdf is 1
     cond2 = torch.sum(pdf_x < 0) == 0  # pdf cannot be negative
     if cons_type == 1:
-        cond3 = torch.sum(torch.abs(alphabet_x) ** 2 * pdf_x) <= power * (1 + 1e-4)
+        cond3 = torch.sum(torch.abs(alphabet_x) ** 2 * pdf_x) <= power * (
+            1 + 10 ** (-multiplying_factor - 2)
+        )
 
     else:
         cond3 = True
@@ -1086,6 +1094,7 @@ def get_regime_class_interference(
     alphabet_x_RX2_imag=0,
     alphabet_y_RX1_imag=0,
     alphabet_y_RX2_imag=0,
+    multiplying_factor=1,
 ):
 
     if config["regime"] == 1:
@@ -1100,6 +1109,7 @@ def get_regime_class_interference(
             sigma_2=config["sigma_22"],
             alphabet_x_imag=alphabet_x_RX2_imag,
             alphabet_y_imag=alphabet_y_RX2_imag,
+            multiplying_factor=multiplying_factor,
         )
         # config["sigma_2"] = config["sigma_12"]
         f_reg_RX1 = First_Regime(
@@ -1111,6 +1121,7 @@ def get_regime_class_interference(
             sigma_2=config["sigma_12"],
             alphabet_x_imag=alphabet_x_RX1_imag,
             alphabet_y_imag=alphabet_y_RX1_imag,
+            multiplying_factor=multiplying_factor,
         )
         return f_reg_RX1, f_reg_RX2
     elif config["regime"] == 3:
@@ -1214,6 +1225,36 @@ def grid_minor(ax):
         linewidth=0.5,
     )
     return ax
+
+
+def plot_quantized(regime_class, q_pdf, pdf_x, name_extra):
+    fig, ax_left = plt.subplots(figsize=(5, 4), tight_layout=True)
+    alphabet_x = regime_class.alphabet_x
+    q_alph = regime_class.quant_locs
+
+    ax_left.bar(q_alph, q_pdf, label="Quantized PDF", color="r")
+    ax_left.set_ylabel("Quantized PDF", fontsize=10)
+    ax_right = ax_left.twinx()
+    ax_right.plot(alphabet_x, pdf_x, linewidth=3, label="Original PDF", color="c")
+    ax_right.set_ylabel("Original PDF", fontsize=10)
+    ax_left.set_xlabel(r"X", fontsize=10)
+
+    lines, labels = ax_left.get_legend_handles_labels()
+    lines2, labels2 = ax_right.get_legend_handles_labels()
+    ax_left.legend(lines + lines2, labels + labels2, loc=0)
+
+    # ax_right.legend(loc="best", fontsize=10)
+    ax_left = grid_minor(ax_left)
+    title = regime_class.config["title"]
+    ax_left.set_title(
+        title,
+        fontsize=10,
+    )
+    fig.savefig(
+        regime_class.config["save_location"] + "q_vs_orig_" + name_extra + ".png",
+        bbox_inches="tight",
+    )
+    plt.close()
 
 
 # def loss_complex(pdf_x, regime_class, project_active=True):

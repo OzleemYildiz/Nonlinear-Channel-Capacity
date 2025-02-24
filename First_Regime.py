@@ -54,8 +54,6 @@ class First_Regime:
             torch.abs(self.alphabet_x[:, None] - self.quant_locs[None, :]), dim=1
         )
 
-    # FIXME: It wont work with Complex
-
     def get_pdf_y_given_x(self):
         if self.config["complex"]:
             pdf_y_given_x = (
@@ -95,10 +93,10 @@ class First_Regime:
         self.pdf_y_given_x = pdf_y_given_x
         return pdf_y_given_x
 
-    def fix_with_multiplying(self):
+    def fix_with_multiplying(self, alph_RX2=None):
         # FIXME: Complex case is not handled
         if self.multiplying_factor == 1:  # not hardware case
-            return
+            return alph_RX2
         self.alphabet_x_re = self.alphabet_x_re / (10 ** (self.multiplying_factor / 2))
         self.alphabet_y_re = self.alphabet_y_re / (10 ** (self.multiplying_factor / 2))
         self.alphabet_x_im = self.alphabet_x_im / (10 ** (self.multiplying_factor / 2))
@@ -111,6 +109,10 @@ class First_Regime:
         if self.config["ADC"]:
             self.get_quant_param()
         self.get_v_alphabet()
+
+        if alph_RX2 is not None:
+            alph_RX2 = alph_RX2 / (10 ** (self.multiplying_factor / 2))
+            return alph_RX2
 
     # Currently not using
     def unfix_with_multiplying(self):
@@ -150,7 +152,7 @@ class First_Regime:
         cap = f_term - s_term
         if cap.isnan():
             breakpoint()
-        return cap
+        return cap, q_pdf_x
 
     def capacity_with_interference(
         self, pdf_x_RX1, pdf_x_RX2, alphabet_x_RX2, int_ratio
@@ -164,6 +166,8 @@ class First_Regime:
 
         # alphabet_y = torch.arange(-max_y, max_y + self.delta / 2, self.delta)
         # pdf_y_given_x1_r = torch.zeros((len(alphabet_y), len(self.alphabet_x)))
+
+        alphabet_x_RX2 = self.fix_with_multiplying(alphabet_x_RX2)
 
         pdf_y = torch.zeros(len(self.alphabet_y))
         entropy_y_given_x = 0
@@ -228,7 +232,7 @@ class First_Regime:
         # )
         cap = entropy_y_given_x - torch.sum(pdf_y * torch.log(pdf_y + 1e-20))
         # breakpoint()
-
+        self.unfix_with_multiplying()
         return cap
 
     def get_out_nonlinear(self, alphabet_u):
@@ -242,6 +246,9 @@ class First_Regime:
         return alphabet_v
 
     def capacity_with_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
+
+        self.fix_with_multiplying(alphabet_x2)
+
         pdf_y_given_x2_and_x1, pdf_y_given_x2 = self.get_pdfs_for_known_interference(
             pdf_x, pdf_x2, alphabet_x2, int_ratio
         )
@@ -254,7 +261,7 @@ class First_Regime:
             @ pdf_x2
         )
         cap = entropy_y_given_x2 - entropy_y_given_x1_and_x2
-
+        self.unfix_with_multiplying()
         return cap
 
     def get_pdfs_for_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):

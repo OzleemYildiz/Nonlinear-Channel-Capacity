@@ -23,7 +23,10 @@ from gd import (
     get_fixed_interferer,
 )
 import time
-from nonlinearity_utils import get_derivative_of_nonlinear_fn
+from nonlinearity_utils import (
+    get_derivative_of_nonlinear_fn,
+    Hardware_Nonlinear_and_Noise,
+)
 import torch
 
 
@@ -36,9 +39,43 @@ def define_save_location(config):
     save_location = (
         save_location + config["cons_str"] + "_phi=" + str(config["nonlinearity"])
     )
-    if config["nonlinearity"] == 5:
-        save_location = save_location + "_clip=" + str(config["clipping_limit_x"])
+    if config["hardware_params_active"]:
+        save_location = (
+            save_location
+            + "_hw_gain="
+            + str(config["gain"])
+            + "_iip3="
+            + str(config["iip3"])
+            + "_bw="
+            + str(config["bandwidth"])
+        )
+        if config["regime"] == 3:
+            save_location = save_location + "_NF1=" + str(config["noise_figure1"])
+        save_location = save_location + "_NF2=" + str(config["noise_figure2"])
 
+    else:
+        if config["nonlinearity"] == 5:
+            save_location = save_location + "_clip=" + str(config["clipping_limit_x"])
+        if config["regime"] == 1:
+            save_location = (
+                save_location
+                + "_sigma22="
+                + str(config["sigma_22"])
+                + "_sigma12="
+                + str(config["sigma_12"])
+            )
+        elif config["regime"] == 3:
+            save_location = (
+                save_location
+                + "_sigma11="
+                + str(config["sigma_11"])
+                + "_sigma12="
+                + str(config["sigma_12"])
+                + "_sigma21="
+                + str(config["sigma_21"])
+                + "_sigma22="
+                + str(config["sigma_22"])
+            )
     save_location = (
         save_location
         + "_regime="
@@ -46,27 +83,6 @@ def define_save_location(config):
         + "_N="
         + str(config["min_samples"])
     )
-
-    if config["regime"] == 1:
-        save_location = (
-            save_location
-            + "_sigma22="
-            + str(config["sigma_22"])
-            + "_sigma12="
-            + str(config["sigma_12"])
-        )
-    elif config["regime"] == 3:
-        save_location = (
-            save_location
-            + "_sigma11="
-            + str(config["sigma_11"])
-            + "_sigma12="
-            + str(config["sigma_12"])
-            + "_sigma21="
-            + str(config["sigma_21"])
-            + "_sigma22="
-            + str(config["sigma_22"])
-        )
 
     if config["gd_active"]:
         save_location = (
@@ -87,7 +103,20 @@ def define_save_location(config):
 
 
 def change_parameters_range(config):
+    if config["hardware_params_active"]:
+        hn = Hardware_Nonlinear_and_Noise(config)
+        config["E_sat"] = hn.Esat_lin
+        config["sigma_11"], config["sigma_12"] = hn.get_noise_vars()
+        config["sigma_21"], config["sigma_22"] = config["sigma_11"], config["sigma_12"]
+        config["min_power_cons"], config["max_power_cons"] = hn.get_min_max_power()
+        config["change"] = config["hd_change"]
+
     if config["change"] == "pw1":
+        if config["hardware_params_active"]:
+            config["min_power1"], config["max_power1"] = (
+                config["min_power_cons"],
+                config["max_power_cons"],
+            )
         change_range = np.logspace(
             np.log10(config["min_power1"]),
             np.log10(config["max_power1"]),
@@ -95,6 +124,12 @@ def change_parameters_range(config):
         )
         print("-------------Change is Power1-------------")
     elif config["change"] == "pw2":
+        if config["hardware_params_active"]:
+            config["min_power2"], config["max_power2"] = (
+                config["min_power_cons"],
+                config["max_power_cons"],
+            )
+
         change_range = np.logspace(
             np.log10(config["min_power2"]),
             np.log10(config["max_power2"]),
@@ -108,7 +143,7 @@ def change_parameters_range(config):
             config["n_change"],
         )
         print("-------------Change is Int Ratio-------------")
-    elif config["change"] == "k":
+    elif config["change"] == "k" and not config["hardware_params_active"]:
         if config["nonlinearity"] != 3:
             raise ValueError("Tanh Factor is only for nonlinearity 3")
         change_range = np.linspace(
@@ -117,7 +152,7 @@ def change_parameters_range(config):
             config["n_change"],
         )
         print("-------------Change is Tanh Factor for User 1-------------")
-    elif config["change"] == "k2":
+    elif config["change"] == "k2" and not config["hardware_params_active"]:
         if config["nonlinearity"] != 3:
             raise ValueError("Tanh Factor is only for nonlinearity 3")
         change_range = np.linspace(
@@ -128,15 +163,26 @@ def change_parameters_range(config):
         print("-------------Change is Tanh Factor for User 2-------------")
     else:
         raise ValueError("Change parameter is not defined")
-    return change_range
+
+    return change_range, config
 
 
 def get_run_parameters(config, chng):
-    power1 = config["min_power1"]
-    power2 = config["min_power2"]
-    int_ratio = config["min_int_ratio"]
-    tanh_factor = config["min_tanh_factor"]
-    tanh_factor2 = config["min_tanh_factor_2"]
+
+    if config["hardware_params_active"]:
+        hn = Hardware_Nonlinear_and_Noise(config)
+        power1 = hn.get_power_fixed(config["snr_not_change"])
+        power2 = power1
+        int_ratio = config["min_int_ratio"]
+        tanh_factor = np.sqrt(hn.Esat_lin)
+        tanh_factor2 = tanh_factor
+    else:
+        power1 = config["min_power1"]
+        power2 = config["min_power2"]
+        int_ratio = config["min_int_ratio"]
+        tanh_factor = config["min_tanh_factor"]
+        tanh_factor2 = config["min_tanh_factor_2"]
+
     if config["change"] == "pw1":
         print("Power1: ", chng)
         power1 = chng
@@ -179,7 +225,7 @@ def get_run_parameters(config, chng):
             + str(tanh_factor2)
         )
         res_str_run = "_a=" + str(int_ratio)
-    elif config["change"] == "k":
+    elif config["change"] == "k" and not config["hardware_params_active"]:
         print("Tanh Factor: ", chng)
         tanh_factor = chng
         res_str = (
@@ -193,7 +239,7 @@ def get_run_parameters(config, chng):
             + str(int_ratio)
         )
         res_str_run = "_k=" + str(tanh_factor)
-    elif config["change"] == "k2":
+    elif config["change"] == "k2" and not config["hardware_params_active"]:
         print("Tanh Factor2: ", chng)
         tanh_factor2 = chng
         res_str = (
@@ -270,7 +316,7 @@ def get_interferer_capacity(config, power2):
 
 def get_linear_approximation_capacity(regime_RX2, config, power1, pdf_x_RX2):
 
-    deriv_func =get_derivative_of_nonlinear_fn(
+    deriv_func = get_derivative_of_nonlinear_fn(
         config, tanh_factor=regime_RX2.tanh_factor
     )
     if config["complex"]:
@@ -309,12 +355,15 @@ def get_tdm_capacity_with_optimized_dist(
         pdf_x_RX2 = get_fixed_interferer(
             config, regime_RX2, 1, save_rx2
         )  # optimized X2
-    cap_RX2 = -loss(pdf_x_RX2, regime_RX2)
+
+    cap_RX2, q_pdf_2 = loss(pdf_x_RX2, regime_RX2)
+    cap_RX2 = -cap_RX2
 
     save_rx1 = save_location + "/TDM_pdf_x_RX1_opt.png"
 
     pdf_x_RX1 = get_fixed_interferer(config, regime_RX1, 1, save_rx1)  # optimized X1
-    cap_RX1 = -loss(pdf_x_RX1, regime_RX1)
+    cap_RX1, q_pdf_1 = loss(pdf_x_RX1, regime_RX1)
+    cap_RX1 = -cap_RX1
 
     time_lambda = np.linspace(0, 1, 100)
 
@@ -332,28 +381,48 @@ def main():
 
     st = time.time()
     config = read_config()
+    if config["hardware_params_active"]:
+        hn = Hardware_Nonlinear_and_Noise(config)
+        config["E_sat"] = hn.Esat_lin
 
     # Add sigmas to the title of the config
-    if config["regime"] == 1:  # Y = phi(X1) + N2
+    if config["hardware_params_active"]:
         config["title"] = (
             config["title"]
-            + "_sigma12="
-            + str(config["sigma_12"])
-            + "_sigma22="
-            + str(config["sigma_22"])
+            + " Hardware Parameters, Esat: "
+            + str(config["E_sat"])
+            + " IIP3: "
+            + str(config["iip3"])
+            + " BW: "
+            + str(config["bandwidth"])
+            + " NF1: "
+            + str(config["noise_figure1"])
+            + " NF2: "
+            + str(config["noise_figure2"])
+            + " Gain: "
+            + str(config["gain"])
         )
-    elif config["regime"] == 3:  # Y = phi(X1 + N1) + N2
-        config["title"] = (
-            config["title"]
-            + "_sigma11="
-            + str(config["sigma_11"])
-            + "_sigma12="
-            + str(config["sigma_12"])
-            + "_sigma21="
-            + str(config["sigma_21"])
-            + "_sigma22="
-            + str(config["sigma_22"])
-        )
+    else:
+        if config["regime"] == 1:  # Y = phi(X1) + N2
+            config["title"] = (
+                config["title"]
+                + "_sigma12="
+                + str(config["sigma_12"])
+                + "_sigma22="
+                + str(config["sigma_22"])
+            )
+        elif config["regime"] == 3:  # Y = phi(X1 + N1) + N2
+            config["title"] = (
+                config["title"]
+                + "_sigma11="
+                + str(config["sigma_11"])
+                + "_sigma12="
+                + str(config["sigma_12"])
+                + "_sigma21="
+                + str(config["sigma_21"])
+                + "_sigma22="
+                + str(config["sigma_22"])
+            )
 
     print(
         "**** AWGN Interference Channel with Nonlinearity: ",
@@ -371,7 +440,7 @@ def main():
     cap_gaus_RX1 = []
     cap_gaus_RX2 = []
 
-    change_range = change_parameters_range(config)
+    change_range, config = change_parameters_range(config)
     res_change = {
         "Linear_TIN": [],
         "Gaussian_TIN": [],
@@ -385,6 +454,7 @@ def main():
         res_change["Learned_KI"] = []
         res_change["Learned_TIN"] = []
     old_config_title = config["title"]
+
     _, _, _, _, _, res_str, _ = get_run_parameters(config, change_range[0])
 
     save_location = save_location + res_str + "/"
@@ -393,6 +463,31 @@ def main():
         power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str, res_str_run = (
             get_run_parameters(config, chng)
         )
+
+        if config["hardware_params_active"]:
+            sigma_1, sigma_2 = hn.get_noise_vars()
+            if config["regime"] == 1:
+                min_noise_pw = sigma_2**2
+            elif config["regime"] == 3:
+                min_noise_pw = min(sigma_1**2, sigma_2**2)
+            multiplying_factor = -round(
+                np.log10(
+                    min(
+                        power1,
+                        power2,
+                        min_noise_pw,
+                    )
+                )
+            )
+            power1 = power1 * 10**multiplying_factor
+            power2 = power2 * 10**multiplying_factor
+            config["sigma_12"] = config["sigma_12"] * 10 ** (multiplying_factor / 2)
+            config["sigma_21"] = config["sigma_21"] * 10 ** (multiplying_factor / 2)
+            config["sigma_22"] = config["sigma_22"] * 10 ** (multiplying_factor / 2)
+            config["iip3"] = config["iip3"] + 10 * multiplying_factor
+        else:
+            multiplying_factor = 1
+        config["multiplying_factor"] = multiplying_factor
 
         # Update Title in Config for the case of Interference
         config["title"] = config["title"] + "" + res_str
@@ -455,6 +550,7 @@ def main():
                 power2=power2,
                 tanh_factor=tanh_factor,
                 tanh_factor2=tanh_factor2,
+                multiplying_factor=multiplying_factor,
             )
         if config["x2_fixed"]:
             save_loc_rx2 = update_save_location + "/pdf_x_RX2_opt.png"
@@ -663,6 +759,11 @@ def main():
                 regime_RX1,
                 regime_RX2,
             )
+        if config["hardware_params_active"]:
+            config["sigma_12"] = config["sigma_12"] / 10 ** (multiplying_factor / 2)
+            config["sigma_21"] = config["sigma_21"] / 10 ** (multiplying_factor / 2)
+            config["sigma_22"] = config["sigma_22"] / 10 ** (multiplying_factor / 2)
+            config["iip3"] = config["iip3"] - 10 * multiplying_factor
 
     if config["x2_fixed"]:
 

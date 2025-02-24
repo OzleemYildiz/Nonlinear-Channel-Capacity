@@ -10,6 +10,7 @@ from utils import (
     get_regime_class_interference,
     check_pdf_x_region,
     plot_opt,
+    plot_quantized,
 )
 import numpy as np
 import copy
@@ -55,7 +56,8 @@ def gd_capacity(config, power, regime_class):
         # start of the max is with the initial distribution
         max_pdf_x = pdf_x
         max_alphabet_x = alphabet_x
-        max_capacity = loss(pdf_x, regime_class, project_active=True)
+        max_capacity, q_pdf_x = loss(pdf_x, regime_class, project_active=True)
+        max_q_pdf_x = q_pdf_x
 
         if len(alphabet_x) == 0:
             print("GD Capacity- Alphabet X is empty")
@@ -74,7 +76,7 @@ def gd_capacity(config, power, regime_class):
 
             optimizer.zero_grad()
 
-            loss_it = loss(pdf_x, regime_class, project_active=True)
+            loss_it, q_pdf = loss(pdf_x, regime_class, project_active=True)
             cap = loss_it.detach().clone()
 
             opt_capacity.append(-cap.detach().numpy())
@@ -82,6 +84,7 @@ def gd_capacity(config, power, regime_class):
                 max_capacity = opt_capacity[-1]
                 max_pdf_x = pdf_x.clone().detach()
                 max_alphabet_x = regime_class.alphabet_x.clone().detach()
+                max_q_pdf_x = q_pdf.clone().detach()
                 if (i - earlier_i) > 200:
                     print("Iter:", i, "Capacity:", opt_capacity[-1])
                     earlier_i = i
@@ -104,10 +107,15 @@ def gd_capacity(config, power, regime_class):
                 ):
                     break
 
-    max_pdf_x = project_pdf(max_pdf_x, config["cons_type"], max_alphabet_x, power)
+    max_pdf_x = project_pdf(max_pdf_x, config, max_alphabet_x, power)
     print("~~~~~Max Capacity:", max_capacity, "~~~~~")
 
-    return max_capacity, max_pdf_x, max_alphabet_x, opt_capacity
+    if regime_class.config["ADC"]:
+        plot_quantized(
+            regime_class, max_q_pdf_x, max_pdf_x, name_extra="GD_power=" + str(power)
+        )
+
+    return max_capacity, max_pdf_x, max_alphabet_x, opt_capacity, max_q_pdf_x
 
 
 def gradient_descent_on_interference(
@@ -251,10 +259,10 @@ def gradient_descent_on_interference(
 
             # save the pdfs after projection
             pdf_x_RX1 = project_pdf(
-                max_pdf_x_RX1_h, config["cons_type"], reg_RX1.alphabet_x, reg_RX1.power
+                max_pdf_x_RX1_h, config, reg_RX1.alphabet_x, reg_RX1.power
             )
             pdf_x_RX2 = project_pdf(
-                max_pdf_x_RX2_h, config["cons_type"], reg_RX2.alphabet_x, reg_RX2.power
+                max_pdf_x_RX2_h, config, reg_RX2.alphabet_x, reg_RX2.power
             )
             max_pdf_x_RX1.append(pdf_x_RX1.detach().clone().numpy())
             max_pdf_x_RX2.append(pdf_x_RX2.detach().clone().numpy())
@@ -292,14 +300,14 @@ def get_fixed_interferer(config, regime, x_type, save_location=None):
     elif x_type == 1:
         print(" +++----- PP X Distribution is calculated ------ +++")
 
-        _, pdf_x, _, opt_capacity = gd_capacity(config, regime.power, regime)
+        _, pdf_x, _, opt_capacity, q_pdf = gd_capacity(config, regime.power, regime)
 
         plot_opt(opt_capacity, save_location, title=config["title"])
 
     else:
         raise ValueError("Interferer type not defined")
     pdf_x = (pdf_x / torch.sum(pdf_x)).to(torch.float32)
-    pdf_x = project_pdf(pdf_x, config["cons_type"], regime.alphabet_x, regime.power)
+    pdf_x = project_pdf(pdf_x, config, regime.alphabet_x, regime.power)
 
     return pdf_x
 

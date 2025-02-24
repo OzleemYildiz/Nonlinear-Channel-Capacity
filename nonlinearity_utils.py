@@ -288,6 +288,14 @@ class Hardware_Nonlinear_and_Noise:
             P_in_max_linear = 10 ** (P_in_max_dBm / 10)
         return P_in_min_linear, P_in_max_linear
 
+    def get_power_fixed(self, fixed_power):
+        if self.regime == 3:
+            P_N_dBm = 10 * np.log10(self.noise1_std**2) + 10 * np.log10(self.bandwidth)
+            P_in_dBm = fixed_power + P_N_dBm
+        elif self.regime == 1:
+            P_in_dBm = fixed_power
+        return 10 ** (P_in_dBm / 10)
+
     def get_inverse_nonlinearity(self):
         # return (
         #     lambda x: 1
