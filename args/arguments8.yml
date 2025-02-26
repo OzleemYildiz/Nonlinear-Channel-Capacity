@@ -14,7 +14,7 @@ clipping_limit_y : 2.5 # the limit in y for the clipping if nonlinear is clip  (
 smoothness_ssa : 1
 saturation_ssa : 4
 tanh_factor : 3 # k when the nonlinearity is tanh(x/k)
-output_dir : 'Res-PP-H' # file name to save the results
+output_dir : 'Res-PP-HA' # file name to save the results
 regime : 1 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : True # the gradient descent is active
@@ -25,16 +25,16 @@ time_division_active: False # When this is active, I have only one SNR is active
 n_time_division: 10
 power_change_active: False # R1 and R2 boosts their power according to the time allocated to them to use the same power for the total duration
 gd_nostop_cond : False  #epsilon is useless if it's true
-complex : False # complex alphabet and pdf
+complex : False  # complex alphabet and pdf
 x2_fixed : False
 # New params for the hardware integration
 hardware_params_active : True # hardware parameters are active for the nonlinearity
-noise_figure1 : 2.68 # dB noise figure of the first amplifier
+noise_figure1 : 4.53 # dB noise figure of the first amplifier
 noise_figure2 : 15 # dB noise figure of the remaining circuits
-gain : 17.32 # dB gain of the LNA
-iip3 : 1.01 # dBm IIP3 of the LNA
-bandwidth : 980000000 # Hz bandwidth of the LNA
+gain : 15.83 # dB gain of the LNA
+iip3 : -6.3 # dBm IIP3 of the LNA
+bandwidth : 500000000 # Hz bandwidth of the LNA
 bits : 5 # bits of the ADC !! Currently not active
-snr_range : 25
+snr_range : 30
 SNR_min_dB : -170
-ADC : False
+ADC : True

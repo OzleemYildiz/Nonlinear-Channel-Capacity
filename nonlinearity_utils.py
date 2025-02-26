@@ -198,13 +198,19 @@ def quant(distances, pdf_y_given_x, quant_locs, indices, temperature=0.01):
     return quant_pdf
 
 
-def real_quant(quant_locs, indices, pdf_y_given_x):
-    summed_pdf = torch.zeros(
-        (len(quant_locs), pdf_y_given_x.shape[1]), dtype=torch.float
-    )
-    summed_pdf.scatter_add_(
-        0, indices.unsqueeze(1).expand(-1, pdf_y_given_x.shape[1]), pdf_y_given_x
-    )
+def real_quant(quant_locs, indices, pdf):
+    summed_pdf = torch.zeros((len(quant_locs), pdf.shape[1]), dtype=torch.float)
+    if len(pdf.shape) == 1:
+        summed_pdf.scatter_add_(0, indices, pdf)
+    elif len(pdf.shape) == 2:
+        summed_pdf.scatter_add_(0, indices.unsqueeze(1).expand(-1, pdf.shape[1]), pdf)
+    elif len(pdf.shape) == 3:
+        summed_pdf.scatter_add_(
+            0,
+            indices.unsqueeze(1).unsqueeze(2).expand(-1, pdf.shape[1], pdf.shape[2]),
+            pdf,
+        )
+
     return summed_pdf
 
 

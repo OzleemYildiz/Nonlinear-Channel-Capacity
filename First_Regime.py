@@ -227,7 +227,13 @@ class First_Regime:
         pdf_y_given_x1_and_x2 = pdf_y_given_x1_and_x2 / (
             torch.sum(pdf_y_given_x1_and_x2, axis=0) + 1e-30
         )
-        self.pdf_y_given_x1_and_x2 = pdf_y_given_x1_and_x2
+        if self.config["ADC"]:
+            self.pdf_y_given_x1_and_x2 = real_quant(
+                self.quant_locs, self.indices, pdf_y_given_x1_and_x2
+            )
+            # Just directly using ADC one-- I could save the nonquantized version as well but currently too much memory maybe
+        else:
+            self.pdf_y_given_x1_and_x2 = pdf_y_given_x1_and_x2
 
     def get_pdf_y_given_x_with_interference(self, pdf_x_RX2, alphabet_x_RX2, int_ratio):
         if self.pdf_y_given_x1_and_x2 is None:
