@@ -24,4 +24,6 @@
 * Running also complex- could be memory error lets see
 -- TO DO --
 * I need to focus on Interference 
-
+* There are Complex-ADC-PP, Interference-Hardware Runs
+* I seem to be able to not save everything in the results folder - Gotta maximize somehow
+* Interference without X2 fixed, I could still plot capacity results for different powers in one figure - More informative

@@ -76,6 +76,10 @@ def define_save_location(config):
                 + "_sigma22="
                 + str(config["sigma_22"])
             )
+
+    if config["ADC"]:
+        save_location = save_location + "_ADC_b=" + str(config["bits"])
+
     save_location = (
         save_location
         + "_regime="
