@@ -1303,10 +1303,10 @@ def plot_pdf_y(regime_class, pdf_x, name_extra):
     )
     plt.close()
 
-    io.savemat(
-        regime_class.config["save_location"] + "pdf_y_" + name_extra + ".mat",
-        res_probs,
-    )
+    # io.savemat(
+    #     regime_class.config["save_location"] + "pdf_y_" + name_extra + ".mat",
+    #     res_probs,
+    # ) --> It was too big to save for Complex
 
 
 # This kinda unnnecessary
