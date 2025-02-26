@@ -108,8 +108,7 @@ def gd_capacity(config, power, regime_class):
 
     max_pdf_x = project_pdf(max_pdf_x, config, max_alphabet_x, power)
     print("~~~~~Max Capacity:", max_capacity, "~~~~~")
-    
-    
+
     plot_pdf_y(regime_class, max_pdf_x, name_extra="GD_power=" + str(power))
 
     return max_capacity, max_pdf_x, max_alphabet_x, opt_capacity
@@ -297,7 +296,7 @@ def get_fixed_interferer(config, regime, x_type, save_location=None):
     elif x_type == 1:
         print(" +++----- PP X Distribution is calculated ------ +++")
 
-        _, pdf_x, _, opt_capacity, q_pdf = gd_capacity(config, regime.power, regime)
+        _, pdf_x, _, opt_capacity = gd_capacity(config, regime.power, regime)
 
         plot_opt(opt_capacity, save_location, title=config["title"])
 

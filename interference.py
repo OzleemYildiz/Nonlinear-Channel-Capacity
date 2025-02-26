@@ -356,7 +356,7 @@ def get_tdm_capacity_with_optimized_dist(
             config, regime_RX2, 1, save_rx2
         )  # optimized X2
 
-    cap_RX = loss(pdf_x_RX2, regime_RX2)
+    cap_RX2 = loss(pdf_x_RX2, regime_RX2)
     cap_RX2 = -cap_RX2
 
     save_rx1 = save_location + "/TDM_pdf_x_RX1_opt.png"
@@ -508,6 +508,7 @@ def main():
         res_change["Linear_KI"].append(linear_ki)
 
         update_save_location = save_location + config["change"] + "=" + str(chng) + "/"
+        config["save_location"] = update_save_location
 
         os.makedirs(update_save_location, exist_ok=True)
         print("----------", str(config["change"]), ":", chng, "-----------")

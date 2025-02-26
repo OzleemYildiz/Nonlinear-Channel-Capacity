@@ -34,6 +34,8 @@ class First_Regime:
         self.sigma_2 = sigma_2
         self.tanh_factor = tanh_factor
         self.pdf_y_given_x = None
+        self.pdf_y_given_x1_and_x2 = None
+        self.pdf_y_given_x_int = None
         self.multiplying_factor = multiplying_factor
 
         self.nonlinear_fn = get_nonlinear_fn(config, tanh_factor)
@@ -157,10 +159,6 @@ class First_Regime:
         self.get_v_alphabet()
 
     def new_capacity(self, pdf_x, pdf_y_given_x=None):
-        # if self.config["ADC"]:
-        #     q_pdf_x = quant(self.distances, pdf_x, self.quant_locs, self.indices)
-        # else:
-        #     q_pdf_x = pdf_x
         self.fix_with_multiplying()
 
         if pdf_y_given_x is not None:  # For the case of known interference
@@ -185,31 +183,20 @@ class First_Regime:
             breakpoint()
         return cap
 
-    def capacity_with_interference(
-        self, pdf_x_RX1, pdf_x_RX2, alphabet_x_RX2, int_ratio
-    ):
+    def get_pdf_y_given_x1_and_x2(self, alphabet_x_RX2, int_ratio):
+        if self.pdf_y_given_x1_and_x2 is not None:
+            return
 
-        # max_y = (
-        #     self.nonlinear_fn(max(self.alphabet_x) + max(alphabet_x_RX2))
-        #     + self.config["sigma_2"] * self.config["stop_sd"]
-        # )
-        # max_y = max_y + (self.delta - (max_y % self.delta))
-
-        # alphabet_y = torch.arange(-max_y, max_y + self.delta / 2, self.delta)
-        # pdf_y_given_x1_r = torch.zeros((len(alphabet_y), len(self.alphabet_x)))
-
-        alphabet_x_RX2 = self.fix_with_multiplying(alphabet_x_RX2)
-
-        pdf_y = torch.zeros(len(self.alphabet_y))
-        entropy_y_given_x = 0
-        # breakpoint()
+        pdf_y_given_x1_and_x2 = torch.zeros(
+            (len(self.alphabet_y), len(self.alphabet_x), len(alphabet_x_RX2))
+        )
         for ind, x in enumerate(self.alphabet_x):
             # U = X1 + aX2, a = 1 #FIXME: a is fixed to 1
             alphabet_u = int_ratio * alphabet_x_RX2 + x
 
             alphabet_v = self.get_out_nonlinear(alphabet_u)
             if self.config["complex"]:
-                pdf_y_given_x1_and_x2 = (
+                pdf_y_given_x1_and_x2[:, ind, :] = (
                     1
                     / (torch.pi * self.sigma_2**2)
                     * torch.exp(
@@ -225,7 +212,7 @@ class First_Regime:
                     )
                 )
             else:
-                pdf_y_given_x1_and_x2 = (
+                pdf_y_given_x1_and_x2[:, ind, :] = (
                     1
                     / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
                     * torch.exp(
@@ -237,32 +224,45 @@ class First_Regime:
                         / self.sigma_2**2
                     )
                 )
-            pdf_y_given_x1_and_x2 = pdf_y_given_x1_and_x2 / (
-                torch.sum(pdf_y_given_x1_and_x2, axis=0) + 1e-30
+        pdf_y_given_x1_and_x2 = pdf_y_given_x1_and_x2 / (
+            torch.sum(pdf_y_given_x1_and_x2, axis=0) + 1e-30
+        )
+        self.pdf_y_given_x1_and_x2 = pdf_y_given_x1_and_x2
+
+    def get_pdf_y_given_x_with_interference(self, pdf_x_RX2, alphabet_x_RX2, int_ratio):
+        if self.pdf_y_given_x1_and_x2 is None:
+            self.get_pdf_y_given_x1_and_x2(alphabet_x_RX2, int_ratio)
+        pdf_y_given_x = self.pdf_y_given_x1_and_x2 @ pdf_x_RX2
+        pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
+        self.pdf_y_given_x_int = pdf_y_given_x
+        return pdf_y_given_x
+
+    def capacity_with_interference(
+        self, pdf_x_RX1, pdf_x_RX2, alphabet_x_RX2, int_ratio
+    ):
+
+        self.fix_with_multiplying()
+
+        if self.config["x2_fixed"] and self.pdf_y_given_x_int is not None:
+            pdf_y_given_x = self.pdf_y_given_x_int
+        else:
+            # pdf_y_given_x = self.get_pdf_y_given_x_with_interference_nofor(
+            #     pdf_x2, alphabet_x2, int_ratio
+            # )
+            pdf_y_given_x = self.get_pdf_y_given_x_with_interference(
+                pdf_x_RX2, alphabet_x_RX2, int_ratio
             )
-            # breakpoint()
-            # pdf_y_given_x1_r[:, ind] = pdf_y_given_x1_and_x2 @ pdf_x_RX2
 
-            pdf_y_given_x1 = pdf_y_given_x1_and_x2 @ pdf_x_RX2 / int_ratio
-            pdfy_given_x1 = pdf_y_given_x1 / (torch.sum(pdf_y_given_x1, axis=0) + 1e-30)
-            plogp_y_given_x = pdfy_given_x1 * torch.log(pdfy_given_x1 + 1e-20)
+        entropy_y_given_x = torch.sum(
+            (pdf_y_given_x * torch.log(pdf_y_given_x + 1e-20)) @ pdf_x_RX1
+        )
 
-            entropy_y_given_x += torch.sum(plogp_y_given_x * pdf_x_RX1[ind])
+        pdf_y = pdf_y_given_x @ pdf_x_RX1
 
-            pdf_y = pdf_y + pdf_y_given_x1 * pdf_x_RX1[ind]
-            # breakpoint()
-        # pdf_y_given_x1_r = pdf_y_given_x1_r / (
-        #     torch.sum(pdf_y_given_x1_r, axis=0) + 1e-30
-        # )
         pdf_y = pdf_y / (torch.sum(pdf_y) + 1e-30)
 
-        # plogp_y_given_x = pdf_y_given_x1_r * torch.log(pdf_y_given_x1_r + 1e-20)
-        # px_plogp_y_given_x = plogp_y_given_x @ pdf_x_RX1
-        # cap = torch.sum(px_plogp_y_given_x) - torch.sum(
-        #     pdf_y * torch.log(pdf_y + 1e-20)
-        # )
         cap = entropy_y_given_x - torch.sum(pdf_y * torch.log(pdf_y + 1e-20))
-        # breakpoint()
+
         self.unfix_with_multiplying()
         return cap
 
@@ -278,11 +278,18 @@ class First_Regime:
 
     def capacity_with_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
 
-        self.fix_with_multiplying(alphabet_x2)
+        self.fix_with_multiplying()
 
-        pdf_y_given_x2_and_x1, pdf_y_given_x2 = self.get_pdfs_for_known_interference(
-            pdf_x, pdf_x2, alphabet_x2, int_ratio
-        )
+        # pdf_y_given_x2_and_x1, pdf_y_given_x2 = self.get_pdfs_for_known_interference(
+        #     pdf_x, pdf_x2, alphabet_x2, int_ratio
+        # )
+
+        if self.pdf_y_given_x1_and_x2 is None:
+            self.get_pdf_y_given_x1_and_x2(alphabet_x2, int_ratio)
+
+        pdf_y_given_x2_and_x1 = torch.movedim(self.pdf_y_given_x1_and_x2, 1, 2)
+        pdf_y_given_x2 = pdf_y_given_x2_and_x1 @ pdf_x
+
         entropy_y_given_x2 = -torch.sum(
             (pdf_y_given_x2 * torch.log(pdf_y_given_x2 + 1e-20)) @ pdf_x2
         )
