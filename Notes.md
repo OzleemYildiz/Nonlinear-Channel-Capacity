@@ -21,6 +21,7 @@
 * MMSE is working but for no ADC case, it gives nan for high power values ? Dont get this. Because sigma_y_2 gets negative and it should be the case (More points fixed this- 2000 Samples currently)
 * Lower bound Tarokh seems to not be working with hardware params-consider to check
 * Plotted different bits results together  and max capacity results from learned with different power consumptions of Hardware (plot_hardware_res.py). There was a wrong HPC - correct one is running in HPC now. Also trying power consumption graph with 5 bits at the same time
+* Running also complex- could be memory error lets see
 -- TO DO --
 * I need to focus on Interference 
 
