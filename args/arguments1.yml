@@ -4,7 +4,7 @@ sigma_1 : 1
 sigma_2 : 1
 epsilon : 0.000000005 #convergence criteria
 lr : [0.00001] # learning rate
-max_iter : 100 # maximum number of iterations
+max_iter : 10000 # maximum number of iterations
 min_samples: 2000 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this #qam_k :  k^2 QAM modulation
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment
 n_snr : 3 # number of SNRs
@@ -34,7 +34,7 @@ noise_figure2 : 15 # dB noise figure of the remaining circuits
 gain : 17.32 # dB gain of the LNA
 iip3 : 1.01 # dBm IIP3 of the LNA
 bandwidth : 980000000 # Hz bandwidth of the LNA
-bits : 3 # bits of the ADC !! Currently not active
+bits : 5 # bits of the ADC !! Currently not active
 snr_range : 25
 SNR_min_dB : -170
 ADC : False

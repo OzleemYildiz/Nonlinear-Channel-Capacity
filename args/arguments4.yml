@@ -19,7 +19,7 @@ regime : 1 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regi
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : True # the gradient descent is active
 gd_initial_ba : False # It has to be peak power constraint
-bound_active: False
+bound_active: True
 ba_active : False # Blahut Arimoto - only works with the peak power constraint
 time_division_active: False # When this is active, I have only one SNR is active - forced in the code
 n_time_division: 10
@@ -34,7 +34,7 @@ noise_figure2 : 15 # dB noise figure of the remaining circuits
 gain : 17.38 # dB gain of the LNA
 iip3 : -2.79 # dBm IIP3 of the LNA
 bandwidth : 600000000 # Hz bandwidth of the LNA
-bits : 3 # bits of the ADC !! Currently not active
+bits : 5 # bits of the ADC !! Currently not active
 snr_range : 30
 SNR_min_dB : -170
 ADC : True

@@ -45,7 +45,8 @@ def plot_power_consumption():
     Gain = [15.83, 17.22, 17.35, 17.38, 17.31, 17.32, 17.32]  # dB
     power_consumption = [2.336, 5.51, 10.08, 15.92, 23.16, 31.77, 41.72]  # mWatts
     noise_figure2 = 15
-    iip3_power_dBm = [-6.3, -4.92, -4.32, -2.79, -1.22, 0.07, 1.01]  # dBm
+    # iip3_power_dBm = [-6.3, -4.92, -4.32, -2.79, -1.22, 0.07, 1.01]  # dBm - Real one is this
+    iip3_power_dBm = [-4.32, -4.92, -4.32, -2.79, -1.22, 0.07, 1.01]  # dBm
     bandwidth = [
         0.5 * 10**9,
         0.51 * 10**9,
