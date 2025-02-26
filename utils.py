@@ -21,7 +21,6 @@ def project_pdf(pdf_x, config, alphabet_x, power):
     # sum of pdf is 1
     # pdf_x = pdf_x/torch.sum(pdf_x)
     # average power constraint
-    power = power - 1e-2  # lower to restrict more
 
     cons_type = config["cons_type"]
     mul_factor = config["multiplying_factor"]
@@ -1242,31 +1241,55 @@ def plot_pdf_y(regime_class, pdf_x, name_extra):
     res_probs["pdf_y_given_x"] = regime_class.pdf_y_given_x
     res_probs["alph_y"] = alphabet_y
     fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
-    ax.plot(alphabet_y, p_y, linewidth=3, label="PDF Y", color="c")
-    ax.set_xlabel(r"Y", fontsize=10)
-    ax.set_ylabel(r"PDF", fontsize=10)
-    ax.set_ylim([0, 1.1 * torch.max(p_y)])
+    if regime_class.config["complex"]:
+        ax.scatter(
+            alphabet_y.real,
+            alphabet_y.imag,
+            s=p_y * 100,
+            label="PDF Y",
+            color="c",
+            marker="o",
+        )
+    else:
+        ax.plot(alphabet_y, p_y, linewidth=3, label="PDF Y", color="c")
+        ax.set_xlabel(r"Y", fontsize=10)
+        ax.set_ylabel(r"PDF", fontsize=10)
+        ax.set_ylim([0, 1.1 * torch.max(p_y)])
     ax = grid_minor(ax)
     lines, labels = ax.get_legend_handles_labels()
 
     if regime_class.config["ADC"]:
-        ax2 = ax.twinx()
+
         q_pdf_y = regime_class.q_pdf_y_given_x @ pdf_x
         q_alph_y = regime_class.quant_locs / 10 ** (mul_factor / 2)
         res_probs["q_pdf_y"] = q_pdf_y
         res_probs["q_alph_y"] = q_alph_y
-        ax2.bar(
-            q_alph_y,
-            q_pdf_y,
-            label="Quantized PDF Y",
-            color="r",
-            width=10 ** np.round(np.log10(torch.min(abs(q_alph_y))) - 0.5),
-        )
-        ax2.set_ylabel("Quantized PDF Y", fontsize=10)
-        ax2.set_ylim([0, 1.1 * torch.max(q_pdf_y)])
-        lines2, labels2 = ax2.get_legend_handles_labels()
-        lines = lines + lines2
-        labels = labels + labels2
+        if regime_class.config["complex"]:
+            ax.scatter(
+                q_alph_y.real,
+                q_alph_y.imag,
+                s=q_pdf_y * 100,
+                label="Quantized PDF Y",
+                color="r",
+                marker="x",
+            )
+            ax.set_xlabel(r"Re(Y)", fontsize=10)
+            ax.set_ylabel(r"Im(Y)", fontsize=10)
+            lines, labels = ax.get_legend_handles_labels()
+        else:
+            ax2 = ax.twinx()
+            ax2.bar(
+                q_alph_y,
+                q_pdf_y,
+                label="Quantized PDF Y",
+                color="r",
+                width=10 ** np.round(np.log10(torch.min(abs(q_alph_y))) - 0.5),
+            )
+            ax2.set_ylabel("Quantized PDF Y", fontsize=10)
+            ax2.set_ylim([0, 1.1 * torch.max(q_pdf_y)])
+            lines2, labels2 = ax2.get_legend_handles_labels()
+            lines = lines + lines2
+            labels = labels + labels2
     ax.legend(lines, labels, loc=0)
     title = regime_class.config["title"]
     ax.set_title(

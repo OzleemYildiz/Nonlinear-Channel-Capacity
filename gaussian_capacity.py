@@ -14,6 +14,7 @@ from nonlinearity_utils import get_nonlinear_fn
 
 def gaussian_capacity(regime_class, power, complex_alphabet=False):
     # print("Gaussian Capacity Calculation")
+
     pdf_x = get_gaussian_distribution(power, regime_class, complex_alphabet)
     loss_g = loss(
         pdf_x,

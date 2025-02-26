@@ -36,7 +36,7 @@ class First_Regime:
         self.pdf_y_given_x = None
         self.multiplying_factor = multiplying_factor
 
-        self.nonlinear_func = get_nonlinear_fn(config, tanh_factor)
+        self.nonlinear_fn = get_nonlinear_fn(config, tanh_factor)
 
         self.get_x_and_y_alphabet()
         if config["ADC"]:
@@ -46,15 +46,20 @@ class First_Regime:
     # Quantization is on Y
     def get_quant_param(self):
         n_levels = 2 ** self.config["bits"]
-        # FIXME: It wont work with Complex
 
         max_y = min(
-            self.nonlinear_func(np.inf), self.nonlinear_func(max(abs(self.alphabet_x)))
+            self.nonlinear_fn(np.inf), self.nonlinear_fn(max(abs(self.alphabet_x)))
         )
         delta = (2 * max_y) / (n_levels)
         self.quant_locs = torch.linspace(
             -max_y + delta / 2, max_y - delta / 2, n_levels
         )
+
+        if self.config["complex"]:
+            self.quant_locs = self.quant_locs.reshape(
+                -1, 1
+            ) + 1j * self.quant_locs.reshape(1, -1)
+            self.quant_locs = self.quant_locs.reshape(-1)
 
         self.distances = torch.abs(self.alphabet_y[:, None] - self.quant_locs[None, :])
         self.indices = torch.argmin(
@@ -62,6 +67,11 @@ class First_Regime:
         )
 
     def get_pdf_y_given_x(self):
+        if self.pdf_y_given_x is not None:
+            if self.config["ADC"]:
+                return self.q_pdf_y_given_x
+            return self.pdf_y_given_x
+
         if self.config["complex"]:
             pdf_y_given_x = (
                 1
@@ -79,6 +89,7 @@ class First_Regime:
                 )
             )
         else:
+
             pdf_y_given_x = (
                 1
                 / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.sigma_2)
@@ -96,6 +107,7 @@ class First_Regime:
             )
 
         pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
+        self.pdf_y_given_x = pdf_y_given_x
         if self.config["ADC"]:
             # self.q_pdf_y_given_x = quant(
             #     self.distances, pdf_y_given_x, self.quant_locs, self.indices
@@ -103,21 +115,23 @@ class First_Regime:
             self.q_pdf_y_given_x = real_quant(
                 self.quant_locs, self.indices, pdf_y_given_x
             )
+            return self.q_pdf_y_given_x
 
-        self.pdf_y_given_x = pdf_y_given_x
-        return pdf_y_given_x
+        return self.pdf_y_given_x
 
     def fix_with_multiplying(self):
-        # FIXME: Complex case is not handled
+
         if self.multiplying_factor == 1:  # not hardware case
             return
+        self.power = self.power / (10**self.multiplying_factor)
         self.alphabet_x_re = self.alphabet_x_re / (10 ** (self.multiplying_factor / 2))
         self.alphabet_y_re = self.alphabet_y_re / (10 ** (self.multiplying_factor / 2))
         self.alphabet_x_im = self.alphabet_x_im / (10 ** (self.multiplying_factor / 2))
         self.alphabet_y_im = self.alphabet_y_im / (10 ** (self.multiplying_factor / 2))
         self.sigma_2 = self.sigma_2 / (10 ** (self.multiplying_factor / 2))
+        self.config["sigma_2"] = self.sigma_2
         self.config["iip3"] = self.config["iip3"] - 10 * self.multiplying_factor
-        self.nonlinear_func = get_nonlinear_fn(self.config)
+        self.nonlinear_fn = get_nonlinear_fn(self.config)
 
         self.get_x_and_y_alphabet()
         if self.config["ADC"]:
@@ -128,13 +142,15 @@ class First_Regime:
     def unfix_with_multiplying(self):
         if self.multiplying_factor == 1:
             return
+        self.power = self.power * (10**self.multiplying_factor)
         self.alphabet_x_re = self.alphabet_x_re * (10 ** (self.multiplying_factor / 2))
         self.alphabet_y_re = self.alphabet_y_re * (10 ** (self.multiplying_factor / 2))
         self.alphabet_x_im = self.alphabet_x_im * (10 ** (self.multiplying_factor / 2))
         self.alphabet_y_im = self.alphabet_y_im * (10 ** (self.multiplying_factor / 2))
         self.sigma_2 = self.sigma_2 * (10 ** (self.multiplying_factor / 2))
+        self.config["sigma_2"] = self.sigma_2
         self.config["iip3"] = self.config["iip3"] + 10 * self.multiplying_factor
-        self.nonlinear_func = get_nonlinear_fn(self.config)
+        self.nonlinear_fn = get_nonlinear_fn(self.config)
         self.get_x_and_y_alphabet()
         if self.config["ADC"]:
             self.get_quant_param()
@@ -174,7 +190,7 @@ class First_Regime:
     ):
 
         # max_y = (
-        #     self.nonlinear_func(max(self.alphabet_x) + max(alphabet_x_RX2))
+        #     self.nonlinear_fn(max(self.alphabet_x) + max(alphabet_x_RX2))
         #     + self.config["sigma_2"] * self.config["stop_sd"]
         # )
         # max_y = max_y + (self.delta - (max_y % self.delta))
@@ -253,11 +269,11 @@ class First_Regime:
     def get_out_nonlinear(self, alphabet_u):
 
         if self.config["complex"]:
-            r = self.nonlinear_func(abs(alphabet_u))
+            r = self.nonlinear_fn(abs(alphabet_u))
             theta = torch.angle(alphabet_u)
             alphabet_v = r * torch.exp(1j * theta)
         else:
-            alphabet_v = self.nonlinear_func(alphabet_u)
+            alphabet_v = self.nonlinear_fn(alphabet_u)
         return alphabet_v
 
     def capacity_with_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
@@ -320,7 +336,7 @@ class First_Regime:
     def get_v_alphabet(self):
         if self.config["complex"] == False:
 
-            self.alphabet_v_re = self.nonlinear_func(
+            self.alphabet_v_re = self.nonlinear_fn(
                 self.alphabet_x_re
             )  # V = phi(X+Z_1) when Z_1 = 0
             self.alphabet_v_im = 0
@@ -328,7 +344,7 @@ class First_Regime:
         else:
             r = abs(self.alphabet_x_re + 1j * self.alphabet_x_im)
             theta = torch.angle(self.alphabet_x_re + 1j * self.alphabet_x_im)
-            v_r = self.nonlinear_func(r)
+            v_r = self.nonlinear_fn(r)
             self.alphabet_v_re = v_r * torch.cos(theta)
             self.alphabet_v_im = v_r * torch.sin(theta)
 
@@ -353,7 +369,7 @@ class First_Regime:
 
     # def set_alphabet_x(self, alphabet_x):
     #     self.alphabet_x_re = alphabet_x
-    #     self.alphabet_v_re = self.nonlinear_func(alphabet_x)
+    #     self.alphabet_v_re = self.nonlinear_fn(alphabet_x)
     #     self.pdf_y_given_v = self.calculate_pdf_y_given_v()
 
     # def set_alphabet_v(self, alphabet_v):
@@ -369,7 +385,7 @@ class First_Regime:
     #     # sample_u = math.ceil(2 * max_u / self.config["delta_y"]) + 1
     #     # self.alphabet_u = torch.linspace(-max_u, max_u, sample_u)
     #     # self.int_alphabet_x = int_alphabet_x
-    #     # self.alphabet_v = self.nonlinear_func(self.alphabet_u)
+    #     # self.alphabet_v = self.nonlinear_fn(self.alphabet_u)
     #     # self.pdf_y_given_v = self.calculate_pdf_y_given_v()
     #     self.interference_active = True
 
@@ -379,7 +395,7 @@ class First_Regime:
     #     )
     #     max_u = max(self.alphabet_x_re) + max(self.int_alphabet_x)
     #     self.alphabet_u = torch.arange(-max_u, max_u + self.delta / 2, self.delta)
-    #     self.alphabet_v_re = self.nonlinear_func(self.alphabet_u)
+    #     self.alphabet_v_re = self.nonlinear_fn(self.alphabet_u)
     #     self.pdf_y_given_v = self.calculate_pdf_y_given_v()
     #     # breakpoint()
 

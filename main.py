@@ -23,27 +23,9 @@ from utils import (
 )
 import numpy as np
 from bounds import (
-    bounds_l1_norm,
-    upper_bound_tarokh,
-    lower_bound_with_sdnr,
-    lower_bound_tarokh,
-    lower_bound_tarokh_third_regime,
-    lower_bound_tarokh_third_regime_with_pw,
-    sdnr_bound_regime_1_tarokh_ref7,
-    updated_sdnr_bound_regime_1_tarokh_ref7,
-    sdnr_new,
-    sdnr_new_rayleigh,
-    sdnr_new_with_erf,
-    sundeep_upper_bound_third_regime,
-    upper_bound_tarokh_third_regime,
-    lower_bound_by_mmse,
-    lower_bound_by_mmse_with_truncated_gaussian,
-    reg_mmse_bound_numerical,
-    upper_bound_peak,
+    get_bounds,
+    get_lower_tarokh,
     bound_backtracing_check,
-    sdnr_new_with_erf_nopowchange,
-    lower_bound_by_mmse_correlation,
-    lower_bound_by_mmse_correlation_numerical,
 )
 from scipy import io
 import time
@@ -243,6 +225,8 @@ def main():
 
     mul_fac = []
 
+    res = {}
+
     if config["time_division_active"]:
         tau_list = np.linspace(0.01, 0.99, config["n_time_division"])
         # Fill this if and only time division is active
@@ -324,6 +308,7 @@ def main():
                         tanh_factor=tanh_factor,
                         alphabet_x_imag=imag_x,
                         alphabet_y_imag=imag_y,
+                        multiplying_factor=multiplying_factor,
                     )
                 else:
                     alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(
@@ -338,49 +323,6 @@ def main():
                         tanh_factor=config["tanh_factor"],
                         multiplying_factor=multiplying_factor,
                     )
-
-                # FIXME: Currently, the bounds are not calculated for TDM and Complex
-                if config["bound_active"] and ind == 0:
-                    if config["regime"] == 1 and config["cons_type"] == 1:
-                        up_tarokh.append(upper_bound_tarokh(power, config))
-                        if config["nonlinearity"] == 5:
-                            my_new_bound = bound_backtracing_check(
-                                my_new_bound,
-                                sdnr_new_with_erf_nopowchange(power, config),
-                            )
-                            if config["complex"]:
-                                sdnr_tarokh_low = bound_backtracing_check(
-                                    sdnr_tarokh_low,
-                                    sdnr_bound_regime_1_tarokh_ref7(power, config),
-                                )
-
-                        # mmse_correlation = bound_backtracing_check(
-                        #     mmse_correlation,
-                        #     lower_bound_by_mmse_correlation(power, config),
-                        # )
-
-                        # linear_mmse_bound = bound_backtracing_check(
-                        #     linear_mmse_bound, lower_bound_by_mmse(power, config)
-                        # )
-
-                        mmse_minimum = bound_backtracing_check(
-                            mmse_minimum, reg_mmse_bound_numerical(power, config)
-                        )
-                    if (
-                        config["regime"] == 2 and config["cons_type"] == 1
-                    ):  # average power
-                        # up_tarokh.append((calc_logsnr[-1]))
-                        low_sdnr.append(lower_bound_with_sdnr(power, config))
-                    if config["regime"] == 3:
-                        # sundeep_upper.append(
-                        #     sundeep_upper_bound_third_regime(power, config)
-                        # )
-                        if config["nonlinearity"] != 5:
-                            tarokh_upper.append(
-                                upper_bound_tarokh_third_regime(power, config)
-                            )
-                    if config["nonlinearity"] == 5:
-                        up_peak.append(upper_bound_peak(power, config))
 
                 # Gaussian Capacity
                 # cap_g = gaussian_capacity(regime_class)
@@ -466,6 +408,8 @@ def main():
                         ]
                         map_opt["Chng" + str(int(power * 10))] = opt_capacity
 
+                res = get_bounds(regime_class, power, res, ind)
+
                 if config["complex"]:
                     del real_x, imag_x, real_y, imag_y, regime_class
                 else:
@@ -530,66 +474,13 @@ def main():
 
         # print("Time taken for SNR: ", snr, " is ", end - start)
 
-    low_tarokh = None
-    if (
-        config["bound_active"]
-        and config["regime"] == 1
-        and config["cons_type"] == 1
-        and config["nonlinearity"] != 5
-    ):
-        low_tarokh, snr_tarokh = lower_bound_tarokh(config)
-        # max handle
-        if max(snr_change) > np.max(snr_tarokh[:-1]):
-            snr_tarokh[-1] = max(snr_change)
-            if min(snr_change) > np.max(snr_tarokh[:-1]):
-                snr_tarokh = [min(snr_change), snr_tarokh[-1]]
-                low_tarokh = [low_tarokh[-1], low_tarokh[-1]]
-        else:
-            snr_tarokh = snr_tarokh[:-1]
-            low_tarokh = low_tarokh[:-1]
+    low_tarokh = get_lower_tarokh(config, snr_change)
 
-        ind = np.where(np.array(snr_tarokh) >= min(snr_change))
-        low_tarokh = np.array(low_tarokh)[ind]
-        snr_tarokh = np.array(snr_tarokh)[ind]
-        low_tarokh = {"SNR": snr_tarokh, "Lower_Bound": low_tarokh}
-        io.savemat(
-            define_save_location(config) + "/low_tarokh.mat",
-            low_tarokh,
-        )
+    res["Gaussian_Capacity"] = capacity_gaussian
+    res["Capacity_without_Nonlinearity"] = calc_logsnr
 
-    res = {
-        "Gaussian_Capacity": capacity_gaussian,
-        "Capacity_without_Nonlinearity": calc_logsnr,
-    }
     if config["gd_active"]:
         res["Learned_Capacity"] = capacity_learned
-    if config["bound_active"]:
-        if config["regime"] == 1 and config["cons_type"] == 1:
-            res["Upper_Bound_by_Tarokh"] = up_tarokh
-            if config["nonlinearity"] == 5:
-                if config["complex"]:
-                    res["Lower_Bound_by_SDNR"] = sdnr_tarokh_low
-                res["SDNR_with_Gaussian"] = my_new_bound
-            # res["MMSE_Bound"] = mmse_bound
-            # res["Linear_MMSE_Bound"] = linear_mmse_bound
-            res["MMSE_Bound_Regular"] = mmse_minimum
-            # res["MMSE_Bound_Correlation"] = mmse_correlation
-            # res["MMSE_Bound_Correlation_Numerical"] = mmse_correlation_numerical
-        if config["regime"] == 2 and config["cons_type"] == 1:  # average power bound
-            res["Lower_Bound_with_SDNR"] = low_sdnr
-        if config["regime"] == 3 and config["cons_type"] == 1:
-            # res["Lower_Bound_by_Tarokh"] = low_tarokh_third
-            if config["nonlinearity"] != 5:
-                low, snr_tarokh = lower_bound_tarokh_third_regime(config)
-                low_tarokh = {"SNR": snr_tarokh, "Lower_Bound": low}
-                io.savemat(
-                    define_save_location(config) + "/low_tarokh.mat",
-                    low_tarokh,
-                )
-            if config["nonlinearity"] != 5:
-                res["Tarokh Upper Bound"] = tarokh_upper
-        if config["nonlinearity"] == 5:
-            res["Upper_Bound_Peak"] = up_peak
 
     if config["cons_type"] == 2:
         res["Gaussian_Capacity_with_L1_Norm"] = capacity_ruth

@@ -292,8 +292,7 @@ def sigma_affect_plot():
     print("Saved in", filepath)
 
 
-def plot_pdf_x():
-    pass
+
 
 
 def main():

@@ -21,6 +21,7 @@ import torch
 import numdifftools as nd
 from sympy import Matrix, linsolve, symbols
 from gaussian_capacity import get_gaussian_distribution
+from scipy import io
 
 
 def bounds_l1_norm(power, sigma, config):
@@ -873,78 +874,56 @@ def find_lambda1_lambda2_for_dist(power, config):
 #     return max_lower_bound
 
 
-def reg_mmse_bound_numerical(power, config):
-    func = get_nonlinear_fn_numpy(config, tanh_factor=config["tanh_factor"])
-
-    if config["complex"]:
-        real_x, imag_x, real_y, imag_y = get_PP_complex_alphabet_x_y(
-            config, power, config["tanh_factor"]
-        )
-        regime_class = get_regime_class(
-            config=config,
-            alphabet_x=real_x,
-            alphabet_y=real_y,
-            power=power,
-            tanh_factor=config["tanh_factor"],
-            alphabet_x_imag=imag_x,
-            alphabet_y_imag=imag_y,
-        )
-    else:
-        alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(
-            config, power, tanh_factor=config["tanh_factor"], bound=True
-        )
-        regime_class = get_regime_class(
-            config, alphabet_x, alphabet_y, power, config["tanh_factor"]
-        )
+def reg_mmse_bound_numerical(regime_class):
+    # We call this before scaling in Gaussian function too
     pdf_x = get_gaussian_distribution(
-        power, regime_class, complex_alphabet=config["complex"]
+        regime_class.power,
+        regime_class,
+        complex_alphabet=regime_class.config["complex"],
     )
 
-    alphabet_x = regime_class.alphabet_x.numpy()
-    alphabet_y = regime_class.alphabet_y.numpy()
+    # regime_class.fix_with_multiplying()  # In hardware params action, we map them to higher numbers for stability
+    func = regime_class.nonlinear_fn
 
-    pdf_x = pdf_x.numpy() / np.sum(pdf_x.numpy())
-    if config["complex"]:
-        out_nonliear = func(abs(alphabet_x)) * np.exp(1j * np.angle(alphabet_x))
-        pdf_y_given_x = (
-            1
-            / (np.pi * config["sigma_2"] ** 2)
-            * np.exp(
-                -1
-                * (np.abs(alphabet_y.reshape(-1, 1) - out_nonliear.reshape(1, -1))) ** 2
-                / config["sigma_2"] ** 2
-            )
-        )
+    alphabet_x = regime_class.alphabet_x
+    if regime_class.config["ADC"]:
+        alphabet_y = regime_class.quant_locs
     else:
-        pdf_y_given_x = (
-            1
-            / (np.sqrt(2 * np.pi * config["sigma_2"] ** 2))
-            * np.exp(
-                -0.5
-                * (alphabet_y.reshape(-1, 1) - func(alphabet_x).reshape(1, -1)) ** 2
-                / config["sigma_2"] ** 2
-            )
-        )
-    pdf_y_given_x = pdf_y_given_x / (np.sum(pdf_y_given_x, axis=0) + 1e-30)
+        alphabet_y = regime_class.alphabet_y
+
+    pdf_x = pdf_x / torch.sum(pdf_x)
+
+    pdf_y_given_x = regime_class.get_pdf_y_given_x()
 
     pdf_y = pdf_y_given_x @ pdf_x
-    pdf_y = pdf_y / np.sum(pdf_y)
+    pdf_y = pdf_y / torch.sum(pdf_y)
 
     pdf_x_given_y = (
         pdf_y_given_x * pdf_x.reshape(1, -1) / (pdf_y.reshape(-1, 1) + 1e-30)
     )
-    pdf_x_given_y = pdf_x_given_y.transpose()
-    pdf_x_given_y = pdf_x_given_y / (np.sum(pdf_x_given_y, axis=0) + 1e-30)
-    # breakpoint()
-    E_X_given_Y = alphabet_x @ pdf_x_given_y
+    pdf_x_given_y = pdf_x_given_y.transpose(1, 0)
+    pdf_x_given_y = pdf_x_given_y / (torch.sum(pdf_x_given_y, axis=0) + 1e-30)
+
+    if regime_class.config["complex"]:
+        E_X_given_Y = torch.real(alphabet_x) @ pdf_x_given_y + 1j * (
+            torch.imag(alphabet_x) @ pdf_x_given_y
+        )
+    else:
+        E_X_given_Y = alphabet_x @ pdf_x_given_y
 
     E_X2_given_y = (abs(alphabet_x) ** 2) @ pdf_x_given_y
 
     # sigma_y_2 = E_X2_given_y - 2 * E_X_Xhat_given_y + E_Xhat_2_given_y
     sigma_y_2 = E_X2_given_y - abs(E_X_given_Y) ** 2
 
-    upper_H_X_given_Y = 0.5 * np.log(2 * np.pi * np.exp(1) * sigma_y_2 + 1e-30) @ pdf_y
-    if config["complex"]:
+    # Check if correct
+    sigma_y_2 = sigma_y_2 / 10 ** (regime_class.multiplying_factor)
+    power = regime_class.power / 10 ** (regime_class.multiplying_factor)
+
+    upper_H_X_given_Y = (
+        0.5 * torch.log(2 * torch.pi * np.exp(1) * sigma_y_2 + 1e-30) @ pdf_y
+    )
+    if regime_class.config["complex"]:
         upper_H_X_given_Y = 2 * upper_H_X_given_Y
 
     # mse = p - 2 * E_X_Xhat + E_Xhat_2
@@ -952,14 +931,14 @@ def reg_mmse_bound_numerical(power, config):
     # H(X|Y) = E[ln(2*pi*e*sigma_y^2)]
     # H(X) - H(X|Y) = I(X;Y)
     H_X = 0.5 * np.log(2 * np.pi * np.exp(1) * power)
-    if config["complex"]:
+    if regime_class.config["complex"]:
         H_X = 2 * H_X
     lower_bound = H_X - upper_H_X_given_Y
     # phi(X)+N =Y
     # X' = E[X|Y]
     if np.isnan(lower_bound):
         breakpoint()
-
+    # regime_class.unfix_with_multiplying()
     return lower_bound
 
 
@@ -1048,6 +1027,104 @@ def linear_interference_res(power1, power2, config):
         return tin_R1, ki_R1, R2
     else:
         raise ValueError("Regime not defined")
+
+
+# ind is for TDM... we only need 1 calculations
+def get_bounds(regime_class, power, res, ind):
+    # FIXME: Currently, the bounds are not calculated for TDM and Complex
+    config = regime_class.config
+    if config["bound_active"] and ind == 0:
+        if config["regime"] == 1 and config["cons_type"] == 1:
+            if not config["ADC"]:
+                if not ("Upper_Bound_Tarokh" in res):
+                    res["Upper_Bound_Tarokh"] = []
+                res["Upper_Bound_Tarokh"].append(upper_bound_tarokh(power, config))
+                if config["nonlinearity"] == 5:
+                    if not ("SDNR" in res):
+                        res["SDNR"] = []
+                    res["SDNR"] = bound_backtracing_check(
+                        res["SDNR"],
+                        sdnr_new_with_erf_nopowchange(power, config),
+                    )
+                    if config["complex"]:
+                        if not ("SDNR_by_Tarokh" in res):
+                            res["SDNR_by_Tarokh"] = []
+
+                        res["SDNR_by_Tarokh"] = bound_backtracing_check(
+                            res["SDNR_by_Tarokh"],
+                            sdnr_bound_regime_1_tarokh_ref7(power, config),
+                        )
+
+            # mmse_correlation = bound_backtracing_check(
+            #     mmse_correlation,
+            #     lower_bound_by_mmse_correlation(power, config),
+            # )
+
+            # linear_mmse_bound = bound_backtracing_check(
+            #     linear_mmse_bound, lower_bound_by_mmse(power, config)
+            # )
+
+            if not ("MMSE_Minimum" in res):
+                res["MMSE_Minimum"] = []
+
+            res["MMSE_Minimum"] = bound_backtracing_check(
+                res["MMSE_Minimum"],
+                reg_mmse_bound_numerical(regime_class),
+            )
+
+        if config["regime"] == 2 and config["cons_type"] == 1:  # average power
+            # up_tarokh.append((calc_logsnr[-1]))
+            low_sdnr.append(lower_bound_with_sdnr(power, config))
+        if config["regime"] == 3:
+            # sundeep_upper.append(
+            #     sundeep_upper_bound_third_regime(power, config)
+            # )
+            if config["nonlinearity"] != 5:
+                if not ("Upper_Bound_Tarokh" in res):
+                    res["Upper_Bound_Tarokh"] = []
+
+                res["Upper_Bound_Tarokh"].append(
+                    upper_bound_tarokh_third_regime(power, config)
+                )
+        if config["nonlinearity"] == 5:
+            if not ("Upper_Peak" in res):
+                res["Upper_Peak"] = []
+            res["Upper_Peak"].append(upper_bound_peak(power, config))
+
+    return res
+
+
+def get_lower_tarokh(config, snr_change):
+    if config["hardware_params_active"]:
+        return None
+    low_tarokh = None
+    if (
+        config["bound_active"]
+        and config["regime"] == 1
+        and config["cons_type"] == 1
+        and config["nonlinearity"] != 5
+        and not config["ADC"]
+    ):
+        low_tarokh, snr_tarokh = lower_bound_tarokh(config)
+        # max handle
+        if max(snr_change) > np.max(snr_tarokh[:-1]):
+            snr_tarokh[-1] = max(snr_change)
+            if min(snr_change) > np.max(snr_tarokh[:-1]):
+                snr_tarokh = [min(snr_change), snr_tarokh[-1]]
+                low_tarokh = [low_tarokh[-1], low_tarokh[-1]]
+        else:
+            snr_tarokh = snr_tarokh[:-1]
+            low_tarokh = low_tarokh[:-1]
+
+        ind = np.where(np.array(snr_tarokh) >= min(snr_change))
+        low_tarokh = np.array(low_tarokh)[ind]
+        snr_tarokh = np.array(snr_tarokh)[ind]
+        low_tarokh = {"SNR": snr_tarokh, "Lower_Bound": low_tarokh}
+        io.savemat(
+            config["save_location"] + "/low_tarokh.mat",
+            low_tarokh,
+        )
+    return low_tarokh
 
 
 if __name__ == "__main__":
