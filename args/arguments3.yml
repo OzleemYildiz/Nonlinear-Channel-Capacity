@@ -17,7 +17,7 @@ tanh_factor : 3 # k when the nonlinearity is tanh(x/k)
 output_dir : 'Res-PP-HA' # file name to save the results
 regime : 1 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
-gd_active : True # the gradient descent is active
+gd_active : False # the gradient descent is active
 gd_initial_ba : False # It has to be peak power constraint
 bound_active: True
 ba_active : False # Blahut Arimoto - only works with the peak power constraint
@@ -34,7 +34,7 @@ noise_figure2 : 15 # dB noise figure of the remaining circuits
 gain : 17.31 # dB gain of the LNA
 iip3 : -1.22 # dBm IIP3 of the LNA
 bandwidth : 580000000 # Hz bandwidth of the LNA
-bits : 5 # bits of the ADC !! Currently not active
+bits : 3 # bits of the ADC !! Currently not active
 snr_range : 30
 SNR_min_dB : -170
 ADC : True

@@ -24,6 +24,18 @@
 * Running also complex- could be memory error lets see
 -- TO DO --
 * I need to focus on Interference 
-* There are Complex-ADC-PP, Interference-Hardware Runs
+* There are Complex-ADC-PP, Interference-Hardware, Int-HD-ADC Runs
 * I seem to be able to not save everything in the results folder - Gotta maximize somehow
 * Interference without X2 fixed, I could still plot capacity results for different powers in one figure - More informative
+* Get in with Third Regime
+* How does the approximation look like?
+
+## February 26th
+* PP Power runs are done for 5 bits and the missing file has been added to the results folder
+* MMSE with ADC is working - Plotted with different bits
+* All the complex runs failed - Memory and stuff, deal with it later
+* Marginal&Joint Pdf plotting is completed in plt_hardwares.py
+* Linear TI and KI seems wrong! - Check this
+
+--- TO DO ---
+* Linear Approximation for the first regime-Check this

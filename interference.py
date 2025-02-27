@@ -265,30 +265,35 @@ def get_linear_interference_capacity(power1, power2, int_ratio, config):
     # This is X2 fixed results --- X1's tin and ki results
 
     if config["regime"] == 3:
+        if config["hardware_params_active"]:
+            hn = Hardware_Nonlinear_and_Noise(config)
+            power1_snr = power1 * hn.gain_lin
+            noise1_snr = config["sigma_11"] ** 2 * hn.gain_lin
+            int_snr = int_ratio**2 * power2 * hn.gain_lin
+        else:
+            power1_snr = power1
+            noise1_snr = config["sigma_11"] ** 2
+            int_snr = int_ratio**2 * power2
+
         linear_ki = (
-            1
-            / 2
-            * np.log(1 + power1 / (config["sigma_12"] ** 2 + config["sigma_11"] ** 2))
+            1 / 2 * np.log(1 + power1_snr / (config["sigma_12"] ** 2 + noise1_snr))
         )
         linear_tin = (
             1
             / 2
-            * np.log(
-                1
-                + power1
-                / (
-                    int_ratio**2 * power2
-                    + config["sigma_12"] ** 2
-                    + config["sigma_11"] ** 2
-                )
-            )
+            * np.log(1 + power1_snr / (int_snr + config["sigma_12"] ** 2 + noise1_snr))
         )
     elif config["regime"] == 1:
-        linear_ki = 1 / 2 * np.log(1 + power1 / config["sigma_12"] ** 2)
+        if config["hardware_params_active"]:
+            hn = Hardware_Nonlinear_and_Noise(config)
+            power1_snr = power1 * hn.gain_lin
+        else:
+            power1_snr = power1
+        linear_ki = 1 / 2 * np.log(1 + power1_snr / config["sigma_12"] ** 2)
         linear_tin = (
             1
             / 2
-            * np.log(1 + power1 / (int_ratio**2 * power2 + config["sigma_12"] ** 2))
+            * np.log(1 + power1_snr / (int_ratio**2 * power2 + config["sigma_12"] ** 2))
         )
     else:
         raise ValueError("Regime not defined")
