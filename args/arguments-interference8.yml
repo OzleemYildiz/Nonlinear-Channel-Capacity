@@ -39,8 +39,8 @@ gain : 17.32 # dB gain of the LNA
 iip3 : 1.01 # dBm IIP3 of the LNA
 bandwidth : 980000000 # Hz bandIwidth of the LNA
 bits : 3 # bits of the ADC !! Currently not active
-snr_range : 20
-SNR_min_dB : -170
-ADC : True
-hd_change : 'pw1' # pw1: change the power1, pw2: change the power2, a:int_ratio # Not changed one is minimum
+snr_range : 25
+SNR_min_dB : -150
+ADC : False
+hd_change : 'pw2' # pw1: change the power1, pw2: change the power2, a:int_ratio # Not changed one is minimum
 snr_not_change : -140

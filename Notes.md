@@ -35,7 +35,10 @@
 * MMSE with ADC is working - Plotted with different bits
 * All the complex runs failed - Memory and stuff, deal with it later
 * Marginal&Joint Pdf plotting is completed in plt_hardwares.py
-* Linear TI and KI seems wrong! - Check this
+* No ADC, Interference results seem make sense, Gaussian and Learned gives the same results since we are not in saturation
+
 
 --- TO DO ---
 * Linear Approximation for the first regime-Check this
+* Interference with X2 fixed is running -Check this
+* Interference when X2 is not fixed, how should I make sense the data? I am not sure
