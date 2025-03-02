@@ -1340,6 +1340,105 @@ def plot_quantized_x(regime_class, q_pdf, pdf_x, name_extra):
     plt.close()
 
 
+def plot_R1_R2_change(
+    res_change, change_range, config, save_location, res_str, lambda_sweep
+):
+
+    markers = [
+        "o",
+        "v",
+        "^",
+        "<",
+        ">",
+        "x",
+        "s",
+        "p",
+        "P",
+        "*",
+        "h",
+        "H",
+        "+",
+        "X",
+        "D",
+        "d",
+        "|",
+        "_",
+    ]
+    ind_m = 0
+
+    fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
+    for key in res_change["R1"].keys():
+        if key == "Learned":
+            for ind, l in enumerate(lambda_sweep):
+
+                res_gather = [
+                    res_change["R1"][key][c][ind] for c in range(len(change_range))
+                ]
+                ax.plot(
+                    change_range,
+                    res_gather,
+                    label="R1 " + key + ", l=" + str(l),
+                    linewidth=2,
+                    linestyle="-.",
+                    marker=markers[ind_m],
+                )
+                ind_m = np.mod(ind_m + 1, len(markers))
+
+        else:
+            ax.plot(
+                change_range,
+                res_change["R1"][key],
+                label="R1 " + key,
+                linewidth=2,
+                linestyle=":",
+                marker=markers[ind_m],
+            )
+            ind_m = np.mod(ind_m + 1, len(markers))
+    for key in res_change["R2"].keys():
+        if key == "Learned":
+            for ind, l in enumerate(lambda_sweep):
+                res_gather = [
+                    res_change["R2"][key][c][ind] for c in range(len(change_range))
+                ]
+                ax.plot(
+                    change_range,
+                    res_gather,
+                    label="R2 " + key + ", l=" + str(l),
+                    linewidth=2,
+                    linestyle="-.",
+                    marker=markers[ind_m],
+                )
+                ind_m = np.mod(ind_m + 1, len(markers))
+        ax.plot(
+            change_range,
+            res_change["R2"][key],
+            label="R2 " + key,
+            linewidth=2,
+            linestyle="-",
+            marker=markers[ind_m],
+        )
+        ind_m = np.mod(ind_m + 1, len(markers))
+
+    ax.legend(loc="best", fontsize=8)
+    ax.set_xlabel(str(config["change"]), fontsize=10)
+
+    res_str_new = res_str.replace("_", ", ")
+
+    ax.set_title(res_str_new, fontsize=10)
+    ax.set_ylabel(r"R1", fontsize=10)
+    ax = grid_minor(ax)
+
+    fig.savefig(
+        save_location + "/Comp_" + str(config["change"]) + "_" + res_str + ".png",
+        bbox_inches="tight",
+    )
+    print(
+        "Saved in ",
+        str(config["change"]) + "_" + res_str + ".png",
+    )
+    plt.close()
+
+
 # def loss_complex(pdf_x, regime_class, project_active=True):
 #     if project_active:
 #         breakpoint()

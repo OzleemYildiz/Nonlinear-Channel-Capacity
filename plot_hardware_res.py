@@ -152,7 +152,7 @@ def plot_x_y_marginal():
     chosen = "Paper_Figure/Hardware-Params/ADC-PP/_Avg_regime=1_min_samples=2000_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=2.68_nf2=15_bw=980000000_iip3=1.01_gain=17.32_ADC_bits=3"
 
     pdfs = io.loadmat(chosen + "/pdf_y_GD_power=99.99999999999997.mat")
-
+    
     pdf_x = pdfs["pdf_x"].reshape(-1)
     alph_x = pdfs["alph_x"].reshape(-1)
     q_pdf_y = pdfs["q_pdf_y"]

@@ -42,3 +42,14 @@
 * Linear Approximation for the first regime-Check this
 * Interference with X2 fixed is running -Check this
 * Interference when X2 is not fixed, how should I make sense the data? I am not sure
+
+
+## March 1st
+* Plotting even when R2 is not fixed for different powers is implemented
+-TO DO-
+* Interference Linear seems off - Check
+* Interference KI seems off check
+
+## March 2nd
+# NOTE: Don't run with boundary, mmse boundary needs too many samples and we could do it offline
+

@@ -250,6 +250,7 @@ def gradient_descent_on_interference(
 
             save_opt_sum_capacity.append(opt_sum_capacity)
             max_sum_cap.append(max_sum_cap_h)
+            
             max_cap_RX1.append(max_cap_RX1_h)
             max_cap_RX2.append(max_cap_RX2_h)
 

@@ -9,6 +9,7 @@ from utils import (
     get_interference_alphabet_x_y_complex,
     get_regime_class_interference,
     loss,
+    plot_R1_R2_change,
 )
 import numpy as np
 from gaussian_capacity import (
@@ -306,14 +307,21 @@ def get_linear_interference_capacity(power1, power2, int_ratio, config):
 
 
 def get_interferer_capacity(config, power2):
+    if config["hardware_params_active"]:
+        hn = Hardware_Nonlinear_and_Noise(config)
+        power2_snr = power2 * hn.gain_lin
+    else:
+        power2_snr = power2
+
     if config["regime"] == 3:
-        cap = (
-            1
-            / 2
-            * np.log(1 + power2 / (config["sigma_21"] ** 2 + config["sigma_22"] ** 2))
-        )
+        if config["hardware_params_active"]:
+            sigma1_snr = config["sigma_21"] ** 2 * hn.gain_lin
+        else:
+            sigma1_snr = config["sigma_21"] ** 2
+
+        cap = 1 / 2 * np.log(1 + power2_snr / (sigma1_snr + config["sigma_22"] ** 2))
     elif config["regime"] == 1:
-        cap = 1 / 2 * np.log(1 + power2 / config["sigma_22"] ** 2)
+        cap = 1 / 2 * np.log(1 + power2_snr / config["sigma_22"] ** 2)
     else:
         raise ValueError("Regime not defined")
 
@@ -450,18 +458,27 @@ def main():
     cap_gaus_RX2 = []
 
     change_range, config = change_parameters_range(config)
-    res_change = {
-        "Linear_TIN": [],
-        "Gaussian_TIN": [],
-        "Linear_KI": [],
-        "Gaussian_KI": [],
-    }
+    if config["x2_fixed"]:
+        res_change = {
+            "Linear_TIN": [],
+            "Gaussian_TIN": [],
+            "Linear_KI": [],
+            "Gaussian_KI": [],
+        }
+        if config["gd_active"]:
+            res_change["Learned_KI"] = []
+            res_change["Learned_TIN"] = []
+    else:
+        res_change = {"R1": {}, "R2": {}}
+        res_change["R1"] = {"Linear": [], "Gaussian": []}
+        res_change["R2"] = {"Linear": [], "Gaussian": []}
+        if config["gd_active"]:
+            res_change["R1"]["Learned"] = []
+            res_change["R2"]["Learned"] = []
+
     if config["regime"] == 3:
         res_change["Linear_Approx"] = []
 
-    if config["gd_active"]:
-        res_change["Learned_KI"] = []
-        res_change["Learned_TIN"] = []
     old_config_title = config["title"]
 
     _, _, _, _, _, res_str, _ = get_run_parameters(config, change_range[0])
@@ -512,9 +529,12 @@ def main():
 
         res["R2"]["Linear_TIN"] = linear_R2
         res["R2"]["Linear_KI"] = linear_R2
-
-        res_change["Linear_TIN"].append(linear_tin)
-        res_change["Linear_KI"].append(linear_ki)
+        if config["x2_fixed"]:
+            res_change["Linear_TIN"].append(linear_tin)
+            res_change["Linear_KI"].append(linear_ki)
+        else:
+            res_change["R1"]["Linear"].append(linear_tin)
+            res_change["R2"]["Linear"].append(linear_R2)
 
         update_save_location = save_location + config["change"] + "=" + str(chng) + "/"
         config["save_location"] = update_save_location
@@ -619,6 +639,8 @@ def main():
         else:
             res["R1"]["Gaussian"] = cap1_g
             res["R2"]["Gaussian"] = cap2_g
+            res_change["R1"]["Gaussian"].append(cap1_g)
+            res_change["R2"]["Gaussian"].append(cap2_g)
 
         res_gaus["Gaussian"] = [cap1_g, cap2_g]
         # cap1_agc, cap2_agc = agc_gaussian_capacity_interference(config, power)
@@ -704,6 +726,9 @@ def main():
             else:
                 res["R1"]["Learned"] = max_cap_RX1
                 res["R2"]["Learned"] = max_cap_RX2
+
+                res_change["R1"]["Learned"].append(max_cap_RX1)
+                res_change["R2"]["Learned"].append(max_cap_RX2)
                 res_pdf = {
                     "RX1": max_pdf_x_RX1,
                     "RX2": max_pdf_x_RX2,
@@ -778,6 +803,21 @@ def main():
     if config["x2_fixed"]:
 
         plot_R1_vs_change(res_change, change_range, config, save_location, res_str)
+        res_change["change_range"] = change_range
+        res_change["change_over"] = config["change"]
+        io.savemat(
+            save_location
+            + "res_change-"
+            + str(config["change"])
+            + "_"
+            + res_str
+            + ".mat",
+            res_change,
+        )
+    else:
+        plot_R1_R2_change(
+            res_change, change_range, config, save_location, res_str, lambda_sweep
+        )
         res_change["change_range"] = change_range
         res_change["change_over"] = config["change"]
         io.savemat(
