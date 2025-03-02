@@ -197,6 +197,10 @@ def main():
     save_location = define_save_location(config)
     print("Saving in: " + save_location)
     config["save_location"] = save_location
+    os.makedirs(
+        save_location,
+        exist_ok=True,
+    )
 
     capacity_gaussian = []
     power_gaussian = []

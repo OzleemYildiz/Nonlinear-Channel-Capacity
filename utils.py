@@ -1341,7 +1341,7 @@ def plot_quantized_x(regime_class, q_pdf, pdf_x, name_extra):
 
 
 def plot_R1_R2_change(
-    res_change, change_range, config, save_location, res_str, lambda_sweep
+    res_change, change_range, config, save_location, res_str, lambda_sweep=None
 ):
 
     markers = [
@@ -1379,7 +1379,7 @@ def plot_R1_R2_change(
                     res_gather,
                     label="R1 " + key + ", l=" + str(l),
                     linewidth=2,
-                    linestyle="-.",
+                    linestyle="solid",
                     marker=markers[ind_m],
                 )
                 ind_m = np.mod(ind_m + 1, len(markers))
@@ -1390,7 +1390,7 @@ def plot_R1_R2_change(
                 res_change["R1"][key],
                 label="R1 " + key,
                 linewidth=2,
-                linestyle=":",
+                linestyle="dotted",
                 marker=markers[ind_m],
             )
             ind_m = np.mod(ind_m + 1, len(markers))
@@ -1405,7 +1405,7 @@ def plot_R1_R2_change(
                     res_gather,
                     label="R2 " + key + ", l=" + str(l),
                     linewidth=2,
-                    linestyle="-.",
+                    linestyle="dashed",
                     marker=markers[ind_m],
                 )
                 ind_m = np.mod(ind_m + 1, len(markers))
@@ -1414,7 +1414,7 @@ def plot_R1_R2_change(
             res_change["R2"][key],
             label="R2 " + key,
             linewidth=2,
-            linestyle="-",
+            linestyle="dashdot",
             marker=markers[ind_m],
         )
         ind_m = np.mod(ind_m + 1, len(markers))

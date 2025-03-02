@@ -271,6 +271,7 @@ def get_linear_interference_capacity(power1, power2, int_ratio, config):
             power1_snr = power1 * hn.gain_lin
             noise1_snr = config["sigma_11"] ** 2 * hn.gain_lin
             int_snr = int_ratio**2 * power2 * hn.gain_lin
+
         else:
             power1_snr = power1
             noise1_snr = config["sigma_11"] ** 2
@@ -288,13 +289,12 @@ def get_linear_interference_capacity(power1, power2, int_ratio, config):
         if config["hardware_params_active"]:
             hn = Hardware_Nonlinear_and_Noise(config)
             power1_snr = power1 * hn.gain_lin
+            int_snr = int_ratio**2 * power2 * hn.gain_lin
         else:
             power1_snr = power1
         linear_ki = 1 / 2 * np.log(1 + power1_snr / config["sigma_12"] ** 2)
         linear_tin = (
-            1
-            / 2
-            * np.log(1 + power1_snr / (int_ratio**2 * power2 + config["sigma_12"] ** 2))
+            1 / 2 * np.log(1 + power1_snr / (int_snr + config["sigma_12"] ** 2))
         )
     else:
         raise ValueError("Regime not defined")
@@ -815,9 +815,13 @@ def main():
             res_change,
         )
     else:
-        plot_R1_R2_change(
-            res_change, change_range, config, save_location, res_str, lambda_sweep
-        )
+        if config["gd_active"]:
+            plot_R1_R2_change(
+                res_change, change_range, config, save_location, res_str, lambda_sweep
+            )
+        else:
+            plot_R1_R2_change(res_change, change_range, config, save_location, res_str)
+
         res_change["change_range"] = change_range
         res_change["change_over"] = config["change"]
         io.savemat(
