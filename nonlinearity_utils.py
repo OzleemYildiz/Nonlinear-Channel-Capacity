@@ -19,7 +19,10 @@ def alphabet_fix_nonlinear(alphabet_x, config):
 def get_nonlinear_fn(config, tanh_factor=None):
     if config["hardware_params_active"]:  # hardware parameters
         hn = Hardware_Nonlinear_and_Noise(config)
-        nonlinear_fn = hn.nonlinear_func_torch()
+        if config["gain_later"]:
+            nonlinear_fn = hn.nonlinear_func_nogain()
+        else:
+            nonlinear_fn = hn.nonlinear_func_torch()
     else:  # the parameters that we set
         # 0:linear
         if config["nonlinearity"] == 0:
@@ -233,6 +236,7 @@ class Hardware_Nonlinear_and_Noise:
 
         self.snr_range = config["snr_range"]
         self.SNR_min_dB = config["SNR_min_dB"]
+        self.gain_later = config["gain_later"]
         """
         Calibrate the saturation level for the tanh nonlinearity
         
@@ -256,6 +260,8 @@ class Hardware_Nonlinear_and_Noise:
         self.f1_lin = 10 ** (self.f1 / 10)
         self.f2_lin = 10 ** (self.f2 / 10)
         self.EkT_lin = 10 ** (-174 / 10)
+        self.noise1_std, self.noise2_std = self.get_noise_vars()
+        self.P_in_min_linear, self.P_in_max_linear = self.get_min_max_power()
 
     def nonlinear_func_numpy(self):
         return lambda x: np.sqrt(self.gain_lin * self.Esat_lin) * np.tanh(
@@ -272,13 +278,26 @@ class Hardware_Nonlinear_and_Noise:
             lambda x: np.sqrt(self.gain_lin) / np.cosh(x / np.sqrt(self.Esat_lin)) ** 2
         )
 
+    def nonlinear_func_nogain(self):
+
+        return lambda x: torch.sqrt(torch.tensor(self.Esat_lin)) * torch.tanh(
+            torch.tensor(x) / torch.sqrt(torch.tensor(self.Esat_lin))
+        )
+
     def get_noise_vars(self):
+
         if self.regime == 1:
             self.noise1_std = 0
             self.noise2_std = np.sqrt(self.EkT_lin * (self.f2_lin))
         elif self.regime == 3:
             self.noise1_std = np.sqrt(self.EkT_lin * self.f1_lin)
             self.noise2_std = np.sqrt(self.EkT_lin * (self.f2_lin - 1))
+
+        if self.gain_later:
+            self.noise2_std = self.noise2_std / np.sqrt(
+                self.gain_lin
+            )  # since the noise is after the gain
+
         return self.noise1_std, self.noise2_std
 
     def get_min_max_power(self):
@@ -301,12 +320,19 @@ class Hardware_Nonlinear_and_Noise:
 
             P_in_min_linear = 10 ** (P_in_min_dBm / 10)
             P_in_max_linear = 10 ** (P_in_max_dBm / 10)
+
+        # This is not a must but to keep the mappings similar for a comparison
+        # if self.gain_later:
+        #     P_in_min_linear = P_in_min_linear / self.gain_lin
+        #     P_in_max_linear = P_in_max_linear / self.gain_lin
+
         return P_in_min_linear, P_in_max_linear
 
     def get_power_fixed(self, fixed_power):
         if self.regime == 3:
             P_N_dBm = 10 * np.log10(self.noise1_std**2) + 10 * np.log10(self.bandwidth)
             P_in_dBm = fixed_power + P_N_dBm
+            P_in_dBm = P_in_dBm + 10 * np.log10(self.tsamp)
         elif self.regime == 1:
             P_in_dBm = fixed_power
         return 10 ** (P_in_dBm / 10)

@@ -122,7 +122,7 @@ def upper_bound_tarokh(power, config):
 
 def lower_bound_tarokh_third_regime(config):
     # snr_range = np.linspace(-20, 40, 20)
-    snr_range, noise_power = regime_dependent_snr(config)
+    snr_range, power_change, noise_power = regime_dependent_snr(config)
     # breakpoint()
     snr_range = np.concatenate(([-20, -10], snr_range))
     power_range = (10 ** (snr_range / 10)) * noise_power
@@ -264,7 +264,7 @@ def simplified_first_from_third(power, config):
 def main():
     config = read_config()
     print("----------Nonlinearity: ", config["nonlinearity"], "----------")
-    snr_change, noise_power = regime_dependent_snr(config)
+    snr_change, power_change, noise_power = regime_dependent_snr(config)
 
     # my_first_tarokh = lower_bound_tarokh(config)
     my_third_tarokh = []

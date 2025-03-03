@@ -29,7 +29,8 @@ def gd_capacity(config, power, regime_class):
 
     max_dict = {}
     max_opt_capacity = torch.tensor([])
-
+    if np.isinf(power):
+        breakpoint()
     for lr in config["lr"]:
 
         # alphabet_x, alphabet_y, max_x, max_y = get_alphabet_x_y(config, power)
@@ -105,7 +106,6 @@ def gd_capacity(config, power, regime_class):
                     < opt_capacity[-1] * config["epsilon"]
                 ):
                     break
-
     max_pdf_x = project_pdf(max_pdf_x, config, max_alphabet_x, power)
     print("~~~~~Max Capacity:", max_capacity, "~~~~~")
 
@@ -250,7 +250,7 @@ def gradient_descent_on_interference(
 
             save_opt_sum_capacity.append(opt_sum_capacity)
             max_sum_cap.append(max_sum_cap_h)
-            
+
             max_cap_RX1.append(max_cap_RX1_h)
             max_cap_RX2.append(max_cap_RX2_h)
 

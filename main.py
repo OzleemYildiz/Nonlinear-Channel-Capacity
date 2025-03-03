@@ -127,13 +127,21 @@ def define_save_location(config):
     return save_location
 
 
-def main():
-    config = read_config()
+def change_params_by_hardware(config):
     if config["hardware_params_active"]:
         hn = Hardware_Nonlinear_and_Noise(config)
         config["E_sat"] = hn.Esat_lin
-        config["sigma_1"], config["sigma_2"] = hn.get_noise_vars()
-        config["min_power_cons"], config["max_power_cons"] = hn.get_min_max_power()
+        config["sigma_1"], config["sigma_2"] = hn.noise1_std, hn.noise2_std
+        config["min_power_cons"], config["max_power_cons"] = (
+            hn.P_in_min_linear,
+            hn.P_in_max_linear,
+        )
+    return config
+
+
+def main():
+    config = read_config()
+    config = change_params_by_hardware(config)
 
     # Title for PP has been updated
     if config["regime"] == 1:
@@ -192,7 +200,7 @@ def main():
     if config["complex"]:
         print("****Complex**** Domain Point to Point Communication")
 
-    snr_change, noise_power = regime_dependent_snr(config)
+    snr_change, power_change, noise_power = regime_dependent_snr(config)
 
     save_location = define_save_location(config)
     print("Saving in: " + save_location)
@@ -241,13 +249,14 @@ def main():
             rate_2_tau_learned = []
     else:
         tau_list = np.array([1])
-    power_change = []
-    for snr in snr_change:
+
+    for ind_snr, snr in enumerate(snr_change):
         tanh_factor = config["tanh_factor"]
         start = time.time()
         print("-------SNR in dB:", snr, "--------")
-        power = (10 ** (snr / 10)) * noise_power
-        power_change.append(power)
+
+        power = power_change[ind_snr]
+
         print("Power: ", power)
         res_tau = {"R1": {}, "R2": {}}
 
@@ -265,7 +274,6 @@ def main():
             multiplying_factor = 1
 
         config["multiplying_factor"] = multiplying_factor
-        # FIXME:TDM with parameters will be updated
 
         for tau in tau_list:
             print("----------Time Division: ", tau, "----------")
@@ -275,24 +283,27 @@ def main():
                 tau_power_list = [power / tau, power / (1 - tau)]
             else:
                 tau_power_list = [power]  # No power boost
+
             for ind, tau_power in enumerate(tau_power_list):
                 power = tau_power
                 if config["power_change_active"]:
                     print("Power Boost: ", power, " for User ", ind + 1)
                 else:
                     print("Power Kept Constant: ", power)
+
                 if ind == 0:  # keeping record of only tau results for demonstration
-                    # 1-tau is for R1 and R2 curve
-                    if config["hardware_params_active"]:
-                        power_snr = power * hn.gain_lin
-                    else:
-                        power_snr = power
+
+                    linear_snr = 10 ** (snr / 10)
+                    if config["power_change_active"]:
+                        linear_snr = (
+                            10 ** (snr / 10) / tau
+                        )  # since power is updated to power/tau
+
+                    # snr_db = 10 * np.log10(snr_linear)
                     if config["complex"]:
-                        calc_logsnr.append(tau * np.log(1 + power_snr / (noise_power)))
+                        calc_logsnr.append(np.log(1 + linear_snr))
                     else:
-                        calc_logsnr.append(
-                            tau * np.log(1 + power_snr / (noise_power)) / 2
-                        )
+                        calc_logsnr.append(np.log(1 + linear_snr) / 2)
 
                 print("Linear Capacity :", calc_logsnr[-1])
 
@@ -329,8 +340,6 @@ def main():
                     )
 
                 # Gaussian Capacity
-                # cap_g = gaussian_capacity(regime_class)
-                # power_g, cap_g = find_best_gaussian(regime_class)
                 (cap_g,) = (
                     gaussian_capacity(
                         regime_class, power, complex_alphabet=config["complex"]
@@ -344,34 +353,6 @@ def main():
                     capacity_gaussian = bound_backtracing_check(
                         capacity_gaussian, tau * cap_g
                     )
-
-                    # capacity_gaussian.append(cap_g)
-                    # power_gaussian.append(power_g)
-
-                # FIXME: This condition might not work right now
-                if config["ba_active"] and config["cons_type"] == 0:
-                    (cap, input_dist) = apply_blahut_arimoto(regime_class, config)
-                    loss_g = loss(
-                        torch.tensor(input_dist).to(torch.float32), regime_class
-                    )
-                    if ind == 0:  # keeping record of only tau results for demonstration
-                        capacity_ba.append(-loss_g)
-                    if not config["time_division_active"]:
-                        map_pdf_ba[str(snr)] = [
-                            input_dist,
-                            regime_class.alphabet_x.numpy(),
-                        ]
-                    else:
-                        map_pdf_ba[str(tau)] = [
-                            input_dist,
-                            regime_class.alphabet_x.numpy(),
-                        ]
-
-                # If constraint type is 2, calculate gaussian with optimized snr  -- Ruth's paper
-                # FIXME: Might not be working
-                if config["cons_type"] == 2:
-                    cap_r = gaussian_with_l1_norm(alphabet_x, alphabet_y, power, config)
-                    capacity_ruth.append(cap_r)
 
                 # Gradient Descent
                 if config["gd_active"]:
@@ -390,27 +371,23 @@ def main():
 
                     if config["time_division_active"]:
                         if config["power_change_active"]:
-                            map_pdf[
-                                "Chng" + str(int(tau * 100)) + "ind=" + str(ind)
-                            ] = [
+                            map_pdf[str(ind)] = [
                                 max_pdf_x.detach().numpy(),
                                 max_alphabet_x.detach().numpy(),
                             ]
-                            map_opt[
-                                "Chng" + str(int(tau * 100)) + "ind=" + str(ind)
-                            ] = opt_capacity
+                            map_opt[str(ind)] = opt_capacity
                         else:
-                            map_pdf["Chng" + str(int(tau * 100))] = [
+                            map_pdf[str(ind_snr)] = [
                                 max_pdf_x.detach().numpy(),
                                 max_alphabet_x.detach().numpy(),
                             ]
-                            map_opt["Chng" + str(int(tau * 100))] = opt_capacity
+                            map_opt[str(ind_snr)] = opt_capacity
                     else:
-                        map_pdf["Chng" + str(int(power * 10))] = [
+                        map_pdf[str(ind_snr)] = [
                             max_pdf_x.detach().numpy(),
                             max_alphabet_x.detach().numpy(),
                         ]
-                        map_opt["Chng" + str(int(power * 10))] = opt_capacity
+                        map_opt[str(ind_snr)] = opt_capacity
 
                 res = get_bounds(regime_class, power, res, ind)
 
@@ -418,6 +395,8 @@ def main():
                     del real_x, imag_x, real_y, imag_y, regime_class
                 else:
                     del regime_class, alphabet_x, alphabet_y
+
+                # Fix Multiplying Factor
                 if config["hardware_params_active"]:
                     power = power / 10**multiplying_factor
                     noise_power = noise_power / 10**multiplying_factor

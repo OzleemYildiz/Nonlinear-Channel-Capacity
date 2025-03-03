@@ -121,7 +121,7 @@ class First_Regime:
 
         return self.pdf_y_given_x
 
-    def fix_with_multiplying(self):
+    def fix_with_multiplying(self, alphabet_x_RX2=None):
 
         if self.multiplying_factor == 1:  # not hardware case
             return
@@ -140,8 +140,12 @@ class First_Regime:
             self.get_quant_param()
         self.get_v_alphabet()
 
+        if alphabet_x_RX2 is not None:
+            alphabet_x_RX2 = alphabet_x_RX2 / (10 ** (self.multiplying_factor / 2))
+            return alphabet_x_RX2
+
     # Currently not using
-    def unfix_with_multiplying(self):
+    def unfix_with_multiplying(self, alphabet_x_RX2=None):
         if self.multiplying_factor == 1:
             return
         self.power = self.power * (10**self.multiplying_factor)
@@ -157,6 +161,9 @@ class First_Regime:
         if self.config["ADC"]:
             self.get_quant_param()
         self.get_v_alphabet()
+        if alphabet_x_RX2 is not None:
+            alphabet_x_RX2 = alphabet_x_RX2 * (10 ** (self.multiplying_factor / 2))
+            return alphabet_x_RX2
 
     def new_capacity(self, pdf_x, pdf_y_given_x=None):
         self.fix_with_multiplying()
@@ -247,7 +254,7 @@ class First_Regime:
         self, pdf_x_RX1, pdf_x_RX2, alphabet_x_RX2, int_ratio
     ):
 
-        self.fix_with_multiplying()
+        alphabet_x_RX2 = self.fix_with_multiplying(alphabet_x_RX2)
 
         if self.config["x2_fixed"] and self.pdf_y_given_x_int is not None:
             pdf_y_given_x = self.pdf_y_given_x_int
@@ -269,7 +276,7 @@ class First_Regime:
 
         cap = entropy_y_given_x - torch.sum(pdf_y * torch.log(pdf_y + 1e-20))
 
-        self.unfix_with_multiplying()
+        alphabet_x_RX2 = self.unfix_with_multiplying(alphabet_x_RX2)
         return cap
 
     def get_out_nonlinear(self, alphabet_u):
@@ -284,7 +291,7 @@ class First_Regime:
 
     def capacity_with_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
 
-        self.fix_with_multiplying()
+        alphabet_x2 = self.fix_with_multiplying(alphabet_x2)
 
         # pdf_y_given_x2_and_x1, pdf_y_given_x2 = self.get_pdfs_for_known_interference(
         #     pdf_x, pdf_x2, alphabet_x2, int_ratio
@@ -305,7 +312,7 @@ class First_Regime:
             @ pdf_x2
         )
         cap = entropy_y_given_x2 - entropy_y_given_x1_and_x2
-        self.unfix_with_multiplying()
+        alphabet_x2 = self.unfix_with_multiplying(alphabet_x2)
         return cap
 
     def get_pdfs_for_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):

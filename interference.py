@@ -111,9 +111,14 @@ def change_parameters_range(config):
     if config["hardware_params_active"]:
         hn = Hardware_Nonlinear_and_Noise(config)
         config["E_sat"] = hn.Esat_lin
-        config["sigma_11"], config["sigma_12"] = hn.get_noise_vars()
+        # Currently, noises of both users are same
+        config["sigma_11"], config["sigma_12"] = hn.noise1_std, hn.noise2_std
         config["sigma_21"], config["sigma_22"] = config["sigma_11"], config["sigma_12"]
-        config["min_power_cons"], config["max_power_cons"] = hn.get_min_max_power()
+
+        config["min_power_cons"], config["max_power_cons"] = (
+            hn.P_in_min_linear,
+            hn.P_in_max_linear,
+        )
         config["change"] = config["hd_change"]
 
     if config["change"] == "pw1":
@@ -264,40 +269,37 @@ def get_run_parameters(config, chng):
 
 def get_linear_interference_capacity(power1, power2, int_ratio, config):
     # This is X2 fixed results --- X1's tin and ki results
+    # This is for USER 1
+    if config["hardware_params_active"]:
+        hn = Hardware_Nonlinear_and_Noise(config)
 
     if config["regime"] == 3:
-        if config["hardware_params_active"]:
-            hn = Hardware_Nonlinear_and_Noise(config)
-            power1_snr = power1 * hn.gain_lin
-            noise1_snr = config["sigma_11"] ** 2 * hn.gain_lin
-            int_snr = int_ratio**2 * power2 * hn.gain_lin
-
+        if config["hardware_params_active"] and not config["gain_later"]:
+            sigma_1_snr = config["sigma_11"] ** 2 * hn.gain_lin
         else:
-            power1_snr = power1
-            noise1_snr = config["sigma_11"] ** 2
-            int_snr = int_ratio**2 * power2
+            sigma_1_snr = config["sigma_11"] ** 2
+        noise_power = sigma_1_snr + config["sigma_12"] ** 2
 
-        linear_ki = (
-            1 / 2 * np.log(1 + power1_snr / (config["sigma_12"] ** 2 + noise1_snr))
-        )
-        linear_tin = (
-            1
-            / 2
-            * np.log(1 + power1_snr / (int_snr + config["sigma_12"] ** 2 + noise1_snr))
-        )
     elif config["regime"] == 1:
-        if config["hardware_params_active"]:
-            hn = Hardware_Nonlinear_and_Noise(config)
-            power1_snr = power1 * hn.gain_lin
-            int_snr = int_ratio**2 * power2 * hn.gain_lin
-        else:
-            power1_snr = power1
-        linear_ki = 1 / 2 * np.log(1 + power1_snr / config["sigma_12"] ** 2)
-        linear_tin = (
-            1 / 2 * np.log(1 + power1_snr / (int_snr + config["sigma_12"] ** 2))
-        )
+        noise_power = config["sigma_12"] ** 2
     else:
         raise ValueError("Regime not defined")
+
+    if config["hardware_params_active"] and not config["gain_later"]:
+
+        power1_snr = power1 * hn.gain_lin
+        int_snr = int_ratio**2 * power2 * hn.gain_lin
+
+    else:
+        power1_snr = power1
+        int_snr = int_ratio**2 * power2
+
+    snr_linear_ki = power1_snr / noise_power
+    snr_linear_tin = power1_snr / (noise_power + int_snr)
+
+    linear_ki = 1 / 2 * np.log(1 + snr_linear_ki)
+
+    linear_tin = 1 / 2 * np.log(1 + snr_linear_tin)
 
     if config["complex"]:  # 1/2 comes from real
         linear_ki = linear_ki * 2
@@ -307,30 +309,32 @@ def get_linear_interference_capacity(power1, power2, int_ratio, config):
 
 
 def get_interferer_capacity(config, power2):
-    if config["hardware_params_active"]:
+    if config["hardware_params_active"] and not config["gain_later"]:
         hn = Hardware_Nonlinear_and_Noise(config)
         power2_snr = power2 * hn.gain_lin
     else:
         power2_snr = power2
 
     if config["regime"] == 3:
-        if config["hardware_params_active"]:
+        if config["hardware_params_active"] and not config["gain_later"]:
             sigma1_snr = config["sigma_21"] ** 2 * hn.gain_lin
         else:
             sigma1_snr = config["sigma_21"] ** 2
+        noise_power = sigma1_snr + config["sigma_22"] ** 2
 
-        cap = 1 / 2 * np.log(1 + power2_snr / (sigma1_snr + config["sigma_22"] ** 2))
     elif config["regime"] == 1:
-        cap = 1 / 2 * np.log(1 + power2_snr / config["sigma_22"] ** 2)
+        noise_power = config["sigma_22"] ** 2
     else:
         raise ValueError("Regime not defined")
 
+    cap = 1 / 2 * np.log(1 + power2_snr / (noise_power))
     if config["complex"]:  # 1/2 comes from real
         cap = cap * 2
 
     return cap
 
 
+# TODO: GOTTA UPDATE
 def get_linear_approximation_capacity(regime_RX2, config, power1, pdf_x_RX2):
 
     deriv_func = get_derivative_of_nonlinear_fn(
@@ -485,17 +489,19 @@ def main():
 
     save_location = save_location + res_str + "/"
     os.makedirs(save_location, exist_ok=True)
+
+    mul_fac = []
+
     for ind, chng in enumerate(change_range):
         power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str, res_str_run = (
             get_run_parameters(config, chng)
         )
 
         if config["hardware_params_active"]:
-            sigma_1, sigma_2 = hn.get_noise_vars()
             if config["regime"] == 1:
-                min_noise_pw = sigma_2**2
+                min_noise_pw = config["sigma_12"] ** 2
             elif config["regime"] == 3:
-                min_noise_pw = min(sigma_1**2, sigma_2**2)
+                min_noise_pw = min(config["sigma_11"] ** 2, config["sigma_12"] ** 2)
             multiplying_factor = -round(
                 np.log10(
                     min(
@@ -505,8 +511,10 @@ def main():
                     )
                 )
             )
+
             power1 = power1 * 10**multiplying_factor
             power2 = power2 * 10**multiplying_factor
+            config["sigma_11"] = config["sigma_11"] * 10 ** (multiplying_factor / 2)
             config["sigma_12"] = config["sigma_12"] * 10 ** (multiplying_factor / 2)
             config["sigma_21"] = config["sigma_21"] * 10 ** (multiplying_factor / 2)
             config["sigma_22"] = config["sigma_22"] * 10 ** (multiplying_factor / 2)
@@ -514,6 +522,7 @@ def main():
         else:
             multiplying_factor = 1
         config["multiplying_factor"] = multiplying_factor
+        mul_fac.append(multiplying_factor)
 
         # Update Title in Config for the case of Interference
         config["title"] = config["title"] + "" + res_str
@@ -594,7 +603,7 @@ def main():
             regime_RX1, regime_RX2, config, pdf_x_RX2, update_save_location
         )
 
-        # Approximated Capacity
+        # Approximated Capacity - # TODO: Update
         if config["regime"] == 3:
             if config["x2_fixed"]:
                 approx_cap1 = get_linear_approximation_capacity(
@@ -795,6 +804,7 @@ def main():
                 regime_RX2,
             )
         if config["hardware_params_active"]:
+            config["sigma_11"] = config["sigma_11"] / 10 ** (multiplying_factor / 2)
             config["sigma_12"] = config["sigma_12"] / 10 ** (multiplying_factor / 2)
             config["sigma_21"] = config["sigma_21"] / 10 ** (multiplying_factor / 2)
             config["sigma_22"] = config["sigma_22"] / 10 ** (multiplying_factor / 2)

@@ -7,7 +7,11 @@ from cvxpylayers.torch import CvxpyLayer
 import cvxpy as cp
 import os
 import random
-from nonlinearity_utils import get_nonlinear_fn, get_derivative_of_nonlinear_fn
+from nonlinearity_utils import (
+    get_nonlinear_fn,
+    get_derivative_of_nonlinear_fn,
+    Hardware_Nonlinear_and_Noise,
+)
 from First_Regime import First_Regime
 from Second_Regime import Second_Regime
 from Third_Regime import Third_Regime
@@ -341,17 +345,14 @@ def plot_pdf_vs_change(
     else:
         return  # No need to plot anything because it's TDM without power change - pdf has already been plotted
 
-    snr_change, noise_power = regime_dependent_snr(config)
-    for ind, chn in enumerate(range_change):
-        power = (10 ** (chn / 10)) * noise_power
+    snr_change, power_change, noise_power = regime_dependent_snr(config)
 
-        if config["power_change_active"] and config["time_division_active"]:
-            pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn)) + "ind=0"]
+    for key in map_pdf.keys():
+        pdf_x, alphabet_x = map_pdf[key]
+        if config["power_change_active"]:
+            chn = range_change[int(key)]
         else:
-            if config["hardware_params_active"]:
-                power = power * 10 ** multiplying_factor[ind]
-
-            pdf_x, alphabet_x = map_pdf["Chng" + str(int(power * 10))]
+            chn = snr_change[int(key)]
 
         if not isinstance(pdf_x, np.ndarray):
             pdf_x = pdf_x.detach().numpy()
@@ -390,23 +391,7 @@ def plot_pdf_vs_change(
         ax.set_xlabel(r"Re(X)", fontsize=10)
         ax.set_ylabel(r"Im(X)", fontsize=10)
 
-    ax.grid(
-        visible=True,
-        which="minor",
-        axis="both",
-        color="gainsboro",
-        linestyle=":",
-        linewidth=0.5,
-    )
-    plt.minorticks_on()
-    ax.grid(
-        visible=True,
-        which="major",
-        axis="both",
-        color="lightgray",
-        linestyle="-",
-        linewidth=0.5,
-    )
+    ax = grid_minor(ax)
 
     ax.set_title(
         config["title"],
@@ -431,15 +416,13 @@ def plot_pdf_vs_change(
         fig.savefig(save_location + "/" + file_name, bbox_inches="tight")
     plt.close()
 
-    for ind, chn in enumerate(range_change):
-        power = (10 ** (chn / 10)) * noise_power
-        if config["power_change_active"] and config["time_division_active"]:
-            pdf_x, alphabet_x = map_pdf["Chng" + str(int(chn * 100)) + "ind=0"]
+    for key in map_pdf.keys():
+        pdf_x, alphabet_x = map_pdf[key]
+        if config["power_change_active"]:
+            chn = range_change[int(key)]  # this should be tau
         else:
-            if config["hardware_params_active"]:
-                power = power * 10 ** multiplying_factor[ind]
+            chn = snr_change[int(key)]
 
-            pdf_x, alphabet_x = map_pdf["Chng" + str(int(power * 10))]
         save_new = save_location + "/pdf_" + str(int(chn * 100)) + ".png"
         fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
         if config["complex"]:
@@ -463,10 +446,7 @@ def plot_pdf_vs_change(
         plt.close()
 
         if map_opt is not None and len(map_opt.keys()) != 0:
-            if config["power_change_active"] and config["time_division_active"]:
-                opt_cap = map_opt["Chng" + str(int(chn * 100)) + "ind=0"]
-            else:
-                opt_cap = map_opt["Chng" + str(int(power * 10))]
+            opt_cap = map_opt[key]
             save_new = save_location + "/opt_" + str(int(chn * 100)) + ".png"
             plot_opt(opt_cap, save_new, title)
 
@@ -478,25 +458,7 @@ def plot_opt(opt_cap, save_new, title):
     ax.set_xlabel("iteration", fontsize=10)
     ax.set_ylabel("Rate", fontsize=10)
     ax.set_title(title, fontsize=10)
-    plt.minorticks_on()
-    ax.grid(
-        visible=True,
-        which="minor",
-        axis="both",
-        color="gainsboro",
-        linestyle=":",
-        linewidth=0.5,
-    )
-
-    ax.grid(
-        visible=True,
-        which="major",
-        axis="both",
-        color="lightgray",
-        linestyle="-",
-        linewidth=0.5,
-    )
-
+    ax = grid_minor(ax)
     fig.savefig(save_new, bbox_inches="tight")
     plt.close()
 
@@ -554,15 +516,16 @@ def get_max_alphabet_PP(
     # delta = min(2 * max_x / min_samples, 2 * max_y / min_samples)
 
     # Check if Z1 will have enough samples - It gets included only for 3rd Regime
-    # if config["regime"] == 3:
-    #     max_z1 = config["stop_sd"] * config["sigma_1"] ** 2
-    #     delta = min(delta, 2 * max_z1 / min_samples)
+    if config["regime"] == 3:
+        max_z1 = config["stop_sd"] * config["sigma_1"]
+        delta = min(delta, 2 * max_z1 / min_samples)
 
     # else:
     #     delta_y = config["delta_y"]
 
     max_y = max_y + (delta - (max_y % delta))
     max_x = max_x + (delta - (max_x % delta))
+
     return max_x, max_y, delta
 
 
@@ -571,6 +534,7 @@ def get_alphabet_x_y(config, power, tanh_factor, bound=False):
         config, power, tanh_factor, config["min_samples"], bound
     )
     # Create the alphabet with the fixed delta
+
     try:
         alphabet_x = torch.arange(-max_x, max_x + delta / 2, delta)
         alphabet_y = torch.arange(-max_y, max_y + delta / 2, delta)
@@ -628,18 +592,39 @@ def get_regime_class(
 
 def regime_dependent_snr(config):
     # Number of SNR points to be evaluated
+    if config["hardware_params_active"]:
+        hn = Hardware_Nonlinear_and_Noise(config)
+
     if config["regime"] == 1:
         noise_power = config["sigma_2"] ** 2
     elif config["regime"] == 2:
         noise_power = config["sigma_1"] ** 2
     elif config["regime"] == 3:
-        noise_power = config["sigma_1"] ** 2 + config["sigma_2"] ** 2
+        if config["hardware_params_active"] and not config["gain_later"]:
+            sigma_1_snr = config["sigma_1"] ** 2 * hn.gain_lin
+        else:
+            sigma_1_snr = config["sigma_1"] ** 2
+        noise_power = sigma_1_snr + config["sigma_2"] ** 2
+
+    if config["hardware_params_active"] and not config["gain_later"]:
+
+        min_power = config["min_power_cons"] * hn.gain_lin
+        max_power = config["max_power_cons"] * hn.gain_lin
+    else:
+        min_power = config["min_power_cons"]
+        max_power = config["max_power_cons"]
+
     snr_change = np.linspace(
-        10 * np.log10(config["min_power_cons"] / (noise_power)),
-        10 * np.log10(config["max_power_cons"] / (noise_power)),
+        10 * np.log10(min_power / (noise_power)),
+        10 * np.log10(max_power / (noise_power)),
         config["n_snr"],
     )
-    return snr_change, noise_power
+
+    power_change = 10 ** (snr_change / 10) * noise_power
+    if config["hardware_params_active"] and not config["gain_later"]:
+        power_change = power_change / hn.gain_lin
+
+    return snr_change, power_change, noise_power
 
 
 def read_config(args_name="arguments.yml"):
@@ -741,14 +726,14 @@ def get_max_alphabet_interference(
             2 * max_y_2 / config["min_samples"],
         )
 
-        # Regime 3 requires us to discretize Z11 as well
+        # Regime 3 requires us to discretize Z11 as well - We don't discretize Z21 tho,no?
         if config["regime"] == 3:
-            max_z11 = config["stop_sd"] * config["sigma_11"] ** 2
-            max_z21 = config["stop_sd"] * config["sigma_21"] ** 2
+            max_z11 = config["stop_sd"] * config["sigma_11"]
+            # max_z21 = config["stop_sd"] * config["sigma_21"]
             delta = min(
                 delta,
                 2 * max_z11 / config["min_samples"],
-                2 * max_z21 / config["min_samples"],
+                # 2 * max_z21 / config["min_samples"],
             )
 
         delta_x2 = delta
@@ -763,12 +748,12 @@ def get_max_alphabet_interference(
         )
         # Regime 3 requires us to discretize Z11 as well
         if config["regime"] == 3:
-            max_z11 = config["stop_sd"] * config["sigma_11"] ** 2
-            max_z21 = config["stop_sd"] * config["sigma_21"] ** 2
+            max_z11 = config["stop_sd"] * config["sigma_11"]
+            # max_z21 = config["stop_sd"] * config["sigma_21"]
             delta = min(
                 delta,
                 2 * max_z11 / config["min_samples"],
-                2 * max_z21 / config["min_samples"],
+                # 2 * max_z21 / config["min_samples"],
             )
 
         delta_x1 = delta
@@ -989,6 +974,7 @@ def loss_interference(
     upd_RX1=True,
     upd_RX2=True,
 ):
+
     # Interference loss function for GD
     if torch.sum(pdf_x_RX1.isnan()) > 0 or torch.sum(pdf_x_RX2.isnan()) > 0:
         print("Nan in Pdfs - Loss Interference")
@@ -1135,6 +1121,7 @@ def get_regime_class_interference(
             sigma_2=config["sigma_22"],
             alphabet_x_imag=alphabet_x_RX2_imag,
             alphabet_y_imag=alphabet_y_RX2_imag,
+            multiplying_factor=multiplying_factor,
         )
         t_reg_RX1 = Third_Regime(
             alphabet_x=alphabet_x_RX1,
@@ -1146,6 +1133,7 @@ def get_regime_class_interference(
             sigma_2=config["sigma_12"],
             alphabet_x_imag=alphabet_x_RX1_imag,
             alphabet_y_imag=alphabet_y_RX1_imag,
+            multiplying_factor=multiplying_factor,
         )
         return t_reg_RX1, t_reg_RX2
     else:
@@ -1154,6 +1142,27 @@ def get_regime_class_interference(
 
 def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
     list_line = ["-", "--", "-.", ":"]
+    markers = [
+        "o",
+        "v",
+        "^",
+        "<",
+        ">",
+        "x",
+        "s",
+        "p",
+        "P",
+        "*",
+        "h",
+        "H",
+        "+",
+        "X",
+        "D",
+        "d",
+        "|",
+        "_",
+    ]
+    ind_m = 0
 
     fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
     index = 0
@@ -1166,8 +1175,10 @@ def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
             label=keys_new,
             linestyle=list_line[index],
             linewidth=3,
+            marker=markers[ind_m],
         )
         index = np.mod(index + 1, 4)
+        ind_m = np.mod(ind_m + 1, len(markers))
 
     ax.legend(loc="best", fontsize=10)
     ax.set_xlabel(str(config["change"]), fontsize=10)
@@ -1237,6 +1248,11 @@ def plot_pdf_y(regime_class, pdf_x, name_extra):
     res_probs["alph_x"] = regime_class.alphabet_x / 10 ** (mul_factor / 2)
     p_y = regime_class.pdf_y_given_x @ pdf_x
     alphabet_y = regime_class.alphabet_y / 10 ** (mul_factor / 2)
+
+    if regime_class.config["gain_later"]:
+        hn = Hardware_Nonlinear_and_Noise(regime_class.config)
+        alphabet_y = np.sqrt(hn.Esat_lin) * alphabet_y
+
     res_probs["pdf_y"] = p_y
     res_probs["pdf_y_given_x"] = regime_class.pdf_y_given_x
     res_probs["alph_y"] = alphabet_y
@@ -1409,15 +1425,16 @@ def plot_R1_R2_change(
                     marker=markers[ind_m],
                 )
                 ind_m = np.mod(ind_m + 1, len(markers))
-        ax.plot(
-            change_range,
-            res_change["R2"][key],
-            label="R2 " + key,
-            linewidth=2,
-            linestyle="dashdot",
-            marker=markers[ind_m],
-        )
-        ind_m = np.mod(ind_m + 1, len(markers))
+        else:
+            ax.plot(
+                change_range,
+                res_change["R2"][key],
+                label="R2 " + key,
+                linewidth=2,
+                linestyle="dashdot",
+                marker=markers[ind_m],
+            )
+            ind_m = np.mod(ind_m + 1, len(markers))
 
     ax.legend(loc="best", fontsize=8)
     ax.set_xlabel(str(config["change"]), fontsize=10)

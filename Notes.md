@@ -52,4 +52,25 @@
 
 ## March 2nd
 # NOTE: Don't run with boundary, mmse boundary needs too many samples and we could do it offline
+* Interference in First Regime is working - Alphabet of RX2 was not changed with multiplying factor
+* Y = sqrt(Gain)*ktanh(x/k) +Z2, we divide everything by sqrt(Gain) to reduce the alphabet_y size - Z2's variance is divided by Gain 
+        * Tested in main.py with hardware params - seems to be working, ADC also is working
+* Why was I taking the maximum point of Z1 noise as sigma_1^2? This is power, it should be sqrt , no?? - Fixed it but think again
+* Main.py Third Regime with 500 points is working with Gaussian, it had some infinite power issues when gd is active
 
+--- TO DO ---
+* Solve GD active Third Regime Main.py 
+* Third Regime PP - Quantization implement
+* Third Regime-Interference - Implement
+    
+
+## March 3rd
+# NOTE: The maximum quantization location is chosen by only considering X alphabet, interference and noise is not taken 
+# into consideration since the real mapping of X to Y matters. Make sure that this is a correct way to do it. 
+# Consider updating this by minimizing the error between the real and quantized Y
+* Third Regime PP- power was never divided with multiplying factor - Fixed
+* Third Regime PP ADC is working
+* Third Regime Interference is working
+
+--- TO DO ---
+* Focus on linear approximation
