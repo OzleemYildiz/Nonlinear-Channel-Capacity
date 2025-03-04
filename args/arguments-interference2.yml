@@ -26,8 +26,8 @@ gd_active : True
 epsilon : 0.000005 #convergence criteria
 lr : [0.0001] # learning rate
 max_iter : 10000 # maximum number of iterations
-n_lmbd : 2  # number of lambdas  - when x2 not fixed
-x2_fixed : False # if True, px2 is fixed and px1 is updated
+n_lmbd : 10  # number of lambdas  - when x2 not fixed
+x2_fixed : True # if True, px2 is fixed and px1 is updated
 x2_type : 1 # 0: Gaussian, 1: Optimized
 gd_nostop_cond : False # if True, the gd will not stop until max_iter
 complex : False # if True, the complex alphabet is used
@@ -43,5 +43,5 @@ SNR_min_dB : -5 #-170 -> This makes sense for Regime 1
 bits : 3 # bits of the ADC !! Currently not active
 ADC : True
 hd_change : 'pw1' # pw1: change the power1, pw2: change the power2, a:int_ratio # Not changed one is minimum
-snr_not_change : 5 #-160-> This makes sense for Regime 1
+snr_not_change : 25 #-160-> This makes sense for Regime 1
 gain_later : True

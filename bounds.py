@@ -1079,13 +1079,21 @@ def get_bounds(regime_class, power, res, ind):
             # sundeep_upper.append(
             #     sundeep_upper_bound_third_regime(power, config)
             # )
-            if config["nonlinearity"] != 5:
-                if not ("Upper_Bound_Tarokh" in res):
-                    res["Upper_Bound_Tarokh"] = []
+            # if config["nonlinearity"] != 5:
+            #     if not ("Upper_Bound_Tarokh" in res):
+            #         res["Upper_Bound_Tarokh"] = []
 
-                res["Upper_Bound_Tarokh"].append(
-                    upper_bound_tarokh_third_regime(power, config)
-                )
+            #     res["Upper_Bound_Tarokh"].append(
+            #         upper_bound_tarokh_third_regime(power, config)
+            #     )
+            if not ("MMSE_Minimum" in res):
+                res["MMSE_Minimum"] = []
+
+            res["MMSE_Minimum"] = bound_backtracing_check(
+                res["MMSE_Minimum"],
+                reg_mmse_bound_numerical(regime_class),
+            )
+
         if config["nonlinearity"] == 5:
             if not ("Upper_Peak" in res):
                 res["Upper_Peak"] = []

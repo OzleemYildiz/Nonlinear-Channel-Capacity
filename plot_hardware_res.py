@@ -19,12 +19,12 @@ def plot_different_bits():
 
     fig, ax = plt.subplots()
     color = ["b", "g", "r", "c", "m", "y", "k"]
-    for i in range(3, 7):
+    for i in range(3, 8):
         if i == 3:
             main_run_2 = "_Avg_regime=3_min_samples=100_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=4.53_nf2=15_bw=500000000_iip3=-6.3_gain=15.83_ADC_bits="
         else:
             main_run_2 = main_run
-        name = folder + main_run + str(i) + "/res.mat"
+        name = folder + main_run_2 + str(i) + "/res.mat"
         data = io.loadmat(name)
         power_change = data["Power_Change"]
         bounds = io.loadmat(bound + str(i) + "/res.mat")
@@ -68,7 +68,7 @@ def plot_different_bits():
     ax.legend(loc="best")
     ax = grid_minor(ax)
     ax.set_title(
-        "Regime 1: IIP3 =-6.3, Gain = 15.83, BW = 0.5 GHz, NF1 = 4.53 , NF2 = 15"
+        "Regime 3: IIP3 =-6.3, Gain = 15.83, BW = 0.5 GHz, NF1 = 4.53 , NF2 = 15"
     )
     os.makedirs(folder + "/PP/Plots/", exist_ok=True)
     fig.savefig(folder + "/PP/Plots/" + "ADC_bits.png")
@@ -78,7 +78,7 @@ def plot_different_bits():
 
 def plot_power_consumption():
     # folder = "Paper_Figure/Hardware-Params/ADC-PP/"
-    folder = "Paper_Figure/Regime 3 Hardware/"
+    folder = "Paper_Figure/Regime 3 Hardware/PP/"
     noise_figure = [
         4.53,
         # 3.56,
@@ -126,7 +126,7 @@ def plot_power_consumption():
         1 * 10**9,
         0.98 * 10**9,
     ]  # GHz
-    bits = 5
+    bits = 3
     hold_max = []
     for i in range(len(noise_figure)):
         main_run = (
@@ -152,7 +152,7 @@ def plot_power_consumption():
     ax.set_xlabel("Power Consumption (mW)")
     ax.set_ylabel(" Max Capacity")
     ax = grid_minor(ax)
-    ax.set_title("Regime 1, ADC bits = " + str(bits))
+    ax.set_title("Regime 3, ADC bits = " + str(bits))
     os.makedirs(folder + "/PP/Plots/", exist_ok=True)
     fig.savefig(folder + "/PP/Plots/" + "Power_consumption_bits=" + str(bits) + ".png")
     print("Power consumption plot saved in ", folder + "Plots/")

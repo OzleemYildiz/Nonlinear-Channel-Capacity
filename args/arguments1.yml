@@ -17,7 +17,7 @@ tanh_factor : 3 # k when the nonlinearity is tanh(x/k)
 output_dir : 'Res-PP-H' # file name to save the results
 regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
-gd_active : True # the gradient descent is active
+gd_active : False # the gradient descent is active
 gd_initial_ba : False # It has to be peak power constraint
 bound_active: False
 ba_active : False # Blahut Arimoto - only works with the peak power constraint
@@ -29,13 +29,13 @@ complex : False # complex alphabet and pdf
 x2_fixed : False
 # New params for the hardware integration
 hardware_params_active : True # hardware parameters are active for the nonlinearity
-noise_figure1 : 2.68 # dB noise figure of the first amplifier
+noise_figure1 : 7 # dB noise figure of the first amplifier
 noise_figure2 : 15 # dB noise figure of the remaining circuits
 gain : 17.32 # dB gain of the LNA
-iip3 : -20 # dBm IIP3 of the LNA
-bandwidth : 980000000 # Hz bandwidth of the LNA
+iip3 : -30 # dBm IIP3 of the LNA
+bandwidth : 5000000000 # Hz bandwidth of the LNA
 bits : 3 # bits of the ADC !! Currently not active
-snr_range : 30
+snr_range : 40
 #SNR_min_dB : -180 # This is the start of -5 in first regime - Since there is no sigma1, it works different
 SNR_min_dB : -5 # This is the start of -5 in third regime
 ADC : False
