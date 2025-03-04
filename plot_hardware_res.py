@@ -10,13 +10,20 @@ import pandas as pd
 
 
 def plot_different_bits():
-    folder = "Paper_Figure/Hardware-Params/ADC-PP/"
-    main_run = "_Avg_regime=1_min_samples=2000_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=2.68_nf2=15_bw=980000000_iip3=1.01_gain=17.32_ADC_bits="
-    bound = "Res-PP-H/_Avg_regime=1_min_samples=1000_tdm=False_lr=[1e-05]_hardware_nf1=2.68_nf2=15_bw=980000000_iip3=1.01_gain=17.32_ADC_bits="
+    # folder = "Paper_Figure/Hardware-Params/ADC-PP/"
+    # main_run = "_Avg_regime=1_min_samples=2000_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=2.68_nf2=15_bw=980000000_iip3=1.01_gain=17.32_ADC_bits="
+    # bound = "Res-PP-H/_Avg_regime=1_min_samples=1000_tdm=False_lr=[1e-05]_hardware_nf1=2.68_nf2=15_bw=980000000_iip3=1.01_gain=17.32_ADC_bits="
+    folder = "Paper_Figure/Regime 3 Hardware/PP/"
+    main_run = "_Avg_regime=3_min_samples=500_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=4.53_nf2=15_bw=500000000_iip3=-6.3_gain=15.83_ADC_bits="
+    bound = "Res-PP-B/_Avg_regime=3_min_samples=500_tdm=False_lr=[1e-05]_hardware_nf1=4.53_nf2=15_bw=500000000_iip3=-6.3_gain=15.83_ADC_bits="
 
     fig, ax = plt.subplots()
     color = ["b", "g", "r", "c", "m", "y", "k"]
-    for i in range(3, 9):
+    for i in range(3, 7):
+        if i == 3:
+            main_run_2 = "_Avg_regime=3_min_samples=100_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=4.53_nf2=15_bw=500000000_iip3=-6.3_gain=15.83_ADC_bits="
+        else:
+            main_run_2 = main_run
         name = folder + main_run + str(i) + "/res.mat"
         data = io.loadmat(name)
         power_change = data["Power_Change"]
@@ -60,15 +67,18 @@ def plot_different_bits():
     ax.set_ylabel("Capacity")
     ax.legend(loc="best")
     ax = grid_minor(ax)
-    ax.set_title("Regime 1: IIP3 = 1.01, Gain = 17.32, BW = 0.98 GHz, NF2 = 15")
-    os.makedirs(folder + "Plots/", exist_ok=True)
-    fig.savefig(folder + "Plots/" + "ADC_bits.png")
+    ax.set_title(
+        "Regime 1: IIP3 =-6.3, Gain = 15.83, BW = 0.5 GHz, NF1 = 4.53 , NF2 = 15"
+    )
+    os.makedirs(folder + "/PP/Plots/", exist_ok=True)
+    fig.savefig(folder + "/PP/Plots/" + "ADC_bits.png")
     print("ADC bits plot saved in ", folder + "Plots/")
     plt.close()
 
 
 def plot_power_consumption():
-    folder = "Paper_Figure/Hardware-Params/ADC-PP/"
+    # folder = "Paper_Figure/Hardware-Params/ADC-PP/"
+    folder = "Paper_Figure/Regime 3 Hardware/"
     noise_figure = [
         4.53,
         # 3.56,
@@ -120,7 +130,8 @@ def plot_power_consumption():
     hold_max = []
     for i in range(len(noise_figure)):
         main_run = (
-            "_Avg_regime=1_min_samples=2000_tdm=False_lr=[1e-05]_gd=True_hardware_nf1="
+            # "_Avg_regime=1_min_samples=2000_tdm=False_lr=[1e-05]_gd=True_hardware_nf1="
+            "_Avg_regime=3_min_samples=100_tdm=False_lr=[1e-05]_gd=True_hardware_nf1="
             + str(noise_figure[i])
             + "_nf2="
             + str(noise_figure2)
@@ -142,8 +153,8 @@ def plot_power_consumption():
     ax.set_ylabel(" Max Capacity")
     ax = grid_minor(ax)
     ax.set_title("Regime 1, ADC bits = " + str(bits))
-    os.makedirs(folder + "Plots/", exist_ok=True)
-    fig.savefig(folder + "Plots/" + "Power_consumption_bits=" + str(bits) + ".png")
+    os.makedirs(folder + "/PP/Plots/", exist_ok=True)
+    fig.savefig(folder + "/PP/Plots/" + "Power_consumption_bits=" + str(bits) + ".png")
     print("Power consumption plot saved in ", folder + "Plots/")
     plt.close()
 
@@ -152,7 +163,7 @@ def plot_x_y_marginal():
     chosen = "Paper_Figure/Hardware-Params/ADC-PP/_Avg_regime=1_min_samples=2000_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=2.68_nf2=15_bw=980000000_iip3=1.01_gain=17.32_ADC_bits=3"
 
     pdfs = io.loadmat(chosen + "/pdf_y_GD_power=99.99999999999997.mat")
-    
+
     pdf_x = pdfs["pdf_x"].reshape(-1)
     alph_x = pdfs["alph_x"].reshape(-1)
     q_pdf_y = pdfs["q_pdf_y"]
@@ -235,9 +246,9 @@ def plot_x_y_marginal():
 
 def main():
     plt.rcParams["text.usetex"] = True
-    # plot_different_bits()
-    # plot_power_consumption()
-    plot_x_y_marginal()
+    plot_different_bits()
+    plot_power_consumption()
+    # plot_x_y_marginal()
 
 
 if __name__ == "__main__":

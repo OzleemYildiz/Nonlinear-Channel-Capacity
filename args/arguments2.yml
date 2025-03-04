@@ -34,9 +34,10 @@ noise_figure2 : 15 # dB noise figure of the remaining circuits
 gain : 17.32 # dB gain of the LNA
 iip3 : 0.07 # dBm IIP3 of the LNA
 bandwidth : 1000000000 # Hz bandwidth of the LNA
-bits : 3 # bits of the ADC !! Currently not active
 snr_range : 30
 #SNR_min_dB : -170
-SNR_min_dB : -5 # This is the start of -5 in third regime
+bits : 3 # bits of the ADC !! Currently not active
+snr_range : 30
+#SNR_min_dB : -180 # This is the start of -5 in first regime - Since there is no sigma1, it works different
 ADC : True
 gain_later : True

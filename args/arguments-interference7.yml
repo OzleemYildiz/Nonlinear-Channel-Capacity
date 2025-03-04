@@ -38,6 +38,7 @@ noise_figure1 : 4.53 # dB noise figure of the first amplifier
 noise_figure2 : 15 # dB noise figure of the remaining circuits
 gain : 15.83 # dB gain of the LNA
 iip3 : -6.3 # dBm IIP3 of the LNA
+bandwidth : 500000000 # Hz bandwidth of the signal
 snr_range : 30
 SNR_min_dB : -5 #-170 -> This makes sense for Regime 1
 bits : 3 # bits of the ADC !! Currently not active

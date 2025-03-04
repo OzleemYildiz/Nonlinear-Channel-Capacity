@@ -74,3 +74,7 @@
 
 --- TO DO ---
 * Focus on linear approximation
+* Check third regime runs -PP, Int
+
+## March 4th
+* Runs: 
