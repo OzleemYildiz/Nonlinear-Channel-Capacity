@@ -19,10 +19,8 @@ def alphabet_fix_nonlinear(alphabet_x, config):
 def get_nonlinear_fn(config, tanh_factor=None):
     if config["hardware_params_active"]:  # hardware parameters
         hn = Hardware_Nonlinear_and_Noise(config)
-        if config["gain_later"]:
-            nonlinear_fn = hn.nonlinear_func_nogain()
-        else:
-            nonlinear_fn = hn.nonlinear_func_torch()
+        nonlinear_fn = hn.nonlinear_func_torch()
+
     else:  # the parameters that we set
         # 0:linear
         if config["nonlinearity"] == 0:
@@ -264,25 +262,33 @@ class Hardware_Nonlinear_and_Noise:
         self.P_in_min_linear, self.P_in_max_linear = self.get_min_max_power()
 
     def nonlinear_func_numpy(self):
-        return lambda x: np.sqrt(self.gain_lin * self.Esat_lin) * np.tanh(
-            x / np.sqrt(self.Esat_lin)
-        )
+        if self.gain_later:
+            lambda x: np.sqrt(self.gain_lin * self.Esat_lin) * np.tanh(
+                x / np.sqrt(self.Esat_lin)
+            )
+        else:
+            return lambda x: np.sqrt(self.gain_lin * self.Esat_lin) * np.tanh(
+                x / np.sqrt(self.Esat_lin)
+            )
 
     def nonlinear_func_torch(self):
-        return lambda x: torch.sqrt(
-            torch.tensor(self.gain_lin * self.Esat_lin)
-        ) * torch.tanh(torch.tensor(x) / torch.sqrt(torch.tensor(self.Esat_lin)))
+        if self.gain_later:
+            return lambda x: torch.sqrt(torch.tensor(self.Esat_lin)) * torch.tanh(
+                torch.tensor(x) / torch.sqrt(torch.tensor(self.Esat_lin))
+            )
+        else:
+            return lambda x: torch.sqrt(
+                torch.tensor(self.gain_lin * self.Esat_lin)
+            ) * torch.tanh(torch.tensor(x) / torch.sqrt(torch.tensor(self.Esat_lin)))
 
     def derivative_nonlinear_func_numpy(self):
-        return (
-            lambda x: np.sqrt(self.gain_lin) / np.cosh(x / np.sqrt(self.Esat_lin)) ** 2
-        )
-
-    def nonlinear_func_nogain(self):
-
-        return lambda x: torch.sqrt(torch.tensor(self.Esat_lin)) * torch.tanh(
-            torch.tensor(x) / torch.sqrt(torch.tensor(self.Esat_lin))
-        )
+        if self.gain_later:
+            return lambda x: 1 / np.cosh(x / np.sqrt(self.Esat_lin)) ** 2
+        else:
+            return (
+                lambda x: np.sqrt(self.gain_lin)
+                / np.cosh(x / np.sqrt(self.Esat_lin)) ** 2
+            )
 
     def get_noise_vars(self):
 
@@ -343,9 +349,15 @@ class Hardware_Nonlinear_and_Noise:
         #     / torch.sqrt(torch.tensor(self.gain_lin * self.Esat_lin))
         #     * torch.tanh(torch.tensor(x) / torch.sqrt(torch.tensor(self.Esat_lin)))
         # )
-        return lambda x: torch.sqrt(torch.tensor(self.Esat_lin)) * torch.atanh(
-            torch.tensor(x) / torch.sqrt(torch.tensor(self.gain_lin * self.Esat_lin))
-        )
+        if self.gain_later:
+            return torch.sqrt(torch.tensor(self.Esat_lin)) * torch.atanh(
+                torch.tensor(x) / torch.sqrt(torch.tensor(self.Esat_lin))
+            )
+        else:
+            return lambda x: torch.sqrt(torch.tensor(self.Esat_lin)) * torch.atanh(
+                torch.tensor(x)
+                / torch.sqrt(torch.tensor(self.gain_lin * self.Esat_lin))
+            )
 
     def get_derivative_of_inverse_nonlinearity(self):
         # return lambda x: -1 / (
@@ -358,10 +370,19 @@ class Hardware_Nonlinear_and_Noise:
         #     * self.Esat_lin
         #     / (self.gain_lin * self.Esat_lin - x**2)
         # )
-        return lambda x: 1 / (
-            torch.sqrt(torch.tensor(self.gain_lin))
-            * (1 - torch.tensor(x) ** 2 / (torch.tensor(self.gain_lin * self.Esat_lin)))
-        )
+        if self.gain_later:
+            return lambda x: 1 / (
+                1 - torch.tensor(x) ** 2 / torch.tensor(self.Esat_lin)
+            )
+        else:
+            return lambda x: 1 / (
+                torch.sqrt(torch.tensor(self.gain_lin))
+                * (
+                    1
+                    - torch.tensor(x) ** 2
+                    / (torch.tensor(self.gain_lin * self.Esat_lin))
+                )
+            )
 
 
 def test_nonlinearity():

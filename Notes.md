@@ -76,5 +76,5 @@
 * Focus on linear approximation
 * Check third regime runs -PP, Int
 
-## March 4th
-* Runs: 
+## March 5th
+* X2 fixed PW2 change might need more memory - OOM Kill

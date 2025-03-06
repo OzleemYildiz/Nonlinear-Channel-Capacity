@@ -37,9 +37,7 @@ def define_save_location(config):
     if config["complex"]:
         save_location = save_location + "Complex_"
 
-    save_location = (
-        save_location + config["cons_str"] + "_phi=" + str(config["nonlinearity"])
-    )
+    save_location = save_location + config["cons_str"]
     if config["hardware_params_active"]:
         save_location = (
             save_location
@@ -55,6 +53,7 @@ def define_save_location(config):
         save_location = save_location + "_NF2=" + str(config["noise_figure2"])
 
     else:
+        save_location = save_location + "_phi=" + str(config["nonlinearity"])
         if config["nonlinearity"] == 5:
             save_location = save_location + "_clip=" + str(config["clipping_limit_x"])
         if config["regime"] == 1:
@@ -97,12 +96,22 @@ def define_save_location(config):
             + "_lr="
             + str(config["lr"])
         )
-        if config["x2_fixed"]:
+    if config["x2_fixed"]:
 
-            save_location = save_location + "_x2_fixed"
-            save_location = save_location + "_x2=" + str(config["x2_type"])
+        save_location = save_location + "_x2_fixed"
+        save_location = save_location + "_x2=" + str(config["x2_type"])
 
-    save_location = save_location + "_" + config["change"] + "/"
+    if config["hardware_params_active"]:
+        save_location = (
+            save_location
+            + "_"
+            + config["hd_change"]
+            + "_fixed_SNR="
+            + str(config["snr_not_change"])
+            + "_"
+        )
+    else:
+        save_location = save_location + "_" + config["change"] + "_"
 
     return save_location
 
@@ -132,6 +141,7 @@ def change_parameters_range(config):
             np.log10(config["max_power1"]),
             config["n_change"],
         )
+        
         print("-------------Change is Power1-------------")
     elif config["change"] == "pw2":
         if config["hardware_params_active"]:
@@ -145,6 +155,8 @@ def change_parameters_range(config):
             np.log10(config["max_power2"]),
             config["n_change"],
         )
+        
+        
         print("-------------Change is Power2-------------")
     elif config["change"] == "a":
         change_range = np.linspace(
@@ -209,7 +221,6 @@ def get_run_parameters(config, chng):
         res_str_run = "_pw1=" + str(round(power1, 3))
     elif config["change"] == "pw2":
         print("Power2: ", chng)
-        power2 = chng
         res_str = (
             "pw1="
             + str(power1)
@@ -334,12 +345,14 @@ def get_interferer_capacity(config, power2):
     return cap
 
 
-# TODO: GOTTA UPDATE
 def get_linear_approximation_capacity(regime_RX2, config, power1, pdf_x_RX2):
 
+    regime_RX2.fix_with_multiplying()
     deriv_func = get_derivative_of_nonlinear_fn(
-        config, tanh_factor=regime_RX2.tanh_factor
+        regime_RX2.config, tanh_factor=regime_RX2.tanh_factor
     )
+    power1 = power1 / (10 ** (regime_RX2.multiplying_factor))
+
     if config["complex"]:
         d_phi_s = (
             abs(
@@ -350,18 +363,31 @@ def get_linear_approximation_capacity(regime_RX2, config, power1, pdf_x_RX2):
         )
     else:
         d_phi_s = abs(deriv_func(regime_RX2.alphabet_x)) ** 2
-    approx_cap1 = torch.mean(
-        torch.log(
-            1
-            + (d_phi_s * power1)
-            / (config["sigma_11"] ** 2 * d_phi_s + config["sigma_12"] ** 2)
-        )
-        * pdf_x_RX2
-    )
-    if not config["complex"]:
-        approx_cap1 = approx_cap1 / 2
 
-    return approx_cap1.detach().numpy()
+    ki = torch.log(
+        1
+        + (d_phi_s * power1) / (regime_RX2.sigma_1**2 * d_phi_s + regime_RX2.sigma_2**2)
+    )
+    approx_cap_ki = ki @ pdf_x_RX2
+
+    tin = torch.log(
+        1
+        + (d_phi_s * power1)
+        / (
+            regime_RX2.sigma_1**2 * d_phi_s
+            + regime_RX2.sigma_2**2
+            + abs(regime_RX2.get_out_nonlinear(regime_RX2.alphabet_x)) ** 2
+        )
+    )
+    approx_cap_tin = tin @ pdf_x_RX2
+
+    if not config["complex"]:
+        approx_cap_ki = approx_cap_ki / 2
+        approx_cap_tin = approx_cap_tin / 2
+    regime_RX2.unfix_with_multiplying()
+    power1 = power1 * (10 ** (regime_RX2.multiplying_factor))
+
+    return approx_cap_ki.detach().numpy(), approx_cap_tin.detach().numpy()
 
 
 def get_tdm_capacity_with_optimized_dist(
@@ -455,7 +481,7 @@ def main():
     save_location = define_save_location(config)
     os.makedirs(save_location, exist_ok=True)
     print("Save Location: ", save_location)
-
+    
     # cap_RX1_no_int_no_nonlinearity = []
     # cap_RX2_no_nonlinearity = []
     cap_gaus_RX1 = []
@@ -481,7 +507,8 @@ def main():
             res_change["R2"]["Learned"] = []
 
     if config["regime"] == 3:
-        res_change["Linear_Approx"] = []
+        res_change["Linear_Approx_KI"] = []
+        res_change["Linear_Approx_TIN"] = []
 
     old_config_title = config["title"]
 
@@ -544,7 +571,7 @@ def main():
         else:
             res_change["R1"]["Linear"].append(linear_tin)
             res_change["R2"]["Linear"].append(linear_R2)
-
+        
         update_save_location = save_location + config["change"] + "=" + str(chng) + "/"
         config["save_location"] = update_save_location
 
@@ -599,14 +626,18 @@ def main():
         else:
             pdf_x_RX2 = None
 
-        res_tdm = get_tdm_capacity_with_optimized_dist(
-            regime_RX1, regime_RX2, config, pdf_x_RX2, update_save_location
-        )
+        if config["tdm_active"]:
+            res_tdm = get_tdm_capacity_with_optimized_dist(
+                regime_RX1, regime_RX2, config, pdf_x_RX2, update_save_location
+            )
+        else:
+            res_tdm = None
 
-        # Approximated Capacity - # TODO: Update
+        # Approximated Capacity -
         if config["regime"] == 3:
             if config["x2_fixed"]:
-                approx_cap1 = get_linear_approximation_capacity(
+
+                approx_cap_ki, approx_cap_tin = get_linear_approximation_capacity(
                     regime_RX2, config, power1, pdf_x_RX2
                 )
             else:
@@ -615,10 +646,11 @@ def main():
                     regime_RX2,
                     0,
                 )  # give gaussian - not fixed
-                approx_cap1 = get_linear_approximation_capacity(
+                approx_cap_ki, approx_cap_tin = get_linear_approximation_capacity(
                     regime_RX2, config, power1, gaus_pdf_x_RX2
                 )
-            res_change["Linear_Approx"].append(approx_cap1)
+            res_change["Linear_Approx_KI"].append(approx_cap_ki)
+            res_change["Linear_Approx_TIN"].append(approx_cap_tin)
 
         # --- Gaussian Capacity
         res_gaus = {}
