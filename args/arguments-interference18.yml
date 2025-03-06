@@ -35,9 +35,9 @@ complex : False # if True, the complex alphabet is used
 snr_range : 30
 SNR_min_dB : -5 #-170 -> This makes sense for Regime 1
 bits : 3 # bits of the ADC !! Currently not active
-ADC : False
-hd_change : 'pw2' # pw1: change the power1, pw2: change the power2, a:int_ratio # Not changed one is minimum
-snr_not_change : 5 #-160-> This makes sense for Regime 1
+ADC : True
+hd_change : 'pw1' # pw1: change the power1, pw2: change the power2, a:int_ratio # Not changed one is minimum
+snr_not_change : 20 #-160-> This makes sense for Regime 1
 gain_later : True
 tdm_active : True
 hardware_params_active : True # hardware parameters are active for the nonlinearity

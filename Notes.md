@@ -78,3 +78,9 @@
 
 ## March 5th
 * X2 fixed PW2 change might need more memory - OOM Kill
+
+# March 6th
+RUNS: 
+* Interference 1-7:  X2 not fixed No ADC, Different Hardware Params, Same SNR values - Put in the same plot maybe
+* Interference 8-15: X2 fixed results for pw1 pw2 with ADC without ADC. They can be grouped to compare
+* Interference 16-23 : Above but higher fixed power
