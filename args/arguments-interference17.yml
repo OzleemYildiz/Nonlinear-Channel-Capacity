@@ -22,7 +22,7 @@ clipping_limit_y : 3 # the limit for the clipping if nonlinear is clip (5)
 output_dir : 'Res-Int' # file name to save the results
 regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(IX+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
-gd_active : False
+gd_active : True
 epsilon : 0.000005 #convergence criteria
 lr : [0.0001] # learning rate
 max_iter : 10000 # maximum number of iterations

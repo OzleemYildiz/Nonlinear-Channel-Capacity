@@ -479,7 +479,8 @@ def main():
         "****",
     )
     save_location = define_save_location(config)
-    os.makedirs(save_location, exist_ok=True)
+    #os.makedirs(save_location, exist_ok=True) # Now I add string at the end
+    
     print("Save Location: ", save_location)
     
     # cap_RX1_no_int_no_nonlinearity = []
