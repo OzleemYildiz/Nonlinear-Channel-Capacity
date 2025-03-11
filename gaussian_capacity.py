@@ -21,7 +21,7 @@ def gaussian_capacity(regime_class, power, complex_alphabet=False):
         regime_class,
         # project_active=False,
     )
-    plot_pdf_y(regime_class, pdf_x, name_extra="Gaussian_power=" + str(power))
+    plot_pdf_y(regime_class, pdf_x, name_extra="Gaussian_power=" + str(power))#-> For now, because I cancelled saving pdf_y_given_x
 
     cap_g = -loss_g
     # print("~~~~~Gaussian Capacity:", cap_g, "~~~~~")

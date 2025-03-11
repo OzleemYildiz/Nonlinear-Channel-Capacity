@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 from scipy import io
-from utils get_regime_class_interference
+from utils import get_regime_class_interference
+
 
 def main():
     main_loc = "Res-Int-T/Avg_phi=3_regime=3_N=16_sigma11=1_sigma12=1_sigma21=1_sigma22=1_max_iter=10000_lr=[0.0001]_x2_fixed_x2=1_pw1/"

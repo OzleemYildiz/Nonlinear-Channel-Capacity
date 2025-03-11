@@ -30,6 +30,8 @@ from nonlinearity_utils import (
 )
 import torch
 
+# from memory_profiler import profile
+
 
 def define_save_location(config):
 
@@ -141,7 +143,7 @@ def change_parameters_range(config):
             np.log10(config["max_power1"]),
             config["n_change"],
         )
-        
+
         print("-------------Change is Power1-------------")
     elif config["change"] == "pw2":
         if config["hardware_params_active"]:
@@ -155,8 +157,7 @@ def change_parameters_range(config):
             np.log10(config["max_power2"]),
             config["n_change"],
         )
-        
-        
+
         print("-------------Change is Power2-------------")
     elif config["change"] == "a":
         change_range = np.linspace(
@@ -479,10 +480,10 @@ def main():
         "****",
     )
     save_location = define_save_location(config)
-    #os.makedirs(save_location, exist_ok=True) # Now I add string at the end
-    
+    # os.makedirs(save_location, exist_ok=True) # Now I add string at the end
+
     print("Save Location: ", save_location)
-    
+
     # cap_RX1_no_int_no_nonlinearity = []
     # cap_RX2_no_nonlinearity = []
     cap_gaus_RX1 = []
@@ -572,7 +573,7 @@ def main():
         else:
             res_change["R1"]["Linear"].append(linear_tin)
             res_change["R2"]["Linear"].append(linear_R2)
-        
+
         update_save_location = save_location + config["change"] + "=" + str(chng) + "/"
         config["save_location"] = update_save_location
 
@@ -634,7 +635,7 @@ def main():
         else:
             res_tdm = None
 
-        # Approximated Capacity -
+            # Approximated Capacity -
         if config["regime"] == 3:
             if config["x2_fixed"]:
 
@@ -892,4 +893,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()

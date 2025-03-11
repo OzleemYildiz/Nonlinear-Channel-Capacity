@@ -1166,7 +1166,7 @@ def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
 
     fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
     index = 0
-
+    
     for keys in res_change.keys():
         keys_new = keys.replace("_", " ")
         ax.plot(
@@ -1241,12 +1241,23 @@ def grid_minor(ax):
 # If ADC is active, we need to plot quantized together
 # Then save p_ys and p_y_given_x
 def plot_pdf_y(regime_class, pdf_x, name_extra):
+
+    if regime_class.config["ADC"]:
+        q_pdf_y_g_x = regime_class.pdf_y_given_x
+        regime_class.config["ADC"] = False
+        regime_class.pdf_y_given_x = None
+        pdf_y_g_x = regime_class.get_pdf_y_given_x()
+        regime_class.config["ADC"] = True
+    else:
+        pdf_y_g_x = regime_class.pdf_y_given_x
+        q_pdf_y_g_x = None
+
     mul_factor = regime_class.multiplying_factor
     pdf_x = pdf_x.detach()
     res_probs = {}
     res_probs["pdf_x"] = pdf_x
     res_probs["alph_x"] = regime_class.alphabet_x / 10 ** (mul_factor / 2)
-    p_y = regime_class.pdf_y_given_x @ pdf_x
+    p_y = pdf_y_g_x @ pdf_x
     alphabet_y = regime_class.alphabet_y / 10 ** (mul_factor / 2)
 
     if regime_class.config["gain_later"]:
@@ -1254,7 +1265,7 @@ def plot_pdf_y(regime_class, pdf_x, name_extra):
         alphabet_y = np.sqrt(hn.Esat_lin) * alphabet_y
 
     res_probs["pdf_y"] = p_y
-    res_probs["pdf_y_given_x"] = regime_class.pdf_y_given_x
+    res_probs["pdf_y_given_x"] = pdf_y_g_x
     res_probs["alph_y"] = alphabet_y
     fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
     if regime_class.config["complex"]:
@@ -1276,8 +1287,11 @@ def plot_pdf_y(regime_class, pdf_x, name_extra):
 
     if regime_class.config["ADC"]:
 
-        q_pdf_y = regime_class.q_pdf_y_given_x @ pdf_x
+        q_pdf_y = q_pdf_y_g_x @ pdf_x
         q_alph_y = regime_class.quant_locs / 10 ** (mul_factor / 2)
+        if regime_class.config["gain_later"]:
+            q_alph_y = np.sqrt(hn.Esat_lin) * q_alph_y
+
         res_probs["q_pdf_y"] = q_pdf_y
         res_probs["q_alph_y"] = q_alph_y
         if regime_class.config["complex"]:
@@ -1306,6 +1320,7 @@ def plot_pdf_y(regime_class, pdf_x, name_extra):
             lines2, labels2 = ax2.get_legend_handles_labels()
             lines = lines + lines2
             labels = labels + labels2
+
     ax.legend(lines, labels, loc=0)
     title = regime_class.config["title"]
     ax.set_title(

@@ -103,14 +103,17 @@ class Third_Regime:
             )
 
         pdf_z1 = pdf_z1 / (torch.sum(pdf_z1) + 1e-30)
+
+        self.pdf_z1 = pdf_z1
+        self.alphabet_z1 = alphabet_z1
         return pdf_z1, alphabet_z1
 
     def get_pdf_y_given_x(self):
         if self.pdf_y_given_x is not None:
-            if self.config["ADC"]:
-                return self.q_pdf_y_given_x
-            else:
-                return self.pdf_y_given_x
+            # if self.config["ADC"]:
+            #     return self.q_pdf_y_given_x
+            # else:
+            return self.pdf_y_given_x
 
         pdf_y_given_x = torch.zeros(
             (self.alphabet_y.shape[0], self.alphabet_x.shape[0])
@@ -159,13 +162,13 @@ class Third_Regime:
                 torch.sum(pdf_y_given_x[:, ind]) + 1e-30
             )
 
-        self.pdf_y_given_x = pdf_y_given_x
+        # self.pdf_y_given_x = pdf_y_given_x
         if self.config["ADC"]:
-            self.q_pdf_y_given_x = real_quant(
+            self.pdf_y_given_x = real_quant(
                 self.quant_locs, self.indices, pdf_y_given_x
             )
-            return self.q_pdf_y_given_x
-
+            return self.pdf_y_given_x
+        self.pdf_y_given_x = pdf_y_given_x
         return pdf_y_given_x
 
     def get_out_nonlinear(self, alphabet_u):
@@ -238,8 +241,7 @@ class Third_Regime:
 
     def get_pdf_y_given_x1_and_x2(self, alphabet_x2, int_ratio):
         pdf_z1, alphabet_z1 = self.get_z1_pdf_and_alphabet()
-        self.pdf_z1 = pdf_z1
-        self.alphabet_z1 = alphabet_z1
+
         pdf_y_given_x_and_x2 = torch.zeros(
             self.alphabet_y.shape[0], self.alphabet_x.shape[0], len(alphabet_x2)
         )

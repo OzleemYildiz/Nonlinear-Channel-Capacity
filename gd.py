@@ -109,7 +109,9 @@ def gd_capacity(config, power, regime_class):
     max_pdf_x = project_pdf(max_pdf_x, config, max_alphabet_x, power)
     print("~~~~~Max Capacity:", max_capacity, "~~~~~")
 
-    plot_pdf_y(regime_class, max_pdf_x, name_extra="GD_power=" + str(power))
+    plot_pdf_y(
+        regime_class, max_pdf_x, name_extra="GD_power=" + str(power)
+    )  # -> For now, because I cancelled saving pdf_y_given_x
 
     return max_capacity, max_pdf_x, max_alphabet_x, opt_capacity
 
@@ -204,7 +206,7 @@ def gradient_descent_on_interference(
                 sum_capacity = loss.detach().clone()
                 opt_sum_capacity.append(-sum_capacity.detach().numpy())
 
-                if opt_sum_capacity[-1] > max_sum_cap_h:
+                if opt_sum_capacity[-1] >= max_sum_cap_h:
                     max_sum_cap_h = opt_sum_capacity[-1]
                     max_pdf_x_RX1_h = pdf_x_RX1.clone().detach()
                     max_pdf_x_RX2_h = pdf_x_RX2.clone().detach()
