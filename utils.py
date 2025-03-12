@@ -1166,7 +1166,7 @@ def plot_R1_vs_change(res_change, change_range, config, save_location, res_str):
 
     fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
     index = 0
-    
+
     for keys in res_change.keys():
         keys_new = keys.replace("_", " ")
         ax.plot(
@@ -1243,11 +1243,13 @@ def grid_minor(ax):
 def plot_pdf_y(regime_class, pdf_x, name_extra):
 
     if regime_class.config["ADC"]:
+
         q_pdf_y_g_x = regime_class.pdf_y_given_x
         regime_class.config["ADC"] = False
         regime_class.pdf_y_given_x = None
         pdf_y_g_x = regime_class.get_pdf_y_given_x()
         regime_class.config["ADC"] = True
+        regime_class.pdf_y_given_x = None
     else:
         pdf_y_g_x = regime_class.pdf_y_given_x
         q_pdf_y_g_x = None
@@ -1294,6 +1296,7 @@ def plot_pdf_y(regime_class, pdf_x, name_extra):
 
         res_probs["q_pdf_y"] = q_pdf_y
         res_probs["q_alph_y"] = q_alph_y
+
         if regime_class.config["complex"]:
             ax.scatter(
                 q_alph_y.real,

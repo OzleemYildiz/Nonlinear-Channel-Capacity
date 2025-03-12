@@ -4,8 +4,8 @@ sigma_1 : 1
 sigma_2 : 1
 epsilon : 0.000000005 #convergence criteria
 lr : [0.00001] # learning rate
-max_iter : 10 # maximum number of iterations
-min_samples: 10 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this #qam_k :  k^2 QAM modulation
+max_iter : 10000 # maximum number of iterations
+min_samples: 32 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this #qam_k :  k^2 QAM modulation
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment
 n_snr : 10 # number of SNRs
 nonlinearity : 3 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C2 (sgn(X)abs(X)^{0.9}), 3:nonlinear tanh(X), 4:nonlinear x4: x/(1 + x^4)^1/4 # 5: nonlinear clip
@@ -17,7 +17,7 @@ tanh_factor : 3 # k when the nonlinearity is tanh(x/k)
 output_dir : 'Res-PP-H' # file name to save the results
 regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(X+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
-gd_active : False # the gradient descent is active
+gd_active : True # the gradient descent is active
 gd_initial_ba : False # It has to be peak power constraint
 bound_active: False
 ba_active : False # Blahut Arimoto - only works with the peak power constraint
@@ -28,15 +28,16 @@ gd_nostop_cond : False  #epsilon is useless if it's true
 complex : True # complex alphabet and pdf
 x2_fixed : False
 # New params for the hardware integration
-hardware_params_active : True # hardware parameters are active for the nonlinearity
-noise_figure1 : 7 # dB noise figure of the first amplifier
-noise_figure2 : 15 # dB noise figure of the remaining circuits
-gain : 17.32 # dB gain of the LNA
-iip3 : -40 # dBm IIP3 of the LNA
-bandwidth : 2000000000 # Hz bandwidth of the LNA
+snr_range : 30
+#SNR_min_dB : -170
 bits : 3 # bits of the ADC !! Currently not active
-snr_range : 15
-#SNR_min_dB : -180 # This is the start of -5 in first regime - Since there is no sigma1, it works different
-SNR_min_dB : -5 # This is the start of -5 in third regime
+snr_range : 30
+SNR_min_dB : -5 #-170 -> This makes sense for Regime 1
 ADC : True
 gain_later : True
+hardware_params_active : True # hardware parameters are active for the nonlinearity
+noise_figure1 : 2.68 # dB noise figure of the first amplifier
+noise_figure2 : 15 # dB noise figure of the remaining circuits
+gain : 17.32 # dB gain of the LNA
+iip3 : 1.01 # dBm IIP3 of the LNA
+bandwidth : 980000000 # Hz bandwidth of the LNA

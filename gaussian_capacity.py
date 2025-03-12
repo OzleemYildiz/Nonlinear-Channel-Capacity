@@ -4,12 +4,16 @@ from utils import (
     get_regime_class_interference,
     loss_interference,
     plot_pdf_y,
+    read_config,
 )
 import torch
 from First_Regime import First_Regime
 import math
 import numpy as np
 from nonlinearity_utils import get_nonlinear_fn
+
+import matplotlib.pyplot as plt
+import os, glob
 
 
 def gaussian_capacity(regime_class, power, complex_alphabet=False):
@@ -21,7 +25,9 @@ def gaussian_capacity(regime_class, power, complex_alphabet=False):
         regime_class,
         # project_active=False,
     )
-    plot_pdf_y(regime_class, pdf_x, name_extra="Gaussian_power=" + str(power))#-> For now, because I cancelled saving pdf_y_given_x
+    plot_pdf_y(
+        regime_class, pdf_x, name_extra="Gaussian_power=" + str(power)
+    )  # -> For now, because I cancelled saving pdf_y_given_x
 
     cap_g = -loss_g
     # print("~~~~~Gaussian Capacity:", cap_g, "~~~~~")
@@ -132,7 +138,13 @@ def update_nonlinear_function(config, alpha):
     pass
 
 
-def gaus_interference_R1_R2_curve(config, power, power2):
+def gaus_interference_R1_R2_curve(
+    config,
+    reg_RX1,
+    reg_RX2,
+    int_ratio,
+    tin_active,
+):
     cap_gaus_RX1 = []
     cap_gaus_RX2 = []
     ratio_pw = np.linspace(0.01, 0.99, 20)
@@ -141,17 +153,12 @@ def gaus_interference_R1_R2_curve(config, power, power2):
         power2_upd = ratio * power2
 
         # print("-----------Power: ", power, "when lambda=", lmbd, "-----------")
-        alphabet_x_RX1, alphabet_y_RX1, alphabet_x_RX2, alphabet_y_RX2 = (
-            get_interference_alphabet_x_y(config, power, power2_upd)
-        )
+
         cap1, cap2 = gaussian_interference_capacity(
-            power1,
-            power2_upd,
-            config,
-            alphabet_x_RX1,
-            alphabet_y_RX1,
-            alphabet_x_RX2,
-            alphabet_y_RX2,
+            reg_RX1,
+            reg_RX2,
+            int_ratio,
+            tin_active,
         )
         cap_gaus_RX1.append(cap1.numpy().item())
         cap_gaus_RX2.append(cap2.numpy().item())
