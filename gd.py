@@ -101,7 +101,7 @@ def gd_capacity(config, power, regime_class):
             # moving average of capacity between last 100 iterations did not improve, stop
             if not config["gd_nostop_cond"]:
                 if (
-                    i > 200
+                    i > 400
                     and np.abs(opt_capacity[-1] - np.mean(opt_capacity[-200:-1]))
                     < opt_capacity[-1] * config["epsilon"]
                 ):
@@ -241,9 +241,9 @@ def gradient_descent_on_interference(
                     )
 
                 if (
-                    i > 200
+                    i > 1000
                     and np.abs(
-                        opt_sum_capacity[-1] - np.mean(opt_sum_capacity[-200:-1])
+                        opt_sum_capacity[-1] - np.mean(opt_sum_capacity[-400:-1])
                     )
                     < opt_sum_capacity[-1] * config["epsilon"]
                 ):
@@ -275,6 +275,23 @@ def gradient_descent_on_interference(
                 max_cap_RX2_h,
                 "*****",
             )
+
+            plot_pdf_y(
+                reg_RX1,
+                pdf_x_RX1,
+                name_extra="GD_RX1_P=" + str(reg_RX1.power) + "_L=" + str(lmbd),
+                int_active=True,
+                int_pdf=pdf_x_RX2,
+                int_reg=reg_RX2,
+                int_ratio=int_ratio,
+            )
+            plot_pdf_y(
+                reg_RX2,
+                pdf_x_RX2,
+                name_extra="GD_RX2_P=" + str(reg_RX2.power) + "_L=" + str(lmbd),
+                int_active=False,
+            )
+
     return (
         max_sum_cap,
         max_pdf_x_RX1,

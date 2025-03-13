@@ -1240,21 +1240,48 @@ def grid_minor(ax):
 # pdf_y plotting
 # If ADC is active, we need to plot quantized together
 # Then save p_ys and p_y_given_x
-def plot_pdf_y(regime_class, pdf_x, name_extra):
+def plot_pdf_y(
+    regime_class,
+    pdf_x,
+    name_extra,
+    int_active=False,
+    int_pdf=None,
+    int_reg=None,
+    int_ratio=0,
+):
 
     if regime_class.config["ADC"]:
-
-        q_pdf_y_g_x = regime_class.pdf_y_given_x
+        if int_active:
+            q_pdf_y_g_x = regime_class.get_pdf_y_given_x_with_interference(
+                int_pdf, int_reg.alphabet_x, int_ratio
+            )
+            regime_class.pdf_y_given_x_and_x2 = None
+        else:
+            q_pdf_y_g_x = regime_class.pdf_y_given_x
+            regime_class.pdf_y_given_x = None
         regime_class.config["ADC"] = False
-        regime_class.pdf_y_given_x = None
-        pdf_y_g_x = regime_class.get_pdf_y_given_x()
+
+        if int_active:
+            pdf_y_g_x = regime_class.get_pdf_y_given_x_with_interference(
+                int_pdf, int_reg.alphabet_x, int_ratio
+            )
+            regime_class.pdf_y_given_x_and_x2 = None
+        else:
+            pdf_y_g_x = regime_class.get_pdf_y_given_x()
+            regime_class.pdf_y_given_x = None
         regime_class.config["ADC"] = True
-        regime_class.pdf_y_given_x = None
+
     else:
-        pdf_y_g_x = regime_class.pdf_y_given_x
+        if int_active:
+            pdf_y_g_x = regime_class.get_pdf_y_given_x_with_interference(
+                int_pdf, int_reg.alphabet_x, int_ratio
+            )
+        else:
+            pdf_y_g_x = regime_class.get_pdf_y_given_x()
         q_pdf_y_g_x = None
 
     mul_factor = regime_class.multiplying_factor
+
     pdf_x = pdf_x.detach()
     res_probs = {}
     res_probs["pdf_x"] = pdf_x
@@ -1400,18 +1427,27 @@ def plot_R1_R2_change(
     ]
     ind_m = 0
 
+    ## NOTE: I update to only show 2 extreme lambda values for general understanding
+    if lambda_sweep is not None:
+        ind_list = [0, len(lambda_sweep) - 1]
+    else:
+        ind_list = []
+
+    if "Learned" not in res_change["R1"].keys() and lambda_sweep is None:
+        raise ValueError("Lambda sweep must be given for Learned")
+
     fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)
     for key in res_change["R1"].keys():
         if key == "Learned":
-            for ind, l in enumerate(lambda_sweep):
-
+            # for ind, l in enumerate(lambda_sweep):
+            for ind in ind_list:
                 res_gather = [
                     res_change["R1"][key][c][ind] for c in range(len(change_range))
                 ]
                 ax.plot(
                     change_range,
                     res_gather,
-                    label="R1 " + key + ", l=" + str(l),
+                    label="R1 " + key + ", l=" + str(lambda_sweep[ind]),
                     linewidth=2,
                     linestyle="solid",
                     marker=markers[ind_m],
@@ -1430,14 +1466,14 @@ def plot_R1_R2_change(
             ind_m = np.mod(ind_m + 1, len(markers))
     for key in res_change["R2"].keys():
         if key == "Learned":
-            for ind, l in enumerate(lambda_sweep):
+            for ind in ind_list:
                 res_gather = [
                     res_change["R2"][key][c][ind] for c in range(len(change_range))
                 ]
                 ax.plot(
                     change_range,
                     res_gather,
-                    label="R2 " + key + ", l=" + str(l),
+                    label="R2 " + key + ", l=" + str(lambda_sweep[ind]),
                     linewidth=2,
                     linestyle="dashed",
                     marker=markers[ind_m],
@@ -1472,6 +1508,18 @@ def plot_R1_R2_change(
         str(config["change"]) + "_" + res_str + ".png",
     )
     plt.close()
+
+    # Update the dict to not be nested
+    res_change_new = {}
+    for key in res_change.keys():
+        if isinstance(res_change[key], dict):
+            for key2 in res_change[key].keys():
+                res_change_new[key + "_" + key2] = res_change[key][key2]
+        else:
+            res_change_new[key] = res_change[key]
+    
+
+    return res_change_new
 
 
 # def loss_complex(pdf_x, regime_class, project_active=True):

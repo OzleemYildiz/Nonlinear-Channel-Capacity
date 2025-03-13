@@ -80,15 +80,21 @@ def main():
             res_change["Learned_TIN"] = []
     else:
         res_change = {"R1": {}, "R2": {}}
-        res_change["R1"] = {"Linear": [], "Gaussian": []}
+        res_change["R1"] = {
+            "Linear": [],
+            "Gaussian": [],
+            "Linear_Approx_KI": [],
+            "Linear_Approx_TIN": [],
+        }
         res_change["R2"] = {"Linear": [], "Gaussian": []}
         if config["gd_active"]:
             res_change["R1"]["Learned"] = []
             res_change["R2"]["Learned"] = []
 
     if config["regime"] == 3:
-        res_change["Linear_Approx_KI"] = []
-        res_change["Linear_Approx_TIN"] = []
+        if config["x2_fixed"]:
+            res_change["Linear_Approx_KI"] = []
+            res_change["Linear_Approx_TIN"] = []
 
     old_config_title = config["title"]
 
@@ -168,6 +174,8 @@ def main():
                 approx_cap_ki, approx_cap_tin = get_linear_approximation_capacity(
                     regime_RX2, config, power1, pdf_x_RX2
                 )
+                res_change["Linear_Approx_KI"].append(approx_cap_ki)
+                res_change["Linear_Approx_TIN"].append(approx_cap_tin)
             else:
                 gaus_pdf_x_RX2 = get_fixed_interferer(
                     config,
@@ -177,8 +185,8 @@ def main():
                 approx_cap_ki, approx_cap_tin = get_linear_approximation_capacity(
                     regime_RX2, config, power1, gaus_pdf_x_RX2
                 )
-            res_change["Linear_Approx_KI"].append(approx_cap_ki)
-            res_change["Linear_Approx_TIN"].append(approx_cap_tin)
+                res_change["R1"]["Linear_Approx_KI"].append(approx_cap_ki)
+                res_change["R1"]["Linear_Approx_TIN"].append(approx_cap_tin)
 
         # --- Gaussian Capacity
         res_gaus = {}
@@ -258,8 +266,10 @@ def main():
                     "RX2_tin": max_pdf_x_RX2,
                 }
                 res_alph_tin = {
-                    "RX1_tin": regime_RX1.alphabet_x,
-                    "RX2_tin": regime_RX2.alphabet_x,
+                    "RX1_tin": regime_RX1.alphabet_x
+                    / 10 ** (config["multiplying_factor"] / 2),
+                    "RX2_tin": regime_RX2.alphabet_x
+                    / 10 ** (config["multiplying_factor"] / 2),
                 }
 
                 (
@@ -286,8 +296,10 @@ def main():
                     "RX2_ki": max_pdf_x_RX2,
                 }
                 res_alph_ki = {
-                    "RX1_ki": regime_RX1.alphabet_x,
-                    "RX2_ki": regime_RX2.alphabet_x,
+                    "RX1_ki": regime_RX1.alphabet_x
+                    / 10 ** (config["multiplying_factor"] / 2),
+                    "RX2_ki": regime_RX2.alphabet_x
+                    / 10 ** (config["multiplying_factor"] / 2),
                 }
                 res_pdf = {**res_pdf_tin, **res_pdf_ki}
                 res_alph = {**res_alph_tin, **res_alph_ki}
@@ -303,8 +315,10 @@ def main():
                     "RX2": max_pdf_x_RX2,
                 }
                 res_alph = {
-                    "RX1": regime_RX1.alphabet_x,
-                    "RX2": regime_RX2.alphabet_x,
+                    "RX1": regime_RX1.alphabet_x
+                    / 10 ** (config["multiplying_factor"] / 2),
+                    "RX2": regime_RX2.alphabet_x
+                    / 10 ** (config["multiplying_factor"] / 2),
                 }
                 res_opt = {"opt": save_opt_sum_capacity}
 
@@ -338,9 +352,14 @@ def main():
         )
 
         io.savemat(
-            update_save_location + "res.mat",
-            res,
+            update_save_location + "res_RX1.mat",
+            res["R1"],
         )
+        io.savemat(
+            update_save_location + "res_RX2.mat",
+            res["R2"],
+        )
+
         if config["complex"]:
             del (
                 # real_x1,
@@ -382,14 +401,17 @@ def main():
         )
     else:
         if config["gd_active"]:
-            plot_R1_R2_change(
+            res_change = plot_R1_R2_change(
                 res_change, change_range, config, save_location, res_str, lambda_sweep
             )
         else:
-            plot_R1_R2_change(res_change, change_range, config, save_location, res_str)
+            res_change = plot_R1_R2_change(
+                res_change, change_range, config, save_location, res_str
+            )
 
         res_change["change_range"] = change_range
         res_change["change_over"] = config["change"]
+
         io.savemat(
             save_location
             + "res_change-"

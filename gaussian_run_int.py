@@ -27,7 +27,7 @@ def main(read_from_file, args_number, pw1_list):
     )
     os.makedirs(filename, exist_ok=True)
     change_range, config = change_parameters_range(config)
-    ratio_pw = np.linspace(0.01, 0.99, 20)
+    ratio_pw = np.linspace(0.01, 0.99, 15)
     cap_gaus_RX1 = np.zeros((len(change_range), len(ratio_pw)))
     cap_gaus_RX2 = np.zeros((len(change_range), len(ratio_pw)))
 
@@ -54,6 +54,8 @@ def main(read_from_file, args_number, pw1_list):
             )
             cap_gaus_RX1[ind_c, ind_r] = cap1.numpy().item()
             cap_gaus_RX2[ind_c, ind_r] = cap2.numpy().item()
+            reg_RX1 = None
+            reg_RX2 = None
 
         if config["hardware_params_active"]:
             config = fix_config_for_hd(config)
