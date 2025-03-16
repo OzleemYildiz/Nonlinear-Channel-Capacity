@@ -346,7 +346,7 @@ def plot_pdf_vs_change(
         return  # No need to plot anything because it's TDM without power change - pdf has already been plotted
 
     snr_change, power_change, noise_power = regime_dependent_snr(config)
-
+    ind = 0
     for key in map_pdf.keys():
         pdf_x, alphabet_x = map_pdf[key]
         if config["power_change_active"]:
@@ -379,6 +379,7 @@ def plot_pdf_vs_change(
                 label=str_change + str(round(chn, 2)),
                 marker=markers[ind % len(markers)],
             )
+        ind = np.mod(ind + 1, len(markers))
 
     if not config["time_division_active"] and not config["complex"]:
         ax.set_xlabel(r"SNR (dB)")
@@ -1517,7 +1518,6 @@ def plot_R1_R2_change(
                 res_change_new[key + "_" + key2] = res_change[key][key2]
         else:
             res_change_new[key] = res_change[key]
-    
 
     return res_change_new
 
