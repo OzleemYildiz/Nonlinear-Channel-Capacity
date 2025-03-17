@@ -3,7 +3,7 @@ from scipy import io
 from utils import grid_minor
 import os
 import seaborn as sns
-from nonlinearity_utils import real_quant
+from nonlinearity_utils import real_quant, Hardware_Nonlinear_and_Noise
 import torch
 import numpy as np
 import pandas as pd
@@ -22,6 +22,10 @@ def plot_different_bits():
     for i in range(3, 8):
         if i == 3:
             main_run_2 = "_Avg_regime=3_min_samples=100_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=4.53_nf2=15_bw=500000000_iip3=-6.3_gain=15.83_ADC_bits="
+            config = io.loadmat(folder + main_run_2 + str(i) + "/config.mat")
+            hn = Hardware_Nonlinear_and_Noise(config)
+            sigma_1 = hn.noise1_std
+            sigma_2 = hn.noise2_std
         else:
             main_run_2 = main_run
         name = folder + main_run_2 + str(i) + "/res.mat"
@@ -29,49 +33,55 @@ def plot_different_bits():
         power_change = data["Power_Change"]
         bounds = io.loadmat(bound + str(i) + "/res.mat")
 
+        snr = 10 * np.log10(power_change[0] / (sigma_1**2 + sigma_2**2))
+
         if i == 3:
             ax.plot(
-                power_change[0],
-                data["Capacity_without_Nonlinearity"][0],
+                snr.reshape(-1),
+                data["Capacity_without_Nonlinearity"][0].reshape(-1),
                 label="Linear",
                 linewidth=3,
                 linestyle="dotted",
                 color="k",
             )
         ax.plot(
-            power_change[0],
-            data["Learned_Capacity"][0],
-            label="Learned b =" + str(i),
+            snr.reshape(-1),
+            data["Learned_Capacity"][0].reshape(-1),
+            label="Optimized b =" + str(i),
             linewidth=3,
             linestyle="solid",
             color=color[i - 3],
+            marker="x",
         )
         ax.plot(
-            power_change[0],
+            snr.reshape(-1),
             data["Gaussian_Capacity"][0],
             label="Gaussian b =" + str(i),
             linewidth=3,
             color=color[i - 3],
             linestyle="dashed",
+            marker="o",
         )
-        ax.plot(
-            bounds["Power_Change"][0],
-            bounds["MMSE_Minimum"][0],
-            label="MMSE b =" + str(i),
-            linewidth=3,
-            linestyle="dashdot",
-            marker="v",
-            color=color[i - 3],
-        )
-    ax.set_xlabel("Power Change")
-    ax.set_ylabel("Capacity")
-    ax.legend(loc="best")
+        snr_mmse = 10 * np.log10(bounds["Power_Change"][0] / (sigma_1**2 + sigma_2**2))
+        # ax.plot(
+        #     snr_mmse.reshape(-1),
+        #     bounds["MMSE_Minimum"][0],
+        #     label="MMSE b =" + str(i),
+        #     linewidth=3,
+        #     linestyle="dashdot",
+        #     marker="v",
+        #     color=color[i - 3],
+        # )
+    ax.set_xlabel("SNR (dB)", fontsize=14)
+    ax.set_ylabel("Rate (nats/s) ", fontsize=14)
+    ax.legend(loc="best", fontsize=12)
     ax = grid_minor(ax)
-    ax.set_title(
-        "Regime 3: IIP3 =-6.3, Gain = 15.83, BW = 0.5 GHz, NF1 = 4.53 , NF2 = 15"
-    )
+    # ax.set_title(
+    #     "Regime 3: IIP3 =-6.3, Gain = 15.83, BW = 0.5 GHz, NF1 = 4.53 , NF2 = 15"
+    # )
     os.makedirs(folder + "/PP/Plots/", exist_ok=True)
-    fig.savefig(folder + "/PP/Plots/" + "ADC_bits.png")
+    fig.savefig(folder + "/PP/Plots/" + "ADC_bits.png", bbox_inches="tight")
+    fig.savefig(folder + "/PP/Plots/" + "ADC_bits.eps", bbox_inches="tight")
     print("ADC bits plot saved in ", folder + "Plots/")
     plt.close()
 
@@ -81,7 +91,7 @@ def plot_power_consumption():
     folder = "Paper_Figure/Regime 3 Hardware/PP/"
     noise_figure = [
         4.53,
-        # 3.56,
+        3.56,
         3.17,
         3.18,
         3.16,
@@ -90,7 +100,7 @@ def plot_power_consumption():
     ]  # dB
     Gain = [
         15.83,
-        # 17.22,
+        17.22,
         17.35,
         17.38,
         17.31,
@@ -99,7 +109,7 @@ def plot_power_consumption():
     ]  # dB
     power_consumption = [
         2.336,
-        # 5.51,
+        5.51,
         10.08,
         15.92,
         23.16,
@@ -109,7 +119,7 @@ def plot_power_consumption():
     noise_figure2 = 15
     iip3_power_dBm = [
         -6.3,
-        # -4.92,
+        -4.92,
         -4.32,
         -2.79,
         -1.22,
@@ -119,7 +129,7 @@ def plot_power_consumption():
 
     bandwidth = [
         0.5 * 10**9,
-        #  0.51 * 10**9,
+        0.51 * 10**9,
         0.53 * 10**9,
         0.6 * 10**9,
         0.58 * 10**9,
@@ -128,6 +138,8 @@ def plot_power_consumption():
     ]  # GHz
     bits = 3
     hold_max = []
+    hold_gaus = []
+    color = ["b", "g", "r", "c", "m", "y", "k"]
     for i in range(len(noise_figure)):
         main_run = (
             # "_Avg_regime=1_min_samples=2000_tdm=False_lr=[1e-05]_gd=True_hardware_nf1="
@@ -147,14 +159,38 @@ def plot_power_consumption():
         name = folder + main_run + "/res.mat"
         data = io.loadmat(name)
         hold_max.append(max(data["Learned_Capacity"][0]))
+        hold_gaus.append(max(data["Gaussian_Capacity"][0]))
     fig, ax = plt.subplots()
-    ax.plot(power_consumption, hold_max)
-    ax.set_xlabel("Power Consumption (mW)")
-    ax.set_ylabel(" Max Capacity")
+    ax.plot(
+        power_consumption,
+        hold_max,
+        linewidth=3,
+        marker="x",
+        color=color[0],
+        label="Optimized",
+    )
+    ax.plot(
+        power_consumption,
+        hold_gaus,
+        linewidth=3,
+        linestyle="dashed",
+        marker="o",
+        color=color[0],
+        label="Gaussian",
+    )
+    ax.set_xlabel("Power Consumption (mW)", fontsize=14)
+    ax.set_ylabel(" Max Rate (nats/s)", fontsize=14)
     ax = grid_minor(ax)
-    ax.set_title("Regime 3, ADC bits = " + str(bits))
+    # ax.set_title("Regime 3, ADC bits = " + str(bits))
     os.makedirs(folder + "/PP/Plots/", exist_ok=True)
-    fig.savefig(folder + "/PP/Plots/" + "Power_consumption_bits=" + str(bits) + ".png")
+    fig.savefig(
+        folder + "/PP/Plots/" + "Power_consumption_new_bits=" + str(bits) + ".png",
+        bbox_inches="tight",
+    )
+    fig.savefig(
+        folder + "/PP/Plots/" + "Power_consumption_new_bits=" + str(bits) + ".eps",
+        bbox_inches="tight",
+    )
     print("Power consumption plot saved in ", folder + "Plots/")
     plt.close()
 
@@ -246,6 +282,7 @@ def plot_x_y_marginal():
 
 def main():
     plt.rcParams["text.usetex"] = True
+    plt.rcParams["font.size"] = 14
     plot_different_bits()
     plot_power_consumption()
     # plot_x_y_marginal()
