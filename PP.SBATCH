@@ -2,7 +2,7 @@
 #SBATCH --nodes=1                        # requests 3 compute servers
 #SBATCH --ntasks-per-node=2              # runs 2 tasks on each server
 #SBATCH --cpus-per-task=5                # uses 1 compute core per task
-#SBATCH --time= 120:00:00
+#SBATCH --time=120:00:00
 #SBATCH --mem=100GB
 #SBATCH --job-name=pp
 #SBATCH --account=pr_215_general
