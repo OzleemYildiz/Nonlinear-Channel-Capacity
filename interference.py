@@ -98,7 +98,7 @@ def main():
             res_change["R2"]["Learned"] = []
 
     old_config_title = config["title"]
-    breakpoint()
+
     _, _, _, _, _, res_str, _ = get_run_parameters(config, change_range[0])
 
     save_location = save_location + res_str + "/"
