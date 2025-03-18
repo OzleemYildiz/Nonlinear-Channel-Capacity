@@ -1263,6 +1263,7 @@ def plot_pdf_y(
         regime_class.config["ADC"] = False
 
         if int_active:
+
             pdf_y_g_x = regime_class.get_pdf_y_given_x_with_interference(
                 int_pdf, int_reg.alphabet_x, int_ratio
             )
@@ -1308,6 +1309,7 @@ def plot_pdf_y(
             marker="o",
         )
     else:
+
         ax.plot(alphabet_y, p_y, linewidth=3, label="PDF Y", color="c")
         ax.set_xlabel(r"Y", fontsize=10)
         ax.set_ylabel(r"PDF", fontsize=10)
@@ -1339,6 +1341,7 @@ def plot_pdf_y(
             lines, labels = ax.get_legend_handles_labels()
         else:
             ax2 = ax.twinx()
+
             ax2.bar(
                 q_alph_y,
                 q_pdf_y,

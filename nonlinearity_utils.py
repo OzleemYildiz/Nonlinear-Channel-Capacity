@@ -320,8 +320,8 @@ class Hardware_Nonlinear_and_Noise:
             P_in_max_linear = 10 ** (P_in_max_dBm / 10)
 
         elif self.regime == 1:
-            P_in_min_dBm = self.SNR_min_dB
-            P_in_max_dBm = self.SNR_min_dB + self.snr_range
+            P_in_min_dBm = self.SNR_min_dB + 10 * np.log10(self.EkT_lin)
+            P_in_max_dBm = P_in_min_dBm + self.snr_range
 
             P_in_min_linear = 10 ** (P_in_min_dBm / 10)
             P_in_max_linear = 10 ** (P_in_max_dBm / 10)
@@ -339,7 +339,7 @@ class Hardware_Nonlinear_and_Noise:
             P_in_dBm = fixed_power + P_N_dBm
             P_in_dBm = P_in_dBm + 10 * np.log10(self.tsamp)
         elif self.regime == 1:
-            P_in_dBm = fixed_power
+            P_in_dBm = fixed_power + 10 * np.log10(self.EkT_lin)
         return 10 ** (P_in_dBm / 10)
 
     def get_inverse_nonlinearity(self):

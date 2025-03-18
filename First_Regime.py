@@ -34,7 +34,7 @@ class First_Regime:
         self.sigma_2 = sigma_2
         self.tanh_factor = tanh_factor
         self.pdf_y_given_x = None
-        self.pdf_y_given_x1_and_x2 = None
+        self.pdf_y_given_x_and_x2 = None
         self.pdf_y_given_x_int = None
         self.multiplying_factor = multiplying_factor
 
@@ -70,8 +70,8 @@ class First_Regime:
 
     def get_pdf_y_given_x(self):
         if self.pdf_y_given_x is not None:
-            if self.config["ADC"]:
-                return self.q_pdf_y_given_x
+            # if self.config["ADC"]:
+            #     return self.q_pdf_y_given_x
             return self.pdf_y_given_x
 
         if self.config["complex"]:
@@ -109,16 +109,16 @@ class First_Regime:
             )
 
         pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
-        self.pdf_y_given_x = pdf_y_given_x
+
         if self.config["ADC"]:
             # self.q_pdf_y_given_x = quant(
             #     self.distances, pdf_y_given_x, self.quant_locs, self.indices
             # )
-            self.q_pdf_y_given_x = real_quant(
+            self.pdf_y_given_x = real_quant(
                 self.quant_locs, self.indices, pdf_y_given_x
             )
-            return self.q_pdf_y_given_x
-
+            return self.pdf_y_given_x
+        self.pdf_y_given_x = pdf_y_given_x
         return self.pdf_y_given_x
 
     def fix_with_multiplying(self, alphabet_x_RX2=None):
@@ -168,16 +168,18 @@ class First_Regime:
     def new_capacity(self, pdf_x, pdf_y_given_x=None):
         self.fix_with_multiplying()
 
-        if pdf_y_given_x is not None:  # For the case of known interference
-            self.pdf_y_given_x = pdf_y_given_x
+        # if pdf_y_given_x is not None:  # For the case of known interference
+        #     self.pdf_y_given_x = pdf_y_given_x
 
-        if self.pdf_y_given_x is None:
-            self.get_pdf_y_given_x()
-
-        if self.config["ADC"]:
-            p_y_g_x = self.q_pdf_y_given_x
+        if pdf_y_given_x is None:
+            p_y_g_x = self.get_pdf_y_given_x()
         else:
-            p_y_g_x = self.pdf_y_given_x
+            p_y_g_x = pdf_y_given_x
+
+        # if self.config["ADC"]:
+        #     p_y_g_x = self.q_pdf_y_given_x
+        # else:
+        #     p_y_g_x = self.pdf_y_given_x
 
         py_x_logpy_x = p_y_g_x * torch.log(p_y_g_x + 1e-20)
         px_py_x_logpy_x = py_x_logpy_x @ pdf_x
@@ -191,7 +193,7 @@ class First_Regime:
         return cap
 
     def get_pdf_y_given_x1_and_x2(self, alphabet_x_RX2, int_ratio):
-        if self.pdf_y_given_x1_and_x2 is not None:
+        if self.pdf_y_given_x_and_x2 is not None:
             return
 
         pdf_y_given_x1_and_x2 = torch.zeros(
@@ -235,17 +237,17 @@ class First_Regime:
             torch.sum(pdf_y_given_x1_and_x2, axis=0) + 1e-30
         )
         if self.config["ADC"]:
-            self.pdf_y_given_x1_and_x2 = real_quant(
+            self.pdf_y_given_x_and_x2 = real_quant(
                 self.quant_locs, self.indices, pdf_y_given_x1_and_x2
             )
             # Just directly using ADC one-- I could save the nonquantized version as well but currently too much memory maybe
         else:
-            self.pdf_y_given_x1_and_x2 = pdf_y_given_x1_and_x2
+            self.pdf_y_given_x_and_x2 = pdf_y_given_x1_and_x2
 
     def get_pdf_y_given_x_with_interference(self, pdf_x_RX2, alphabet_x_RX2, int_ratio):
-        if self.pdf_y_given_x1_and_x2 is None:
+        if self.pdf_y_given_x_and_x2 is None:
             self.get_pdf_y_given_x1_and_x2(alphabet_x_RX2, int_ratio)
-        pdf_y_given_x = self.pdf_y_given_x1_and_x2 @ pdf_x_RX2
+        pdf_y_given_x = self.pdf_y_given_x_and_x2 @ pdf_x_RX2
         pdf_y_given_x = pdf_y_given_x / (torch.sum(pdf_y_given_x, axis=0) + 1e-30)
         self.pdf_y_given_x_int = pdf_y_given_x
         return pdf_y_given_x
@@ -297,10 +299,10 @@ class First_Regime:
         #     pdf_x, pdf_x2, alphabet_x2, int_ratio
         # )
 
-        if self.pdf_y_given_x1_and_x2 is None:
+        if self.pdf_y_given_x_and_x2 is None:
             self.get_pdf_y_given_x1_and_x2(alphabet_x2, int_ratio)
 
-        pdf_y_given_x2_and_x1 = torch.movedim(self.pdf_y_given_x1_and_x2, 1, 2)
+        pdf_y_given_x2_and_x1 = torch.movedim(self.pdf_y_given_x_and_x2, 1, 2)
         pdf_y_given_x2 = pdf_y_given_x2_and_x1 @ pdf_x
 
         entropy_y_given_x2 = -torch.sum(

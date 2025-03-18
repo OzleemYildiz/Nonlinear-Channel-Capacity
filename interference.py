@@ -109,12 +109,12 @@ def main():
         power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str, res_str_run = (
             get_run_parameters(config, chng)
         )
-        breakpoint()
+
         if config["hardware_params_active"]:
             power1, power2, config = get_updated_params_for_hd(config, power1, power2)
         else:
             config["multiplying_factor"] = 1
-        breakpoint()
+
         mul_fac.append(config["multiplying_factor"])
 
         # Update Title in Config for the case of Interference
