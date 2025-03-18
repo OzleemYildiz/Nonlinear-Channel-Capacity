@@ -140,7 +140,7 @@ def plot_power_consumption():
 
     color = ["b", "g", "r", "c", "m", "y", "k"]
     fig, ax = plt.subplots()
-    for ind_c, bits in enumerate([3, 4]):
+    for ind_c, bits in enumerate([3, 4, 5]):
         hold_max = []
         hold_gaus = []
         for i in range(len(noise_figure)):

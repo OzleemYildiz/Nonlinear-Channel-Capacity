@@ -78,26 +78,27 @@ def main():
         if config["gd_active"]:
             res_change["Learned_KI"] = []
             res_change["Learned_TIN"] = []
+
+        if config["regime"] == 3:
+
+            res_change["Linear_Approx_KI"] = []
+            res_change["Linear_Approx_TIN"] = []
     else:
         res_change = {"R1": {}, "R2": {}}
         res_change["R1"] = {
             "Linear": [],
             "Gaussian": [],
-            "Linear_Approx_KI": [],
-            "Linear_Approx_TIN": [],
         }
+        if config["regime"] == 3:
+            res_change["Linear_Approx_KI"] = []
+            res_change["Linear_Approx_TIN"] = ([],)
         res_change["R2"] = {"Linear": [], "Gaussian": []}
         if config["gd_active"]:
             res_change["R1"]["Learned"] = []
             res_change["R2"]["Learned"] = []
 
-    if config["regime"] == 3:
-        if config["x2_fixed"]:
-            res_change["Linear_Approx_KI"] = []
-            res_change["Linear_Approx_TIN"] = []
-
     old_config_title = config["title"]
-
+    breakpoint()
     _, _, _, _, _, res_str, _ = get_run_parameters(config, change_range[0])
 
     save_location = save_location + res_str + "/"
