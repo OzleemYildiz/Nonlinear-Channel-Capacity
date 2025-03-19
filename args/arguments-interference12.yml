@@ -18,7 +18,7 @@ n_change : 3 # number of SNRs
 nonlinearity : 3 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C2 (sgn(X)abs(X)^{0.9}), 3:nonlinear tanh(X), 4:nonlinear x4: x/(1 + x^4)^1/4 # 5: nonlinear clip
 clipping_limit_x : 3 # the limit for the clipping if nonlinear is clip (5)
 clipping_limit_y : 3 # the limit for the clipping if nonlinear is clip (5)
-output_dir : 'Res-Int-New'  # file name to save the results
+output_dir : 'Res-Int-NewP'  # file name to save the results
 regime : 1 # 1: first regime phi(X)+N , 2: second regime phi(IX+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : True

@@ -18,8 +18,8 @@ n_change : 15 # number of SNRs
 nonlinearity : 3 # 0:linear, 1:nonlinear C1 (sgn(X)sqrt(abs(X))), 2: nonlinear C2 (sgn(X)abs(X)^{0.9}), 3:nonlinear tanh(X), 4:nonlinear x4: x/(1 + x^4)^1/4 # 5: nonlinear clip
 clipping_limit_x : 3 # the limit for the clipping if nonlinear is clip (5)
 clipping_limit_y : 3 # the limit for the clipping if nonlinear is clip (5)
-output_dir : 'Res-Int-New' # file name to save the results
-regime : 1 # 1: first regime phi(X)+N , 2: second regime phi(IX+N), 3: third regime phi(X+Z_1)+Z_2
+output_dir : 'Res-Int-NewP'  # file name to save the results
+regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(IX+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : True
 epsilon : 0.000005 #convergence criteria
@@ -27,24 +27,24 @@ lr : [0.0001] # learning rate
 min_samples: 100 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this
 max_iter : 10000 # maximum number of iterations
 n_lmbd : 15  # number of lambdas  - when x2 not fixed
-x2_fixed : True # if True, px2 is fixed and px1 is updated
+x2_fixed : False  # if True, px2 is fixed and px1 is updated
 x2_type : 0 # 0: Gaussian, 1: Optimized
 gd_nostop_cond : False # if True, the gd will not stop until max_iter
 complex : False # if True, the complex alphabet is used
 # New params for the hardware integration
-snr_range : 30
-SNR_min_dB : 5 #-170 -> This makes sense for Regime 1
+snr_range : 25
+SNR_min_dB : -5 #-170 -> This makes sense for Regime 1
 #SNR_min_dB : -170 
 bits : 3 # bits of the ADC !! Currently not active
-ADC : False
-hd_change : 'pw1' # pw1: change the power1, pw2: change the power2, a:int_ratio # Not changed one is minimum
-snr_not_change : 50 #-160-> This makes sense for Regime 1
+ADC :  False
+hd_change : 'pw2' # pw1: change the power1, pw2: change the power2, a:int_ratio # Not changed one is minimum
+snr_not_change : 15 #-160-> This makes sense for Regime 1
 #snr_not_change: -160 
 gain_later : True
 tdm_active : True
 hardware_params_active : True # hardware parameters are active for the nonlinearity
-noise_figure1 : 4.53 # dB noise figure of the first amplifier
-noise_figure2 : 15 # dB noise figure of the remaining circuits
+noise_figure1 : 15 # dB noise figure of the first amplifier
+noise_figure2 : 30 # dB noise figure of the remaining circuits
 gain : 15.83 # dB gain of the LNA
-iip3 : -6.3 # dBm IIP3 of the LNA
-bandwidth : 500000000 # Hz bandwidth of the signal
+iip3 : -30 # dBm IIP3 of the LNA
+bandwidth : 5000000000 # Hz bandwidth of the signal

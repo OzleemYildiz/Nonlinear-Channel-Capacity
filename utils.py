@@ -1459,7 +1459,7 @@ def plot_R1_R2_change(
                 ind_m = np.mod(ind_m + 1, len(markers))
 
         else:
-            breakpoint()
+
             ax.plot(
                 change_range,
                 res_change["R1"][key],
