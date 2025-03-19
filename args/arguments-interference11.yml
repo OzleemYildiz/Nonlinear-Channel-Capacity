@@ -24,8 +24,8 @@ stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as sto
 gd_active : True
 epsilon : 0.000005 #convergence criteria
 lr : [0.0001] # learning rate
-min_samples: 10 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this
-max_iter : 1 # maximum number of iterations
+min_samples: 100 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this
+max_iter : 10000 # maximum number of iterations
 n_lmbd : 15  # number of lambdas  - when x2 not fixed
 x2_fixed : True # if True, px2 is fixed and px1 is updated
 x2_type : 1 # 0: Gaussian, 1: Optimized
