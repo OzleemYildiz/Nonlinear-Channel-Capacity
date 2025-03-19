@@ -90,8 +90,8 @@ def main():
             "Gaussian": [],
         }
         if config["regime"] == 3:
-            res_change["Linear_Approx_KI"] = []
-            res_change["Linear_Approx_TIN"] = ([],)
+            res_change["R1"]["Linear_Approx_KI"] = []
+            res_change["R1"]["Linear_Approx_TIN"] = []
         res_change["R2"] = {"Linear": [], "Gaussian": []}
         if config["gd_active"]:
             res_change["R1"]["Learned"] = []
