@@ -21,7 +21,7 @@ clipping_limit_y : 3 # the limit for the clipping if nonlinear is clip (5)
 output_dir : 'Res-Int-NewP2'  # file name to save the results
 regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(IX+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
-gd_active : True
+gd_active : False
 epsilon : 0.000005 #convergence criteria
 lr : [0.0001] # learning rate
 min_samples: 100 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this
@@ -41,7 +41,7 @@ hd_change : 'pw2' # pw1: change the power1, pw2: change the power2, a:int_ratio 
 snr_not_change : 15 #-160-> This makes sense for Regime 1
 #snr_not_change: -160 
 gain_later : True
-tdm_active : True
+tdm_active : False
 hardware_params_active : True # hardware parameters are active for the nonlinearity
 noise_figure1 : 15 # dB noise figure of the first amplifier
 noise_figure2 : 30 # dB noise figure of the remaining circuits

@@ -628,7 +628,7 @@ def regime_dependent_snr(config):
     return snr_change, power_change, noise_power
 
 
-def read_config(args_name="arguments.yml"):
+def read_config(args_name="arguments.yml", title_active=True):
     # READ CONFIG FILE
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -648,16 +648,17 @@ def read_config(args_name="arguments.yml"):
     else:
         config["cons_str"] = "First"
 
-    title = (
-        "Regime="
-        + str(config["regime"])
-        + " phi="
-        + str(config["nonlinearity"])
-        + " N="
-        + str(config["min_samples"])
-    )
+    if title_active:
+        title = (
+            "Regime="
+            + str(config["regime"])
+            + " phi="
+            + str(config["nonlinearity"])
+            + " N="
+            + str(config["min_samples"])
+        )
 
-    config["title"] = title
+        config["title"] = title
 
     return config
 
@@ -688,9 +689,11 @@ def get_max_alphabet_interference(
         max_x = config["stop_sd"] * np.sqrt(avg_power)
         max_x2 = config["stop_sd"] * np.sqrt(power2)
         # If it's clipped after this value, it does not matter to put values outside
-        if config["nonlinearity"] == 5:
-            max_x = config["clipping_limit_x"]
-            max_x2 = config["clipping_limit_x"]
+        
+        if "nonlinearity" in config.keys():
+            if config["nonlinearity"] == 5:
+                max_x = config["clipping_limit_x"]
+                max_x2 = config["clipping_limit_x"]
     else:  # first moment
         first_moment = power1  # E[|X|] < P
         max_x = config["stop_sd"] * first_moment
@@ -1437,7 +1440,7 @@ def plot_R1_R2_change(
     else:
         ind_list = []
 
-    if "Learned" not in res_change["R1"].keys() and lambda_sweep is None:
+    if "Learned" in res_change["R1"].keys() and lambda_sweep is None:
         raise ValueError("Lambda sweep must be given for Learned")
 
     fig, ax = plt.subplots(figsize=(5, 4), tight_layout=True)

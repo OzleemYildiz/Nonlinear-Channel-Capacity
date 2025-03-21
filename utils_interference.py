@@ -260,6 +260,7 @@ def get_run_parameters(config, chng):
         res_str_run = "_pw1=" + "{:.2e}".format(power1, 3)
     elif config["change"] == "pw2":
         print("Power2: ", chng)
+        power2 = chng
         res_str = (
             "pw1="
             + str(power1)

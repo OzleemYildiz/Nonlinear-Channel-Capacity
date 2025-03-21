@@ -109,9 +109,9 @@ def gd_capacity(config, power, regime_class):
     max_pdf_x = project_pdf(max_pdf_x, config, max_alphabet_x, power)
     print("~~~~~Max Capacity:", max_capacity, "~~~~~")
 
-    plot_pdf_y(
-        regime_class, max_pdf_x, name_extra="GD_power=" + str(power)
-    )  # -> For now, because I cancelled saving pdf_y_given_x
+    # plot_pdf_y(
+    #     regime_class, max_pdf_x, name_extra="GD_power=" + str(power)
+    # )  # -> For now, because I cancelled saving pdf_y_given_x
 
     return max_capacity, max_pdf_x, max_alphabet_x, opt_capacity
 
@@ -276,21 +276,21 @@ def gradient_descent_on_interference(
                 "*****",
             )
 
-            plot_pdf_y(
-                reg_RX1,
-                pdf_x_RX1,
-                name_extra="GD_RX1_P=" + str(reg_RX1.power) + "_L=" + str(lmbd),
-                int_active=True,
-                int_pdf=pdf_x_RX2,
-                int_reg=reg_RX2,
-                int_ratio=int_ratio,
-            )
-            plot_pdf_y(
-                reg_RX2,
-                pdf_x_RX2,
-                name_extra="GD_RX2_P=" + str(reg_RX2.power) + "_L=" + str(lmbd),
-                int_active=False,
-            )
+            # plot_pdf_y(
+            #     reg_RX1,
+            #     pdf_x_RX1,
+            #     name_extra="GD_RX1_P=" + str(reg_RX1.power) + "_L=" + str(lmbd),
+            #     int_active=True,
+            #     int_pdf=pdf_x_RX2,
+            #     int_reg=reg_RX2,
+            #     int_ratio=int_ratio,
+            # )
+            # plot_pdf_y(
+            #     reg_RX2,
+            #     pdf_x_RX2,
+            #     name_extra="GD_RX2_P=" + str(reg_RX2.power) + "_L=" + str(lmbd),
+            #     int_active=False,
+            # )
 
     return (
         max_sum_cap,

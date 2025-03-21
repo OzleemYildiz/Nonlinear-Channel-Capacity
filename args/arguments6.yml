@@ -36,8 +36,9 @@ ADC : True
 gain_later : True
 tdm_active : False
 hardware_params_active : True # hardware parameters are active for the nonlinearity
-noise_figure1 : 130 # dB noise figure of the first amplifier
-noise_figure2 : 30 # dB noise figure of the remaining circuits
-gain : 15.83 # dB gain of the LNA
-iip3 : -30 # dBm IIP3 of the LNA
-bandwidth : 5000000000 # Hz bandwidth of the signal
+noise_figure1 : 3.56 # dB noise figure of the first amplifier
+noise_figure2 : 15 # dB noise figure of the remaining circuits
+gain : 17.22 # dB gain of the LNA
+iip3 : -4.92 # dBm IIP3 of the LNA
+bandwidth : 510000000 # Hz bandwidth of the LNA
+

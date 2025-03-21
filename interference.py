@@ -110,7 +110,8 @@ def main():
         power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str, res_str_run = (
             get_run_parameters(config, chng)
         )
-
+        print("Power2: ", power2)
+        print("chng: ", chng)
         if config["hardware_params_active"]:
             power1, power2, config = get_updated_params_for_hd(config, power1, power2)
         else:

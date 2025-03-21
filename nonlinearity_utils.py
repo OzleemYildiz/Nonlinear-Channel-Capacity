@@ -17,10 +17,14 @@ def alphabet_fix_nonlinear(alphabet_x, config):
 
 
 def get_nonlinear_fn(config, tanh_factor=None):
-    if config["hardware_params_active"]:  # hardware parameters
+    if config["dB_definition_active"]:
+        non = Nonlinearity_Noise(config)
+        nonlinear_fn = non.nonlinear_func_torch()
+        return nonlinear_fn
+    elif config["hardware_params_active"]:  # hardware parameters
         hn = Hardware_Nonlinear_and_Noise(config)
         nonlinear_fn = hn.nonlinear_func_torch()
-
+        return nonlinear_fn
     else:  # the parameters that we set
         # 0:linear
         if config["nonlinearity"] == 0:
@@ -70,13 +74,16 @@ def get_nonlinear_fn(config, tanh_factor=None):
             )
         else:
             raise ValueError("Nonlinearity not defined")
-    return nonlinear_fn
+        return nonlinear_fn
 
 
 # NOT USED
 def get_derivative_of_nonlinear_fn(config, tanh_factor=None):
+    if config["dB_definition_active"]:
+        non = Nonlinearity_Noise(config)
+        nonlinear_fn = non.derivative_nonlinear_func_numpy()
     # This function is numpy
-    if config["hardware_params_active"]:  # hardware parameters
+    elif config["hardware_params_active"]:  # hardware parameters
         hn = Hardware_Nonlinear_and_Noise(config)
         nonlinear_fn = hn.derivative_nonlinear_func_numpy()
     else:
@@ -112,7 +119,10 @@ def get_derivative_of_nonlinear_fn(config, tanh_factor=None):
 
 
 def get_nonlinear_fn_numpy(config, tanh_factor=None):
-    if config["hardware_params_active"]:  # hardware parameters
+    if config["dB_definition_active"]:
+        non = Nonlinearity_Noise(config)
+        nonlinear_fn = non.nonlinear_func
+    elif config["hardware_params_active"]:  # hardware parameters
         hn = Hardware_Nonlinear_and_Noise(config)
         nonlinear_fn = hn.nonlinear_func_numpy()
     else:  # the parameters that we set
@@ -155,7 +165,10 @@ def get_nonlinear_fn_numpy(config, tanh_factor=None):
 
 
 def get_inverse_nonlinearity(config, tanh_factor=None):
-    if config["hardware_params_active"]:
+    if config["dB_definition_active"]:
+        non = Nonlinearity_Noise(config)
+        inverse_nonlinear_fn = non.get_inverse_nonlinearity()
+    elif config["hardware_params_active"]:
         hn = Hardware_Nonlinear_and_Noise(config)
         inverse_nonlinear_fn = hn.get_inverse_nonlinearity()
     else:
@@ -169,7 +182,13 @@ def get_inverse_nonlinearity(config, tanh_factor=None):
 
 
 def get_derivative_of_inverse_nonlinearity(config, tanh_factor=None):
-    if config["hardware_params_active"]:
+    if config["dB_definition_active"]:
+        non = Nonlinearity_Noise(config)
+        derivative_of_inverse_nonlinear_fn = (
+            non.get_derivative_of_inverse_nonlinearity()
+        )
+
+    elif config["hardware_params_active"]:
         hn = Hardware_Nonlinear_and_Noise(config)
         derivative_of_inverse_nonlinear_fn = hn.get_derivative_of_inverse_nonlinearity()
     else:
@@ -291,12 +310,15 @@ class Hardware_Nonlinear_and_Noise:
 
     def get_noise_vars(self):
 
-        if self.regime == 1:
-            self.noise1_std = 0
-            self.noise2_std = np.sqrt(self.EkT_lin * (self.f2_lin))
-        elif self.regime == 3:
-            self.noise1_std = np.sqrt(self.EkT_lin * self.f1_lin)
-            self.noise2_std = np.sqrt(self.EkT_lin * (self.f2_lin - 1))
+        # if self.regime == 1:
+        #     self.noise1_std = 0
+        #     self.noise2_std = np.sqrt(self.EkT_lin * (self.f2_lin))
+        # elif self.regime == 3:
+
+        # I will not do regime 1 but
+        # if I run regime 1, it will be like I ignore the noise inside the LNA so I should still calculate accordingly
+        self.noise1_std = np.sqrt(self.EkT_lin * self.f1_lin)
+        self.noise2_std = np.sqrt(self.EkT_lin * (self.f2_lin - 1))
 
         if self.gain_later:
             self.noise2_std = self.noise2_std / np.sqrt(
@@ -307,24 +329,23 @@ class Hardware_Nonlinear_and_Noise:
 
     def get_min_max_power(self):
 
-        if self.regime == 3:
-            P_N_dBm = 10 * np.log10(self.noise1_std**2) + 10 * np.log10(self.bandwidth)
-            P_in_min_dBm = P_N_dBm + self.SNR_min_dB
-            # P_in_max_dBm = (2*self.iip3 - P_N_dBm) / 3
-            P_in_max_dBm = P_in_min_dBm + self.snr_range
+        P_N_dBm = 10 * np.log10(self.noise1_std**2) + 10 * np.log10(self.bandwidth)
+        P_in_min_dBm = P_N_dBm + self.SNR_min_dB
+        # P_in_max_dBm = (2*self.iip3 - P_N_dBm) / 3
+        P_in_max_dBm = P_in_min_dBm + self.snr_range
 
-            P_in_min_dBm = P_in_min_dBm + 10 * np.log10(self.tsamp)
-            P_in_max_dBm = P_in_max_dBm + 10 * np.log10(self.tsamp)
+        P_in_min_dBm = P_in_min_dBm + 10 * np.log10(self.tsamp)
+        P_in_max_dBm = P_in_max_dBm + 10 * np.log10(self.tsamp)
 
-            P_in_min_linear = 10 ** (P_in_min_dBm / 10)
-            P_in_max_linear = 10 ** (P_in_max_dBm / 10)
+        P_in_min_linear = 10 ** (P_in_min_dBm / 10)
+        P_in_max_linear = 10 ** (P_in_max_dBm / 10)
 
-        elif self.regime == 1:
-            P_in_min_dBm = self.SNR_min_dB + 10 * np.log10(self.EkT_lin)
-            P_in_max_dBm = P_in_min_dBm + self.snr_range
+        # elif self.regime == 1:
+        #     P_in_min_dBm = self.SNR_min_dB + 10 * np.log10(self.EkT_lin)
+        #     P_in_max_dBm = P_in_min_dBm + self.snr_range
 
-            P_in_min_linear = 10 ** (P_in_min_dBm / 10)
-            P_in_max_linear = 10 ** (P_in_max_dBm / 10)
+        #     P_in_min_linear = 10 ** (P_in_min_dBm / 10)
+        #     P_in_max_linear = 10 ** (P_in_max_dBm / 10)
 
         # This is not a must but to keep the mappings similar for a comparison
         # if self.gain_later:
@@ -334,12 +355,12 @@ class Hardware_Nonlinear_and_Noise:
         return P_in_min_linear, P_in_max_linear
 
     def get_power_fixed(self, fixed_power):
-        if self.regime == 3:
-            P_N_dBm = 10 * np.log10(self.noise1_std**2) + 10 * np.log10(self.bandwidth)
-            P_in_dBm = fixed_power + P_N_dBm
-            P_in_dBm = P_in_dBm + 10 * np.log10(self.tsamp)
-        elif self.regime == 1:
-            P_in_dBm = fixed_power + 10 * np.log10(self.EkT_lin)
+        # if self.regime == 3:
+        P_N_dBm = 10 * np.log10(self.noise1_std**2) + 10 * np.log10(self.bandwidth)
+        P_in_dBm = fixed_power + P_N_dBm
+        P_in_dBm = P_in_dBm + 10 * np.log10(self.tsamp)
+        # elif self.regime == 1:
+        #     P_in_dBm = fixed_power + 10 * np.log10(self.EkT_lin)
         return 10 ** (P_in_dBm / 10)
 
     def get_inverse_nonlinearity(self):
@@ -382,21 +403,80 @@ class Hardware_Nonlinear_and_Noise:
                     / (torch.tensor(self.gain_lin * self.Esat_lin))
                 )
             )
+        # INR: interference to noise_1 ratio
+
+
+class Nonlinearity_Noise:
+    def __init__(self, config):
+        # No gain here, it's adjusted by N_2
+
+        self.N_1 = config["N_1"]  # sigma_1**2
+        self.sigma_1 = np.sqrt(10 ** (self.N_1 / 10))
+        self.N_2 = config["N_2"]
+        self.sigma_2 = np.sqrt(10 ** (self.N_2 / 10))
+        self.saturation_to_noise = config["Saturation_to_Noise"]
+        self.Esat_lin = 10 ** (self.saturation_to_noise / 10) * self.sigma_1**2
+
+    def update_config(self, config):
+        config["sigma_11"] = self.sigma_1
+        config["sigma_22"] = self.sigma_2
+        config["sigma_12"] = self.sigma_2
+        config["sigma_21"] = self.sigma_1
+
+        config["multiplying_factor"] = 1
+        return config
+
+    def get_power_fixed_from_SNR(self, SNR):
+        return 10 ** (SNR / 10) * self.sigma_1**2
+
+    def get_power_fixed_from_INR(self, INR):
+        return 10 ** (INR / 10) * self.sigma_1**2
+
+    def nonlinear_func_numpy(self):
+        if self.gain_later:
+            lambda x: np.sqrt(self.gain_lin * self.Esat_lin) * np.tanh(
+                x / np.sqrt(self.Esat_lin)
+            )
+        else:
+            return lambda x: np.sqrt(self.gain_lin * self.Esat_lin) * np.tanh(
+                x / np.sqrt(self.Esat_lin)
+            )
+
+    def nonlinear_func_torch(self):
+
+        return lambda x: torch.sqrt(torch.tensor(self.Esat_lin)) * torch.tanh(
+            torch.tensor(x) / torch.sqrt(torch.tensor(self.Esat_lin))
+        )
+
+    def derivative_nonlinear_func_numpy(self):
+        return lambda x: 1 / np.cosh(x / np.sqrt(self.Esat_lin)) ** 2
+
+    def get_inverse_nonlinearity(self):
+        return torch.sqrt(torch.tensor(self.Esat_lin)) * torch.atanh(
+            torch.tensor(x) / torch.sqrt(torch.tensor(self.Esat_lin))
+        )
+
+    def get_derivative_of_inverse_nonlinearity(self):
+        return lambda x: 1 / (1 - torch.tensor(x) ** 2 / torch.tensor(self.Esat_lin))
+
+    def get_total_noise_power(self):
+        return self.sigma_1**2 + self.sigma_2**2
+
+
+def read_conf(args_name):
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=args_name,
+        help="Configure of post processing",
+    )
+    args = parser.parse_args()
+    config = yaml.load(open("args/" + args.config, "r"), Loader=yaml.Loader)
+    return config
 
 
 def test_nonlinearity():
-
-    def read_conf(args_name):
-        parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "--config",
-            type=str,
-            default=args_name,
-            help="Configure of post processing",
-        )
-        args = parser.parse_args()
-        config = yaml.load(open("args/" + args.config, "r"), Loader=yaml.Loader)
-        return config
 
     sat_points = []  # lin
     nf1s = []  # lin
@@ -458,5 +538,21 @@ def test_nonlinearity():
     plt.close()
 
 
+# def test_parameter_switch():
+# for i in np.linspace(1, 7, 7):
+#     str_c = "arguments" + str(int(i)) + ".yml"
+#     config = read_conf(str_c)
+#     hn = Hardware_Nonlinear_and_Noise(config)
+#     print("IIP3: ", hn.iip3)
+#     print("Saturation to Noise: ", hn.saturation_to_noise_1_dBm)
+#     print("Min Signal to Noise: ", hn.min_signal_to_noise_1_dB)
+#     print("Max Signal to Noise: ", hn.max_signal_to_noise_1_dB)
+#     print("Noise 1: ", hn.noise_1_dB)
+#     print("Noise 2: ", hn.noise_2_dB)
+
+#     print("--------------------------------------")
+
+
 if __name__ == "__main__":
     test_nonlinearity()
+    # test_parameter_switch()

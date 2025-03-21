@@ -13,25 +13,31 @@ def plot_different_bits():
     # folder = "Paper_Figure/Hardware-Params/ADC-PP/"
     # main_run = "_Avg_regime=1_min_samples=2000_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=2.68_nf2=15_bw=980000000_iip3=1.01_gain=17.32_ADC_bits="
     # bound = "Res-PP-H/_Avg_regime=1_min_samples=1000_tdm=False_lr=[1e-05]_hardware_nf1=2.68_nf2=15_bw=980000000_iip3=1.01_gain=17.32_ADC_bits="
-    folder = "Paper_Figure/Regime 3 Hardware/PP/"
-    main_run = "_Avg_regime=3_min_samples=500_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=4.53_nf2=15_bw=500000000_iip3=-6.3_gain=15.83_ADC_bits="
-    bound = "Res-PP-B/_Avg_regime=3_min_samples=500_tdm=False_lr=[1e-05]_hardware_nf1=4.53_nf2=15_bw=500000000_iip3=-6.3_gain=15.83_ADC_bits="
+    folder = "Paper_Figure/Regime3Hardware/PP/MadeupHardware/"
+    # main_run = "_Avg_regime=3_min_samples=500_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=4.53_nf2=15_bw=500000000_iip3=-6.3_gain=15.83_ADC_bits="
+    # bound = "Res-PP-B/_Avg_regime=3_min_samples=500_tdm=False_lr=[1e-05]_hardware_nf1=4.53_nf2=15_bw=500000000_iip3=-6.3_gain=15.83_ADC_bits="
+
+    main_run = "_Avg_regime=3_min_samples=100_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=15_nf2=30_bw=5000000000_iip3=-30_gain=15.83"
 
     fig, ax = plt.subplots()
     color = ["b", "g", "r", "c", "m", "y", "k"]
-    for i in range(3, 8):
+    for i in range(3, 6):
         if i == 3:
-            main_run_2 = "_Avg_regime=3_min_samples=100_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=4.53_nf2=15_bw=500000000_iip3=-6.3_gain=15.83_ADC_bits="
-            config = io.loadmat(folder + main_run_2 + str(i) + "/config.mat")
+            # main_run_2 = "_Avg_regime=3_min_samples=100_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=4.53_nf2=15_bw=500000000_iip3=-6.3_gain=15.83_ADC_bits="
+
+            # config = io.loadmat(folder + main_run + str(i) + "/config.mat")
+            config = io.loadmat(folder + main_run + "/config.mat")
+            main_run_2 = main_run + "_ADC_bits="
             hn = Hardware_Nonlinear_and_Noise(config)
             sigma_1 = hn.noise1_std
             sigma_2 = hn.noise2_std
+            res = io.loadmat(folder + main_run + "/res.mat")
         else:
-            main_run_2 = main_run
+            main_run_2 = main_run + "_ADC_bits="
         name = folder + main_run_2 + str(i) + "/res.mat"
         data = io.loadmat(name)
         power_change = data["Power_Change"]
-        bounds = io.loadmat(bound + str(i) + "/res.mat")
+        # bounds = io.loadmat(bound + str(i) + "/res.mat")
 
         snr = 10 * np.log10(power_change[0] / (sigma_1**2 + sigma_2**2))
 
@@ -44,13 +50,31 @@ def plot_different_bits():
                 linestyle="dotted",
                 color="k",
             )
+            ax.plot(
+                snr.reshape(-1),
+                res["Learned_Capacity"][0].reshape(-1),
+                label="Optimized",
+                linewidth=3,
+                linestyle="solid",
+                color=color[i - 3],
+                marker="x",
+            )
+            ax.plot(
+                snr.reshape(-1),
+                res["Gaussian_Capacity"][0],
+                label="Gaussian",
+                linewidth=3,
+                color=color[i - 3],
+                linestyle="dashed",
+                marker="o",
+            )
         ax.plot(
             snr.reshape(-1),
             data["Learned_Capacity"][0].reshape(-1),
             label="Optimized b =" + str(i),
             linewidth=3,
             linestyle="solid",
-            color=color[i - 3],
+            color=color[i - 2],
             marker="x",
         )
         ax.plot(
@@ -58,20 +82,20 @@ def plot_different_bits():
             data["Gaussian_Capacity"][0],
             label="Gaussian b =" + str(i),
             linewidth=3,
-            color=color[i - 3],
+            color=color[i - 2],
             linestyle="dashed",
             marker="o",
         )
-        snr_mmse = 10 * np.log10(bounds["Power_Change"][0] / (sigma_1**2 + sigma_2**2))
-        # ax.plot(
-        #     snr_mmse.reshape(-1),
-        #     bounds["MMSE_Minimum"][0],
-        #     label="MMSE b =" + str(i),
-        #     linewidth=3,
-        #     linestyle="dashdot",
-        #     marker="v",
-        #     color=color[i - 3],
-        # )
+    # snr_mmse = 10 * np.log10(bounds["Power_Change"][0] / (sigma_1**2 + sigma_2**2))
+    # ax.plot(
+    #     snr_mmse.reshape(-1),
+    #     bounds["MMSE_Minimum"][0],
+    #     label="MMSE b =" + str(i),
+    #     linewidth=3,
+    #     linestyle="dashdot",
+    #     marker="v",
+    #     color=color[i - 3],
+    # )
     ax.set_xlabel("SNR (dB)", fontsize=14)
     ax.set_ylabel("Rate (nats/s) ", fontsize=14)
     ax.legend(loc="best", fontsize=12)
@@ -79,9 +103,9 @@ def plot_different_bits():
     # ax.set_title(
     #     "Regime 3: IIP3 =-6.3, Gain = 15.83, BW = 0.5 GHz, NF1 = 4.53 , NF2 = 15"
     # )
-    os.makedirs(folder + "/PP/Plots/", exist_ok=True)
-    fig.savefig(folder + "/PP/Plots/" + "ADC_bits.png", bbox_inches="tight")
-    fig.savefig(folder + "/PP/Plots/" + "ADC_bits.eps", bbox_inches="tight")
+    os.makedirs(folder + "/Plots/", exist_ok=True)
+    fig.savefig(folder + "/Plots/" + "ADC_bits.png", bbox_inches="tight")
+    fig.savefig(folder + "/Plots/" + "ADC_bits.eps", bbox_inches="tight")
     print("ADC bits plot saved in ", folder + "Plots/")
     plt.close()
 
@@ -284,12 +308,50 @@ def plot_x_y_marginal():
     plt.close()
 
 
+def plot_x_y_marginal_with_different_bits():
+    folder = "Paper_Figure/Regime3Hardware/PP/MadeupHardware/"
+    main_run = "_Avg_regime=3_min_samples=100_tdm=False_lr=[1e-05]_gd=True_hardware_nf1=15_nf2=30_bw=5000000000_iip3=-30_gain=15.83"
+    markers = ["x", "o", "v", "^", "s", "p", "P"]
+    linestyle = ["dotted", "dashed", "dashdot", "solid"]
+    for j in range(10):
+        fig, ax = plt.subplots()
+        for ind, i in enumerate([0, 3, 4, 5]):
+            if i == 0:
+                pdf = io.loadmat(folder + main_run + "/pdf.mat")
+                config = io.loadmat(folder + main_run + "/config.mat")
+                lbl = "No ADC"
+            else:
+                pdf = io.loadmat(folder + main_run + "_ADC_bits=" + str(i) + "/pdf.mat")
+                config = io.loadmat(
+                    folder + main_run + "_ADC_bits=" + str(i) + "/config.mat"
+                )
+                lbl = "ADC bits = " + str(i)
+            plt.plot(
+                (pdf[str(j)][1] / 10 ** (config["multiplying_factor"] / 2)).reshape(-1),
+                pdf[str(j)][0].reshape(-1),
+                label=lbl,
+                linewidth=2,
+                marker=markers[ind],
+                linestyle=linestyle[ind],
+            )
+        ax.legend(loc="best", fontsize=12)
+        ax.set_xlabel("X", fontsize=14)
+        ax.set_ylabel("PDF", fontsize=14)
+        ax = grid_minor(ax)
+        os.makedirs(folder + "/Plots/", exist_ok=True)
+        fig.savefig(folder + "/Plots/" + "pdf_" + str(j) + ".png", bbox_inches="tight")
+        fig.savefig(folder + "/Plots/" + "pdf_" + str(j) + ".eps", bbox_inches="tight")
+        plt.close()
+        print("PDF plot saved in ", folder + "Plots/")
+
+
 def main():
     plt.rcParams["text.usetex"] = True
     plt.rcParams["font.size"] = 14
     # plot_different_bits()
-    plot_power_consumption()
+    # plot_power_consumption()
     # plot_x_y_marginal()
+    plot_x_y_marginal_with_different_bits()
 
 
 if __name__ == "__main__":
