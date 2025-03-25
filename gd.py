@@ -317,7 +317,6 @@ def get_fixed_interferer(config, regime, x_type, save_location=None):
         print(" +++----- PP X Distribution is calculated ------ +++")
 
         _, pdf_x, _, opt_capacity = gd_capacity(config, regime.power, regime)
-
         plot_opt(opt_capacity, save_location, title=config["title"])
 
     else:

@@ -14,7 +14,7 @@ def get_save_location(config):
     save_location = (
         save_location
         + config["cons_str"]
-        + "Regime="
+        + "_R="
         + str(config["regime"])
         + "_Sat="
         + str(config["Saturation_to_Noise"])
@@ -126,7 +126,7 @@ def get_capacity_learned(
     title = "TIN_" + str(config["change"]) + "=" + str(change)
     save_new = save_location + "/opt_" + title + ".png"
 
-    plot_opt(save_opt_sum_capacity, save_new, title)
+    plot_opt(save_opt_sum_capacity[0], save_new, title)
 
     (
         max_sum_cap2,
@@ -148,7 +148,7 @@ def get_capacity_learned(
     title = "KI_" + str(config["change"]) + "=" + str(change)
     save_new = save_location + "/opt_" + title + ".png"
 
-    plot_opt(save_opt_sum_capacity2, save_new, title)
+    plot_opt(save_opt_sum_capacity2[0], save_new, title)
 
     return cap_learned_ki, cap_learned_tin, pdf_learned_tin, pdf_learned_ki
 

@@ -134,6 +134,8 @@ def main():
     io.savemat(save_location + "results_tin.mat", res["TIN"])
     io.savemat(save_location + "results_ki.mat", res["KI"])
     io.savemat(save_location + "pdf.mat", pdf)
+    io.savemat(save_location + "config.mat", config)
+
     alphabet = {"alphabet": alph}
 
     io.savemat(save_location + "alphabet.mat", alphabet)
