@@ -66,6 +66,14 @@ def main():
     alph = []
 
     for ind_c, chn in enumerate(change_range):
+        print(
+            "************** Change over "
+            + str(config["change"])
+            + ": "
+            + str(chn)
+            + " **************"
+        )
+
         power1, power2 = get_power(chn, nonlinear_class, config)
 
         linear_ki, linear_tin = get_linear_int_capacity(
@@ -90,7 +98,13 @@ def main():
         if config["gd_active"]:
             cap_learned_ki, cap_learned_tin, pdf_learned_tin, pdf_learned_ki = (
                 get_capacity_learned(
-                    regime_RX1, regime_RX2, pdf_x_RX2, int_ratio, config
+                    regime_RX1,
+                    regime_RX2,
+                    pdf_x_RX2,
+                    int_ratio,
+                    config,
+                    save_location,
+                    chn,
                 )
             )
             # Save the results
@@ -112,7 +126,8 @@ def main():
 
     # plot_results
     plot_int_res(res, config, save_location, change_range)
-    plot_int_pdf(pdf, config, save_location, change_range, alph)
+    if config["gd_active"]:
+        plot_int_pdf(pdf, config, save_location, change_range, alph)
 
     # Save the results
 

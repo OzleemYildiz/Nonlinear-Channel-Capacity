@@ -3,7 +3,7 @@ from gaussian_capacity import gaussian_interference_capacity
 from gd import gradient_descent_on_interference
 import matplotlib.pyplot as plt
 import os
-from utils import grid_minor
+from utils import grid_minor, plot_opt
 
 
 def get_save_location(config):
@@ -14,6 +14,8 @@ def get_save_location(config):
     save_location = (
         save_location
         + config["cons_str"]
+        + "Regime="
+        + str(config["regime"])
         + "_Sat="
         + str(config["Saturation_to_Noise"])
         + "_N1="
@@ -54,6 +56,13 @@ def get_power(chn, nonlinear_class, config):
     elif config["change"] == "SNR":
         power1 = nonlinear_class.get_power_fixed_from_SNR(chn)
         power2 = nonlinear_class.get_power_fixed_from_INR(config["snr_fixed"])
+
+    # If I am running in Regime 1, I need to change the power2
+    # Noise 1 is also Gaussian so I sum their powers to get the total power
+
+    if config["regime"] == 1 and config["x2_type"] == 0:
+        power2 = power2 + config["sigma_11"] ** 2
+
     return power1, power2
 
 
@@ -90,7 +99,9 @@ def get_capacity_gaussian(regime_RX1, regime_RX2, pdf_x_RX2, int_ratio):
     return cap_g_ki, cap_g_tin
 
 
-def get_capacity_learned(regime_RX1, regime_RX2, pdf_x_RX2, int_ratio, config):
+def get_capacity_learned(
+    regime_RX1, regime_RX2, pdf_x_RX2, int_ratio, config, save_location, change
+):
 
     # Since X2 is always fixed
     lambda_sweep = [1]
@@ -112,6 +123,11 @@ def get_capacity_learned(regime_RX1, regime_RX2, pdf_x_RX2, int_ratio, config):
         pdf_x_RX2=pdf_x_RX2,
     )
     # KI
+    title = "TIN_" + str(config["change"]) + "=" + str(change)
+    save_new = save_location + "/opt_" + title + ".png"
+
+    plot_opt(save_opt_sum_capacity, save_new, title)
+
     (
         max_sum_cap2,
         pdf_learned_ki,
@@ -128,6 +144,12 @@ def get_capacity_learned(regime_RX1, regime_RX2, pdf_x_RX2, int_ratio, config):
         tin_active=False,  # Then, we apply ki
         pdf_x_RX2=pdf_x_RX2,
     )
+
+    title = "KI_" + str(config["change"]) + "=" + str(change)
+    save_new = save_location + "/opt_" + title + ".png"
+
+    plot_opt(save_opt_sum_capacity2, save_new, title)
+
     return cap_learned_ki, cap_learned_tin, pdf_learned_tin, pdf_learned_ki
 
 
@@ -192,6 +214,7 @@ def plot_int_pdf(pdf, config, save_location, change_range, alph):
 
     markers = ["o", "s", "v", "D", "P", "X", "H", "d", "p", "x"]
     linestyle = ["solid", "dashed", "dashdot", "dotted"]
+
     for ind_c, chn in enumerate(change_range):
         fig, ax = plt.subplots()
         ind_m = 0
@@ -225,4 +248,3 @@ def plot_int_pdf(pdf, config, save_location, change_range, alph):
             bbox_inches="tight",
         )
         plt.close(fig)
-

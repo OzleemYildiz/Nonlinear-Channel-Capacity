@@ -406,16 +406,18 @@ def get_linear_approximation_capacity(regime_RX2, config, power1, pdf_x_RX2):
 
     ki = torch.log(
         1
-        + (d_phi_s * power1) / (regime_RX2.sigma_1**2 * d_phi_s + regime_RX2.sigma_2**2)
+        + (d_phi_s * power1)
+        / (config["sigma_11"] ** 2 * d_phi_s + config["sigma_12"] ** 2)
     )
+
     approx_cap_ki = ki @ pdf_x_RX2
 
     tin = torch.log(
         1
         + (d_phi_s * power1)
         / (
-            regime_RX2.sigma_1**2 * d_phi_s
-            + regime_RX2.sigma_2**2
+            config["sigma_11"] ** 2 * d_phi_s
+            + config["sigma_12"] ** 2**2
             + abs(regime_RX2.get_out_nonlinear(regime_RX2.alphabet_x)) ** 2
         )
     )

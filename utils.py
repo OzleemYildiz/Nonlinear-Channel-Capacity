@@ -689,7 +689,7 @@ def get_max_alphabet_interference(
         max_x = config["stop_sd"] * np.sqrt(avg_power)
         max_x2 = config["stop_sd"] * np.sqrt(power2)
         # If it's clipped after this value, it does not matter to put values outside
-        
+
         if "nonlinearity" in config.keys():
             if config["nonlinearity"] == 5:
                 max_x = config["clipping_limit_x"]

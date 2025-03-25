@@ -124,7 +124,7 @@ class First_Regime:
     def fix_with_multiplying(self, alphabet_x_RX2=None):
 
         if self.multiplying_factor == 1:  # not hardware case
-            return
+            return alphabet_x_RX2
         self.power = self.power / (10**self.multiplying_factor)
         self.alphabet_x_re = self.alphabet_x_re / (10 ** (self.multiplying_factor / 2))
         self.alphabet_y_re = self.alphabet_y_re / (10 ** (self.multiplying_factor / 2))
@@ -147,7 +147,7 @@ class First_Regime:
     # Currently not using
     def unfix_with_multiplying(self, alphabet_x_RX2=None):
         if self.multiplying_factor == 1:
-            return
+            return alphabet_x_RX2
         self.power = self.power * (10**self.multiplying_factor)
         self.alphabet_x_re = self.alphabet_x_re * (10 ** (self.multiplying_factor / 2))
         self.alphabet_y_re = self.alphabet_y_re * (10 ** (self.multiplying_factor / 2))
@@ -264,6 +264,7 @@ class First_Regime:
             # pdf_y_given_x = self.get_pdf_y_given_x_with_interference_nofor(
             #     pdf_x2, alphabet_x2, int_ratio
             # )
+
             pdf_y_given_x = self.get_pdf_y_given_x_with_interference(
                 pdf_x_RX2, alphabet_x_RX2, int_ratio
             )
