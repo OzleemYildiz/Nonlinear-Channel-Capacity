@@ -1,14 +1,14 @@
 dB_definition_active : True
 x2_fixed : True 
 x2_type : 0 # Gaussian is the default
-min_samples: 100 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this
+min_samples: 50 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment
-output_dir : 'R-Int1' # file name to save the results
-regime : 1 # 1: first regime phi(X)+N , 2: second regime phi(IX+N), 3: third regime phi(X+Z_1)+Z_2
+output_dir : 'R-Int3' # file name to save the results
+regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(IX+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
 gd_active : True
 epsilon : 0.0000005 #convergence criteria
-lr : [0.00005] # learning rate
+lr : [0.0001] # learning rate
 max_iter : 10000 # maximum number of iterations
 gd_nostop_cond : False # if True, the gd will not stop until max_iter
 complex : False # if True, the complex alphabet is used

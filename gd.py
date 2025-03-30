@@ -182,9 +182,10 @@ def gradient_descent_on_interference(
                 )
                 pdf_x_RX2.requires_grad = True
                 update_RX2 = True
-                optimizer = torch.optim.AdamW([pdf_x_RX1, pdf_x_RX2], lr=lr)
+                optimizer = torch.optim.Adam([pdf_x_RX1, pdf_x_RX2], lr=lr)
             else:
-                optimizer = torch.optim.AdamW([pdf_x_RX1], lr=lr)
+                optimizer = torch.optim.Adam([pdf_x_RX1], lr=lr)
+                upd_RX2 = False
 
             opt_sum_capacity = []
             max_sum_cap_h = 0

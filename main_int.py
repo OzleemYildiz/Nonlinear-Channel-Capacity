@@ -137,6 +137,7 @@ def main():
     io.savemat(save_location + "config.mat", config)
 
     if config["gd_active"]:
+        plot_int_pdf(pdf, config, save_location, change_range, alph)
         alphabet = {"alphabet": alph}
         io.savemat(save_location + "pdf.mat", pdf)
         io.savemat(save_location + "alphabet.mat", alphabet)
