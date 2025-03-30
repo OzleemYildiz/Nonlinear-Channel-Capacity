@@ -124,6 +124,8 @@ def gradient_descent_on_interference(
     int_ratio,
     tin_active,
     pdf_x_RX2=None,
+    upd_RX2=True,
+    reg3_active=False,
 ):
     # It should return R1 and R2 pairs for different lambda values
     # The loss function is lambda*Rate1 + (1-lambda)*Rate2
@@ -201,6 +203,7 @@ def gradient_descent_on_interference(
                     tin_active,
                     lmbd,
                     upd_RX2=update_RX2,
+                    reg3_active=reg3_active,
                 )
 
                 sum_capacity = loss.detach().clone()

@@ -45,6 +45,8 @@ class First_Regime:
             self.get_quant_param()
         self.get_v_alphabet()
 
+        self.pdf_w_given_x2 = None
+
     # Quantization is on Y
     def get_quant_param(self):
         n_levels = 2 ** self.config["bits"]
@@ -292,7 +294,9 @@ class First_Regime:
             alphabet_v = self.nonlinear_fn(alphabet_u)
         return alphabet_v
 
-    def capacity_with_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
+    def capacity_with_known_interference(
+        self, pdf_x, pdf_x2, alphabet_x2, int_ratio, reg3_active=False
+    ):
 
         alphabet_x2 = self.fix_with_multiplying(alphabet_x2)
 
@@ -303,7 +307,44 @@ class First_Regime:
         if self.pdf_y_given_x_and_x2 is None:
             self.get_pdf_y_given_x1_and_x2(alphabet_x2, int_ratio)
 
-        pdf_y_given_x2_and_x1 = torch.movedim(self.pdf_y_given_x_and_x2, 1, 2)
+        if reg3_active:
+            # In this scenario, I am trying to calculate the capacity of the first regime but want to obtain third regime
+            # X2 here is actually X2+Z1
+
+            # Lets call W = X2+Z1
+            alphabet_w = alphabet_x2
+
+            # Real X2
+            power2 = torch.sum(alphabet_x2**2 * pdf_x2) - self.config["sigma_11"] ** 2
+            delta_x2 = alphabet_x2[1] - alphabet_x2[0]
+            max_x2 = self.config["stop_sd"] * np.sqrt(power2)
+            alphabet_x2 = torch.arange(-max_x2, max_x2 + delta_x2 / 2, delta_x2)
+            pdf_x2 = (
+                1
+                / (torch.sqrt(torch.tensor([2 * torch.pi * power2])))
+                * torch.exp(-0.5 * ((alphabet_x2) ** 2) / power2)
+            )
+            pdf_x2 = pdf_x2 / torch.sum(pdf_x2).to(torch.float32)
+
+            # I need pdf of W given X2 - Gaussian with x2 mean and sigma_11 variance
+            pdf_w_given_x2 = (
+                1 / (torch.sqrt(torch.tensor([2 * torch.pi])) * self.config["sigma_11"])
+            ) * torch.exp(
+                -0.5
+                * ((alphabet_w.reshape(-1, 1) - alphabet_x2.reshape(1, -1)) ** 2)
+                / self.config["sigma_11"] ** 2
+            )
+            pdf_w_given_x2 = pdf_w_given_x2 / (
+                torch.sum(pdf_w_given_x2, axis=0) + 1e-30
+            )
+            self.pdf_w_given_x2 = pdf_w_given_x2  # Delete this after X2 changed and check with this to calculate again
+
+            pdf_y_given_x_and_x2 = self.pdf_y_given_x_and_x2 @ pdf_w_given_x2
+        else:
+            pdf_y_given_x_and_x2 = self.pdf_y_given_x_and_x2
+
+        pdf_y_given_x2_and_x1 = torch.movedim(pdf_y_given_x_and_x2, 1, 2)
+
         pdf_y_given_x2 = pdf_y_given_x2_and_x1 @ pdf_x
 
         entropy_y_given_x2 = -torch.sum(

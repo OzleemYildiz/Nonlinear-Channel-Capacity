@@ -332,7 +332,9 @@ class Third_Regime:
 
         return cap
 
-    def capacity_with_known_interference(self, pdf_x, pdf_x2, alphabet_x2, int_ratio):
+    def capacity_with_known_interference(
+        self, pdf_x, pdf_x2, alphabet_x2, int_ratio, reg3_active=False
+    ):
 
         # I(X1,Y1 | X2) = H(Y1|X2) - H(Y1|X1,X2)
 

@@ -10,8 +10,9 @@ from utils_int import (
     get_capacity_gaussian,
     plot_int_res,
     plot_int_pdf,
+    get_linear_app_int_capacity,
 )
-from utils_interference import get_int_regime, get_linear_approximation_capacity
+from utils_interference import get_int_regime
 from scipy import io
 from gd import get_fixed_interferer
 
@@ -59,11 +60,12 @@ def main():
 
     res["KI"]["Approximation"] = []
 
-    pdf = {
-        "KI": [],
-        "TIN": [],
-    }
-    alph = []
+    if config["gd_active"]:
+        pdf = {
+            "KI": [],
+            "TIN": [],
+        }
+        alph = []
 
     for ind_c, chn in enumerate(change_range):
         print(
@@ -83,13 +85,13 @@ def main():
         regime_RX1, regime_RX2 = get_int_regime(
             config, power1, power2, int_ratio, tanh_factor=0, tanh_factor2=0
         )
-
         save_loc_rx2 = save_location + "/pdf_x_RX2.png"
         pdf_x_RX2 = get_fixed_interferer(
             config, regime_RX2, config["x2_type"], save_loc_rx2
         )
-        approx_cap_ki, _ = get_linear_approximation_capacity(
-            regime_RX2, config, power1, pdf_x_RX2
+
+        approx_cap_ki = get_linear_app_int_capacity(
+            regime_RX2, config, power1, pdf_x_RX2, int_ratio
         )
 
         cap_g_ki, cap_g_tin = get_capacity_gaussian(
@@ -126,19 +128,18 @@ def main():
 
     # plot_results
     plot_int_res(res, config, save_location, change_range)
-    if config["gd_active"]:
-        plot_int_pdf(pdf, config, save_location, change_range, alph)
 
     # Save the results
 
     io.savemat(save_location + "results_tin.mat", res["TIN"])
     io.savemat(save_location + "results_ki.mat", res["KI"])
-    io.savemat(save_location + "pdf.mat", pdf)
+
     io.savemat(save_location + "config.mat", config)
 
-    alphabet = {"alphabet": alph}
-
-    io.savemat(save_location + "alphabet.mat", alphabet)
+    if config["gd_active"]:
+        alphabet = {"alphabet": alph}
+        io.savemat(save_location + "pdf.mat", pdf)
+        io.savemat(save_location + "alphabet.mat", alphabet)
 
     print("Saved in ", save_location)
 

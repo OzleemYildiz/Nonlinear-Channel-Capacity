@@ -977,6 +977,7 @@ def loss_interference(
     lmbd=0.5,
     upd_RX1=True,
     upd_RX2=True,
+    reg3_active=False,
 ):
 
     # Interference loss function for GD
@@ -1018,9 +1019,11 @@ def loss_interference(
         )
 
     elif not tin_active:  # Known interference
+
         cap_RX1 = reg_RX1.capacity_with_known_interference(
-            pdf_x_RX1, pdf_x_RX2, reg_RX2.alphabet_x, int_ratio
+            pdf_x_RX1, pdf_x_RX2, reg_RX2.alphabet_x, int_ratio, reg3_active=reg3_active
         )
+
     cap_RX2 = reg_RX2.new_capacity(pdf_x_RX2)
 
     if torch.isnan(cap_RX1) or torch.isnan(cap_RX2):

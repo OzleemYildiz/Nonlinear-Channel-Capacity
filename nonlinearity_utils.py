@@ -281,9 +281,7 @@ class Hardware_Nonlinear_and_Noise:
 
     def nonlinear_func_numpy(self):
         if self.gain_later:
-            lambda x: np.sqrt(self.gain_lin * self.Esat_lin) * np.tanh(
-                x / np.sqrt(self.Esat_lin)
-            )
+            lambda x: np.sqrt(self.Esat_lin) * np.tanh(x / np.sqrt(self.Esat_lin))
         else:
             return lambda x: np.sqrt(self.gain_lin * self.Esat_lin) * np.tanh(
                 x / np.sqrt(self.Esat_lin)
@@ -415,9 +413,13 @@ class Nonlinearity_Noise:
         self.N_2 = config["N_2"]
         self.sigma_2 = np.sqrt(10 ** (self.N_2 / 10))
         self.saturation_to_noise = config["Saturation_to_Noise"]
-        self.Esat_lin = 10 ** (self.saturation_to_noise / 10) * self.sigma_1**2
+        self.Esat_lin = 10 ** (self.saturation_to_noise / 10) * self.sigma_2**2
 
-    def update_config(self, config):
+    def update_config(self, config, pp=False):
+        if pp:
+            config["sigma_1"] = self.sigma_1
+            config["sigma_2"] = self.sigma_2
+
         config["sigma_11"] = self.sigma_1
         config["sigma_22"] = self.sigma_2
         config["sigma_12"] = self.sigma_2
@@ -427,20 +429,14 @@ class Nonlinearity_Noise:
         return config
 
     def get_power_fixed_from_SNR(self, SNR):
-        return 10 ** (SNR / 10) * self.sigma_1**2
+        return 10 ** (SNR / 10) * self.sigma_2**2
 
     def get_power_fixed_from_INR(self, INR):
-        return 10 ** (INR / 10) * self.sigma_1**2
+        return 10 ** (INR / 10) * self.sigma_2**2
 
     def nonlinear_func_numpy(self):
-        if self.gain_later:
-            lambda x: np.sqrt(self.gain_lin * self.Esat_lin) * np.tanh(
-                x / np.sqrt(self.Esat_lin)
-            )
-        else:
-            return lambda x: np.sqrt(self.gain_lin * self.Esat_lin) * np.tanh(
-                x / np.sqrt(self.Esat_lin)
-            )
+
+        return lambda x: np.sqrt(self.Esat_lin) * np.tanh(x / np.sqrt(self.Esat_lin))
 
     def nonlinear_func_torch(self):
 
