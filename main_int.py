@@ -1,6 +1,6 @@
 import numpy as np
 from utils import read_config
-from nonlinearity_utils import Nonlinearity_Noise
+from nonlinearity_utils import Nonlinearity_Noise, Hardware_Nonlinear_and_Noise
 import os
 from utils_int import (
     get_save_location,
@@ -12,7 +12,7 @@ from utils_int import (
     plot_int_pdf,
     get_linear_app_int_capacity,
 )
-from utils_interference import get_int_regime
+from utils_interference import get_int_regime, get_updated_params_for_hd, fix_config_for_hd
 from scipy import io
 from gd import get_fixed_interferer
 
@@ -31,12 +31,15 @@ def main():
 
     int_ratio = config["int_ratio"]
 
-    change_range = np.linspace(
-        config["snr_min"],
-        config["snr_min"] + config["snr_range"],
+    change_range = np.logspace(
+        np.log10(config["snr_min_dB"]),
+        np.log10(config["snr_min_dB"] + config["snr_range"]),
         config["n_change"],
     )
-    nonlinear_class = Nonlinearity_Noise(config)
+    if config["dB_definition_active"]:
+        nonlinear_class = Nonlinearity_Noise(config)
+    elif config["hardware_params_active"]:
+        nonlinear_class = Hardware_Nonlinear_and_Noise(config)
 
     # Add Noises in the Config
     config = nonlinear_class.update_config(config)
@@ -67,6 +70,8 @@ def main():
         }
         alph = []
 
+    reg3_active = config["reg3_active"] and config["regime"]==1 and config["x2_fixed"] and config["x2_type"]==0
+    
     for ind_c, chn in enumerate(change_range):
         print(
             "************** Change over "
@@ -77,9 +82,12 @@ def main():
         )
 
         power1, power2 = get_power(chn, nonlinear_class, config)
-
+        if config["hardware_params_active"]:
+            power1, power2, config = get_updated_params_for_hd(config, power1, power2)
+            
+        noise_power = nonlinear_class.get_total_noise_power()
         linear_ki, linear_tin = get_linear_int_capacity(
-            power1, power2, nonlinear_class, int_ratio, config
+            power1, power2,  int_ratio, config, reg3_active
         )
 
         regime_RX1, regime_RX2 = get_int_regime(
@@ -95,7 +103,7 @@ def main():
         )
 
         cap_g_ki, cap_g_tin = get_capacity_gaussian(
-            regime_RX1, regime_RX2, pdf_x_RX2, int_ratio
+            regime_RX1, regime_RX2, pdf_x_RX2, int_ratio,reg3_active=reg3_active
         )
         if config["gd_active"]:
             cap_learned_ki, cap_learned_tin, pdf_learned_tin, pdf_learned_ki = (
@@ -107,6 +115,7 @@ def main():
                     config,
                     save_location,
                     chn,
+                    reg3_active=reg3_active,
                 )
             )
             # Save the results
@@ -125,6 +134,8 @@ def main():
 
         # Free the memory
         del pdf_x_RX2, regime_RX1, regime_RX2
+        if config["hardware_params_active"]:
+            config = fix_config_for_hd(config)
 
     # plot_results
     plot_int_res(res, config, save_location, change_range)

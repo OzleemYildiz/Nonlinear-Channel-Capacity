@@ -251,7 +251,7 @@ class Hardware_Nonlinear_and_Noise:
         self.tsamp = 1 / self.bandwidth  # s, sampling time
 
         self.snr_range = config["snr_range"]
-        self.SNR_min_dB = config["SNR_min_dB"]
+        self.SNR_min_dB = config["snr_min_dB"]
         self.gain_later = config["gain_later"]
         """
         Calibrate the saturation level for the tanh nonlinearity
@@ -319,12 +319,17 @@ class Hardware_Nonlinear_and_Noise:
         self.noise2_std = np.sqrt(self.EkT_lin * (self.f2_lin - 1))
 
         if self.gain_later:
+
             self.noise2_std = self.noise2_std / np.sqrt(
                 self.gain_lin
             )  # since the noise is after the gain
 
         return self.noise1_std, self.noise2_std
-
+    
+    def get_total_noise_power(self):
+        return self.noise1_std**2 + self.noise2_std**2
+    
+    
     def get_min_max_power(self):
 
         P_N_dBm = 10 * np.log10(self.noise1_std**2) + 10 * np.log10(self.bandwidth)
@@ -352,7 +357,7 @@ class Hardware_Nonlinear_and_Noise:
 
         return P_in_min_linear, P_in_max_linear
 
-    def get_power_fixed(self, fixed_power):
+    def get_power_fixed_from_SNR(self, fixed_power):
         # if self.regime == 3:
         P_N_dBm = 10 * np.log10(self.noise1_std**2) + 10 * np.log10(self.bandwidth)
         P_in_dBm = fixed_power + P_N_dBm
@@ -402,18 +407,31 @@ class Hardware_Nonlinear_and_Noise:
                 )
             )
         # INR: interference to noise_1 ratio
+    def update_config(self, config, pp=False):
+        if pp:
+            config["sigma_1"] = self.noise1_std
+            config["sigma_2"] = self.noise2_std
 
+        config["sigma_11"] = self.noise1_std
+        config["sigma_22"] = self.noise2_std
+        config["sigma_12"] = self.noise2_std
+        config["sigma_21"] = self.noise1_std
+        config["E_sat"] = self.Esat_lin
+        return config
 
 class Nonlinearity_Noise:
     def __init__(self, config):
         # No gain here, it's adjusted by N_2
 
-        self.N_1 = config["N_1"]  # sigma_1**2
-        self.sigma_1 = np.sqrt(10 ** (self.N_1 / 10))
+        self.N_1 = config["N_1"]  # dB
         self.N_2 = config["N_2"]
-        self.sigma_2 = np.sqrt(10 ** (self.N_2 / 10))
         self.saturation_to_noise = config["Saturation_to_Noise"]
-        self.Esat_lin = 10 ** (self.saturation_to_noise / 10) * self.sigma_2**2
+        self.saturation = self.N_1 + self.saturation_to_noise
+        
+        self.sigma_1 = np.sqrt(10 ** (self.N_1 / 10))
+        self.sigma_2 = np.sqrt(10 ** (self.N_2 / 10))
+        
+        self.Esat_lin = 10 ** (self.saturation / 10) 
 
     def update_config(self, config, pp=False):
         if pp:
@@ -428,11 +446,10 @@ class Nonlinearity_Noise:
         config["multiplying_factor"] = 1
         return config
 
-    def get_power_fixed_from_SNR(self, SNR):
-        return 10 ** (SNR / 10) * self.sigma_2**2
+    def get_power_fixed_from_SNR(self, dB):
+        snr = self.N_1 + dB
+        return 10 ** (snr / 10) 
 
-    def get_power_fixed_from_INR(self, INR):
-        return 10 ** (INR / 10) * self.sigma_2**2
 
     def nonlinear_func_numpy(self):
 

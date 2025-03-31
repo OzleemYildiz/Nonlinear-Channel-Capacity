@@ -25,19 +25,19 @@ def get_save_location(config, pp=False):
         + str(config["N_1"])
         + "_N2="
         + str(config["N_2"])
-        + "_a="
-        + str(config["int_ratio"])
     )
 
     if pp:
         save_location = (
             save_location
             + "_SNR="
-            + str(config["snr_min"])
+            + str(config["snr_min_dB"])
             + "-"
-            + str(config["snr_min"] + config["snr_range"])
+            + str(config["snr_min_dB"] + config["snr_range"])
         )
     else:
+        save_location = save_location + "_a=" + str(config["int_ratio"])
+
         if config["change"] == "INR":
             save_location = save_location + "_SNR2="
 
@@ -46,9 +46,9 @@ def get_save_location(config, pp=False):
 
         save_location = (
             save_location
-            + str(config["snr_min"])
+            + str(config["snr_min_dB"])
             + "-"
-            + str(config["snr_min"] + config["snr_range"])
+            + str(config["snr_min_dB"] + config["snr_range"])
         )
 
         if config["change"] == "INR":
@@ -65,11 +65,11 @@ def get_save_location(config, pp=False):
 
 def get_power(chn, nonlinear_class, config):
     if config["change"] == "INR":
-        power2 = nonlinear_class.get_power_fixed_from_INR(chn)
+        power2 = nonlinear_class.get_power_fixed_from_SNR(chn)
         power1 = nonlinear_class.get_power_fixed_from_SNR(config["snr_fixed"])
     elif config["change"] == "SNR":
         power1 = nonlinear_class.get_power_fixed_from_SNR(chn)
-        power2 = nonlinear_class.get_power_fixed_from_INR(config["snr_fixed"])
+        power2 = nonlinear_class.get_power_fixed_from_SNR(config["snr_fixed"])
 
     # If I am running in Regime 1, I need to change the power2
     # Noise 1 is also Gaussian so I sum their powers to get the total power
@@ -79,11 +79,11 @@ def get_power(chn, nonlinear_class, config):
     return power1, power2
 
 
-def get_linear_int_capacity(power_1, power_2, nonlinear_class, int_ratio, config):
-    noise_power = nonlinear_class.get_total_noise_power()
-
+def get_linear_int_capacity(power_1, power_2, int_ratio, config, reg3_active):
+    
+    noise_power = config["sigma_11"]+config["sigma_12"] ** 2  # Noise for the first receiver
     # Since in this condition, I am adding noise1 to the power2 (summation of Gaussian variances make a new Gaussian)
-    if config["regime"] == 1 and config["x2_type"] == 0:
+    if reg3_active:
         int_power = (power_2 - config["sigma_11"] ** 2) * int_ratio**2
     else:
         int_power = power_2 * int_ratio**2
@@ -101,7 +101,7 @@ def get_linear_int_capacity(power_1, power_2, nonlinear_class, int_ratio, config
     return linear_ki, linear_tin
 
 
-def get_capacity_gaussian(regime_RX1, regime_RX2, pdf_x_RX2, int_ratio):
+def get_capacity_gaussian(regime_RX1, regime_RX2, pdf_x_RX2, int_ratio, reg3_active=False):
 
     # Which should be the case for our current scenarios
     if regime_RX1.config["x2_fixed"]:
@@ -124,13 +124,13 @@ def get_capacity_gaussian(regime_RX1, regime_RX2, pdf_x_RX2, int_ratio):
         tin_active=False,  # Then, we apply ki
         pdf_x_RX2=pdf_x_RX2,
         upd_RX2=upd_RX2,
-        reg3_active=True,
+        reg3_active=reg3_active,
     )
     return cap_g_ki, cap_g_tin
 
 
 def get_capacity_learned(
-    regime_RX1, regime_RX2, pdf_x_RX2, int_ratio, config, save_location, change
+    regime_RX1, regime_RX2, pdf_x_RX2, int_ratio, config, save_location, change, reg3_active=False
 ):
     if regime_RX1.config["x2_fixed"]:
         upd_RX2 = False
@@ -179,7 +179,7 @@ def get_capacity_learned(
         tin_active=False,  # Then, we apply ki
         pdf_x_RX2=pdf_x_RX2,
         upd_RX2=upd_RX2,
-        reg3_active=True,
+        reg3_active=reg3_active,
     )
 
     title = "KI_" + str(config["change"]) + "=" + str(change)
@@ -287,12 +287,12 @@ def plot_int_pdf(pdf, config, save_location, change_range, alph):
         plt.close(fig)
 
 
-def get_linear_app_int_capacity(regime_RX2, config, power1, pdf_x_RX2, int_ratio):
+def get_linear_app_int_capacity(regime_RX2, config, power1, pdf_x_RX2, int_ratio, reg3_active=False):
     # I also deleted multiplying_factor since the current file does not use gain
     # Removed TIN - we dont use this
 
     # The current regime RX2 involves the noise of RX1
-    if config["regime"] == 1 and config["x2_type"] == 0:
+    if reg3_active:
         power2_upd = regime_RX2.power - config["sigma_11"] ** 2
         _, regime_RX2_upd = get_int_regime(
             config, power1, power2_upd, int_ratio, tanh_factor=0, tanh_factor2=0

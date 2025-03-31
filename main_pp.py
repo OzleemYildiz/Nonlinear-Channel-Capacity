@@ -19,6 +19,7 @@ from utils_int import (
 from utils_interference import get_int_regime
 from scipy import io
 from gd import get_fixed_interferer
+from bounds import bound_backtracing_check
 
 
 # In this file, we always take the X_2 fixed during interference - with Gaussian
@@ -34,8 +35,8 @@ def main():
     os.makedirs(save_location, exist_ok=True)
 
     change_range = np.linspace(
-        config["snr_min"],
-        config["snr_min"] + config["snr_range"],
+        config["snr_min_dB"],
+        config["snr_min_dB"] + config["snr_range"],
         config["n_change"],
     )
     nonlinear_class = Nonlinearity_Noise(config)
@@ -85,7 +86,10 @@ def main():
             alph.append(regime_RX1.alphabet_x)
 
         res["Linear"].append(linear_cap)
-        res["Gaussian"].append(cap_g)
+        res["Gaussian"] = bound_backtracing_check(
+            res["Gaussian"],
+            cap_g,
+        )
 
         # Free the memory
         del regime_class

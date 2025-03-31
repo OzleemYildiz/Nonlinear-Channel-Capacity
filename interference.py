@@ -42,6 +42,9 @@ from utils_interference import (
     get_int_regime,
 )
 
+from utils_int import get_linear_app_int_capacity
+
+
 # from memory_profiler import profile
 
 
@@ -83,6 +86,10 @@ def main():
 
             res_change["Linear_Approx_KI"] = []
             res_change["Linear_Approx_TIN"] = []
+            
+        if config["regime"] == 1 and config["x2_type"] == 0:
+            res_change["Linear_Approx_KI"] = []
+
     else:
         res_change = {"R1": {}, "R2": {}}
         res_change["R1"] = {
@@ -105,11 +112,16 @@ def main():
     os.makedirs(save_location, exist_ok=True)
 
     mul_fac = []
-
+    reg3_active = config["reg3_active"] and config["regime"]==1 and config["x2_fixed"] and config["x2_type"]==0
+    if config["x2_fixed"]:
+        upd_RX2 = False
+    
     for ind, chng in enumerate(change_range):
         power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str, res_str_run = (
-            get_run_parameters(config, chng)
+            get_run_parameters(config, chng, reg3_active)
         )
+        
+
         print("Power2: ", power2)
         print("chng: ", chng)
         if config["hardware_params_active"]:
@@ -124,7 +136,7 @@ def main():
 
         res = {"R1": {}, "R2": {}}
         linear_tin, linear_ki = get_linear_interference_capacity(
-            power1, power2, int_ratio, config
+            power1, power2, int_ratio, config, reg3_active=reg3_active
         )
         res["R1"]["Linear_TIN"] = linear_tin
         res["R1"]["Linear_KI"] = linear_ki
@@ -190,6 +202,13 @@ def main():
                 res_change["R1"]["Linear_Approx_KI"].append(approx_cap_ki)
                 res_change["R1"]["Linear_Approx_TIN"].append(approx_cap_tin)
 
+        if config["regime"] == 1 and config["x2_type"] == 0:
+            approx_cap_ki = get_linear_app_int_capacity(
+            regime_RX2, config, power1, pdf_x_RX2, int_ratio, reg3_active
+            )
+            res_change["Linear_Approx_KI"].append(approx_cap_ki)
+        
+        
         # --- Gaussian Capacity
         res_gaus = {}
         cap1_g, cap2_g = gaussian_interference_capacity(
@@ -198,6 +217,7 @@ def main():
             int_ratio=int_ratio,
             tin_active=True,  # First, we apply tin
             pdf_x_RX2=pdf_x_RX2,
+            upd_RX2=upd_RX2,
         )
         if config["x2_fixed"]:
             res["R1"]["Gaussian_TIN"] = cap1_g
@@ -210,6 +230,8 @@ def main():
                 int_ratio=int_ratio,
                 tin_active=False,  # Then, we apply ki
                 pdf_x_RX2=pdf_x_RX2,
+                reg3_active=reg3_active,
+                upd_RX2=upd_RX2,
             )
             res["R1"]["Gaussian_KI"] = cap1_g
             res["R2"]["Gaussian_KI"] = cap2_g
@@ -289,6 +311,7 @@ def main():
                     int_ratio=int_ratio,
                     tin_active=False,  # Then, we apply ki
                     pdf_x_RX2=pdf_x_RX2,
+                    reg3_active=reg3_active,
                 )
                 res["R1"]["Learned_KI"] = max_cap_RX1
                 res["R2"]["Learned_KI"] = max_cap_RX2

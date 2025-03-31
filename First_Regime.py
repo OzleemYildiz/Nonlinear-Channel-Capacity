@@ -137,6 +137,12 @@ class First_Regime:
         self.config["iip3"] = self.config["iip3"] - 10 * self.multiplying_factor
         self.nonlinear_fn = get_nonlinear_fn(self.config)
 
+
+        self.config["sigma_11"] = self.config["sigma_11"] / 10 ** (self.config["multiplying_factor"] / 2)
+        self.config["sigma_12"] = self.config["sigma_12"] / 10 ** (self.config["multiplying_factor"] / 2)
+        self.config["sigma_21"] = self.config["sigma_21"] / 10 ** (self.config["multiplying_factor"] / 2)
+        self.config["sigma_22"] = self.config["sigma_22"] / 10 ** (self.config["multiplying_factor"] / 2)
+
         self.get_x_and_y_alphabet()
         if self.config["ADC"]:
             self.get_quant_param()
@@ -157,6 +163,13 @@ class First_Regime:
         self.alphabet_y_im = self.alphabet_y_im * (10 ** (self.multiplying_factor / 2))
         self.sigma_2 = self.sigma_2 * (10 ** (self.multiplying_factor / 2))
         self.config["sigma_2"] = self.sigma_2
+        
+        self.config["sigma_11"] = self.config["sigma_11"] * 10 ** (self.config["multiplying_factor"] / 2)
+        self.config["sigma_12"] = self.config["sigma_12"] * 10 ** (self.config["multiplying_factor"] / 2)
+        self.config["sigma_21"] = self.config["sigma_21"] * 10 ** (self.config["multiplying_factor"] / 2)
+        self.config["sigma_22"] = self.config["sigma_22"] * 10 ** (self.config["multiplying_factor"] / 2) 
+        
+        
         self.config["iip3"] = self.config["iip3"] + 10 * self.multiplying_factor
         self.nonlinear_fn = get_nonlinear_fn(self.config)
         self.get_x_and_y_alphabet()
@@ -315,6 +328,7 @@ class First_Regime:
             alphabet_w = alphabet_x2
 
             # Real X2
+
             power2 = torch.sum(alphabet_x2**2 * pdf_x2) - self.config["sigma_11"] ** 2
             delta_x2 = alphabet_x2[1] - alphabet_x2[0]
             max_x2 = self.config["stop_sd"] * np.sqrt(power2)

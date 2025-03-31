@@ -158,6 +158,7 @@ def define_save_location(config):
 
 def change_parameters_range(config):
     if config["hardware_params_active"]:
+
         hn = Hardware_Nonlinear_and_Noise(config)
         config["E_sat"] = hn.Esat_lin
         # Currently, noises of both users are same
@@ -228,11 +229,11 @@ def change_parameters_range(config):
     return change_range, config
 
 
-def get_run_parameters(config, chng):
+def get_run_parameters(config, chng, reg3_active=False):
 
     if config["hardware_params_active"]:
         hn = Hardware_Nonlinear_and_Noise(config)
-        power1 = hn.get_power_fixed(config["snr_not_change"])
+        power1 = hn.get_power_fixed_from_SNR(config["snr_not_change"])
         power2 = power1
         int_ratio = config["min_int_ratio"]
         tanh_factor = np.sqrt(hn.Esat_lin)
@@ -314,11 +315,17 @@ def get_run_parameters(config, chng):
             + str(int_ratio)
         )
         res_str_run = "_k2=" + str(tanh_factor2)
-
+     
+    
+     
+    if reg3_active:
+        power2 = power2 + config["sigma_11"] ** 2 # Sum the variance
+     
+     
     return power1, power2, int_ratio, tanh_factor, tanh_factor2, res_str, res_str_run
 
 
-def get_linear_interference_capacity(power1, power2, int_ratio, config):
+def get_linear_interference_capacity(power1, power2, int_ratio, config, reg3_active=False):
     # This is X2 fixed results --- X1's tin and ki results
     # This is for USER 1
     if config["hardware_params_active"]:
@@ -344,6 +351,17 @@ def get_linear_interference_capacity(power1, power2, int_ratio, config):
     else:
         power1_snr = power1
         int_snr = int_ratio**2 * power2
+        
+    if reg3_active: # This assumes gain_later is True
+        if config["hardware_params_active"] and not config["gain_later"]:
+            sigma_1_snr = config["sigma_11"] ** 2 * hn.gain_lin
+        else:
+            sigma_1_snr = config["sigma_11"] ** 2
+        noise_power = sigma_1_snr + config["sigma_12"] ** 2
+
+        
+        int_snr = (power2-config["sigma_11"]**2) * int_ratio**2
+
 
     snr_linear_ki = power1_snr / noise_power
     snr_linear_tin = power1_snr / (noise_power + int_snr)
