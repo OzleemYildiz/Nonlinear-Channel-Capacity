@@ -61,7 +61,7 @@ def main():
         res["TIN"]["Optimized"] = []
     res["Change_Range"] = change_range
 
-    res["KI"]["Approximation"] = []
+    # res["KI"]["Approximation"] = []
 
     if config["gd_active"]:
         pdf = {
@@ -93,14 +93,15 @@ def main():
         regime_RX1, regime_RX2 = get_int_regime(
             config, power1, power2, int_ratio, tanh_factor=0, tanh_factor2=0
         )
+        
         save_loc_rx2 = save_location + "/pdf_x_RX2.png"
         pdf_x_RX2 = get_fixed_interferer(
             config, regime_RX2, config["x2_type"], save_loc_rx2
         )
-
-        approx_cap_ki = get_linear_app_int_capacity(
-            regime_RX2, config, power1, pdf_x_RX2, int_ratio
-        )
+       
+        # approx_cap_ki = get_linear_app_int_capacity(
+        #     regime_RX2, config, power1, pdf_x_RX2, int_ratio
+        # )
 
         cap_g_ki, cap_g_tin = get_capacity_gaussian(
             regime_RX1, regime_RX2, pdf_x_RX2, int_ratio,reg3_active=reg3_active
@@ -132,7 +133,7 @@ def main():
 
         res["TIN"]["Linear"].append(linear_tin)
         res["KI"]["Linear"].append(linear_ki)
-        res["KI"]["Approximation"].append(approx_cap_ki)
+        # res["KI"]["Approximation"].append(approx_cap_ki)
         res["KI"]["Gaussian"].append(cap_g_ki)
         res["TIN"]["Gaussian"].append(cap_g_tin)
 

@@ -80,8 +80,10 @@ def get_power(chn, nonlinear_class, config):
 
 
 def get_linear_int_capacity(power_1, power_2, int_ratio, config, reg3_active):
-    
-    noise_power = config["sigma_11"]+config["sigma_12"] ** 2  # Noise for the first receiver
+    if config["regime"] == 1:
+        noise_power = config["sigma_12"] ** 2  # Noise for the second receiver
+    else:
+        noise_power = config["sigma_11"]+config["sigma_12"] ** 2  # Noise for the first receiver
     # Since in this condition, I am adding noise1 to the power2 (summation of Gaussian variances make a new Gaussian)
     if reg3_active:
         int_power = (power_2 - config["sigma_11"] ** 2) * int_ratio**2
@@ -96,6 +98,7 @@ def get_linear_int_capacity(power_1, power_2, int_ratio, config, reg3_active):
     linear_tin = 1 / 2 * np.log(1 + snr_linear_tin)
 
     if config["complex"]:  # 1/2 comes from real
+       
         linear_ki = linear_ki * 2
         linear_tin = linear_tin * 2
     return linear_ki, linear_tin
@@ -108,15 +111,16 @@ def get_capacity_gaussian(regime_RX1, regime_RX2, pdf_x_RX2, int_ratio, reg3_act
         upd_RX2 = False
     else:
         raise ValueError("Not implemented yet")
-
-    cap_g_tin, _ = gaussian_interference_capacity(
-        reg_RX1=regime_RX1,
-        reg_RX2=regime_RX2,
-        int_ratio=int_ratio,
-        tin_active=True,  # First, we apply tin
-        pdf_x_RX2=pdf_x_RX2,
-        upd_RX2=upd_RX2,
-    )
+    
+    # cap_g_tin, _ = gaussian_interference_capacity(
+    #     reg_RX1=regime_RX1,
+    #     reg_RX2=regime_RX2,
+    #     int_ratio=int_ratio,
+    #     tin_active=True,  # First, we apply tin
+    #     pdf_x_RX2=pdf_x_RX2,
+    #     upd_RX2=upd_RX2,
+    # )
+    cap_g_tin=0
     cap_g_ki, _ = gaussian_interference_capacity(
         reg_RX1=regime_RX1,
         reg_RX2=regime_RX2,
@@ -327,7 +331,7 @@ def get_linear_app_int_capacity(regime_RX2, config, power1, pdf_x_RX2, int_ratio
         + (d_phi_s * power1)
         / (config["sigma_11"] ** 2 * d_phi_s + config["sigma_12"] ** 2)
     )
-
+    pdf_x_RX2_upd = pdf_x_RX2_upd.to(dtype=ki.dtype)
     approx_cap_ki = ki @ pdf_x_RX2_upd
 
     if not config["complex"]:

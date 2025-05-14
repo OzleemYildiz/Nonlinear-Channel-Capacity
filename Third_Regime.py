@@ -278,7 +278,8 @@ class Third_Regime:
             pdf_y_given_x_x2_z1 = pdf_y_given_x_x2_z1 / (
                 torch.sum(pdf_y_given_x_x2_z1, axis=0) + 1e-30
             )
-
+            
+            pdf_y_given_x_x2_z1 = pdf_y_given_x_x2_z1.to(dtype=pdf_z1.dtype)
             pdf_y_given_x_and_x2[:, ind, :] = pdf_y_given_x_x2_z1 @ pdf_z1
 
         pdf_y_given_x_and_x2 = pdf_y_given_x_and_x2 / (

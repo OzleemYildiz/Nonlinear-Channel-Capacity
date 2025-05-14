@@ -197,6 +197,7 @@ class First_Regime:
         #     p_y_g_x = self.pdf_y_given_x
 
         py_x_logpy_x = p_y_g_x * torch.log(p_y_g_x + 1e-20)
+        
         px_py_x_logpy_x = py_x_logpy_x @ pdf_x
         f_term = torch.sum(px_py_x_logpy_x)
         py = p_y_g_x @ pdf_x
@@ -210,14 +211,15 @@ class First_Regime:
     def get_pdf_y_given_x1_and_x2(self, alphabet_x_RX2, int_ratio):
         if self.pdf_y_given_x_and_x2 is not None:
             return
-
+       
         pdf_y_given_x1_and_x2 = torch.zeros(
             (len(self.alphabet_y), len(self.alphabet_x), len(alphabet_x_RX2))
         )
+        
         for ind, x in enumerate(self.alphabet_x):
             # U = X1 + aX2, a = 1 #FIXME: a is fixed to 1
             alphabet_u = int_ratio * alphabet_x_RX2 + x
-
+           
             alphabet_v = self.get_out_nonlinear(alphabet_u)
             if self.config["complex"]:
                 pdf_y_given_x1_and_x2[:, ind, :] = (
@@ -312,7 +314,7 @@ class First_Regime:
     ):
 
         alphabet_x2 = self.fix_with_multiplying(alphabet_x2)
-
+        
         # pdf_y_given_x2_and_x1, pdf_y_given_x2 = self.get_pdfs_for_known_interference(
         #     pdf_x, pdf_x2, alphabet_x2, int_ratio
         # )
@@ -357,10 +359,11 @@ class First_Regime:
         else:
             pdf_y_given_x_and_x2 = self.pdf_y_given_x_and_x2
 
+        
         pdf_y_given_x2_and_x1 = torch.movedim(pdf_y_given_x_and_x2, 1, 2)
 
         pdf_y_given_x2 = pdf_y_given_x2_and_x1 @ pdf_x
-
+        
         entropy_y_given_x2 = -torch.sum(
             (pdf_y_given_x2 * torch.log(pdf_y_given_x2 + 1e-20)) @ pdf_x2
         )

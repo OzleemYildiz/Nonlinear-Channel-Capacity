@@ -307,8 +307,11 @@ def gradient_descent_on_interference(
 
 
 def get_fixed_interferer(config, regime, x_type, save_location=None):
-
-    if x_type == 0:
+    if x_type =="QAM":
+        print(" +++----- X2 Distribution is QAM ------ +++")
+        pdf_x  = (torch.ones_like(regime.alphabet_x.real) * 1 / len(regime.alphabet_x))
+        
+    elif x_type == 0:
         print(" +++----- X2 Distribution is Gaussian ------ +++")
 
         pdf_x = get_gaussian_distribution(
