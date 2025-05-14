@@ -1,8 +1,8 @@
-min_power1 : 2
+min_power1 : 0.31
 max_power1 : 100
-min_power2 : 40
+min_power2 : 3.16
 max_power2 : 100
-min_tanh_factor : 6 # k when the nonlinearity is ktanh(x/k)
+min_tanh_factor : 3 # k when the nonlinearity is ktanh(x/k)
 max_tanh_factor : 10 # k when the nonlinearity is ktanh(x/k)
 min_tanh_factor_2 : 4 # k when the nonlinearity is ktanh(x/k) for User 2
 max_tanh_factor_2 : 5 # k when the nonlinearity is ktanh(x/k) for User 2
@@ -40,7 +40,7 @@ hd_change : 'pw1' # pw1: change the power1, pw2: change the power2, a:int_ratio 
 snr_not_change : 5 #-160-> This makes sense for Regime 1
 gain_later : True
 tdm_active : False
-hardware_params_active : True # hardware parameters are active for the nonlinearity **overwrites the other parameters
+hardware_params_active : False # hardware parameters are active for the nonlinearity **overwrites the other parameters
 noise_figure1 : 2.68 # dB noise figure of the first amplifier
 noise_figure2 : 15 # dB noise figure of the remaining circuits
 gain : 17.32 # dB gain of the LNA
@@ -48,3 +48,4 @@ iip3 : 1.01 # dBm IIP3 of the LNA
 bandwidth : 980000000 # Hz bandwidth of the LNA
 
 dB_definition_active : False
+reg3_active: False

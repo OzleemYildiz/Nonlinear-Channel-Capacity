@@ -217,7 +217,6 @@ def quant(distances, pdf_y_given_x, quant_locs, indices, temperature=0.01):
 
     return quant_pdf
 
-
 def real_quant(quant_locs, indices, pdf):
     if len(pdf.shape) == 1:
         summed_pdf = torch.zeros((len(quant_locs)), dtype=torch.float)

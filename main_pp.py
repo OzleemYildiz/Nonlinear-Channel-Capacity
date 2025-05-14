@@ -47,7 +47,7 @@ def main():
     res = {
         "Linear": [],
         "Gaussian": [],
-        "MMSE": [],
+        #"MMSE": [],
     }
 
     if config["gd_active"]:
@@ -73,7 +73,7 @@ def main():
 
         cap_g = get_gaussian_cap(regime_class, power1, config)
 
-        res = get_mmse_cap(regime_class, res)  # added in the function
+        #res = get_mmse_cap(regime_class, res)  # added in the function
 
         if config["gd_active"]:
             cap_learned, pdf_learned = get_capacity_learned(

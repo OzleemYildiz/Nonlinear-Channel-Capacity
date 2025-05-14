@@ -7,7 +7,7 @@ from utils import grid_minor, plot_opt
 from utils_interference import get_int_regime
 
 from nonlinearity_utils import get_derivative_of_nonlinear_fn
-
+import torch
 
 def get_save_location(config, pp=False):
     save_location = config["output_dir"] + "/"

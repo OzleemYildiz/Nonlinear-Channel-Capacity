@@ -40,7 +40,7 @@ def entropy_y(varx, varz, Nu, max_sig):
     y_bnds = np.tanh(u_bnds)
 
     delta_y = np.ediff1d(y_bnds) + eps
-
+    breakpoint()
     h_y = np.sum(-f_u * np.log(f_u / delta_y))
 
     return h_y
@@ -66,42 +66,46 @@ def entropy_y_given_x(varx, varz, Nx, Nz, max_sig):
     y_bnd_gx = np.tanh(u_bnd_gx)
 
     delta_y = np.diff(y_bnd_gx, axis=0) + eps
+    breakpoint()
     h_y_Gx = np.dot(f_x, np.sum(-f_z * np.log(f_z / delta_y), axis=0))
 
     return h_y_Gx
 
+def main():
+    SNR_list = [x * 2.0 for x in range(11)]  # I don't know why it's a list
 
-SNR_list = [x * 2.0 for x in range(11)]  # I don't know why it's a list
+    Nx = int(1e3)
+    Nz = int(1e3)
+    Nu = int(1e3)
+    gaus_pdf = lambda x: 1 / np.sqrt(2 * np.pi * Omega) * np.exp(-0.5 * x**2 / Omega)
+    max_sig = 4.0
 
-Nx = int(1e3)
-Nz = int(1e3)
-Nu = int(1e3)
-gaus_pdf = lambda x: 1 / np.sqrt(2 * np.pi * Omega) * np.exp(-0.5 * x**2 / Omega)
-max_sig = 4.0
+    varz = 1
 
-varz = 1
+    Gaussian_ach = []  # why are these lists ????
+    AWGN_capacity = []
 
-Gaussian_ach = []  # why are these lists ????
-AWGN_capacity = []
+    for snr in SNR_list:
+        varx = 10 ** (snr / 10)
+        h_y = entropy_y(varx, varz, Nu, max_sig)
+        h_y_Gx = entropy_y_given_x(varx, varz, Nx, Nz, max_sig)
 
-for snr in SNR_list:
-    varx = 10 ** (snr / 10)
-    h_y = entropy_y(varx, varz, Nu, max_sig)
-    h_y_Gx = entropy_y_given_x(varx, varz, Nx, Nz, max_sig)
+        Gaussian_ach.append(h_y - h_y_Gx)
+        AWGN_capacity.append(0.5 * np.log(1 + varx / varz))
 
-    Gaussian_ach.append(h_y - h_y_Gx)
-    AWGN_capacity.append(0.5 * np.log(1 + varx / varz))
+    plt.plot(SNR_list, AWGN_capacity, label="AWGN Capacity", marker="x")
+    plt.plot(
+        SNR_list,
+        Gaussian_ach,
+        label="Gaussian_ach  " + r"$\left(\frac{x}{(1+x^4)^{1/4}}\right)$",
+        marker="o",
+    )
+    plt.legend(loc="upper left")
+    plt.xlim([0.0, 20.0])
+    plt.xlabel("SNR (dB)")
+    plt.ylabel("Rate (nats)")
+    plt.grid(True)
+    plt.show()
 
-plt.plot(SNR_list, AWGN_capacity, label="AWGN Capacity", marker="x")
-plt.plot(
-    SNR_list,
-    Gaussian_ach,
-    label="Gaussian_ach  " + r"$\left(\frac{x}{(1+x^4)^{1/4}}\right)$",
-    marker="o",
-)
-plt.legend(loc="upper left")
-plt.xlim([0.0, 20.0])
-plt.xlabel("SNR (dB)")
-plt.ylabel("Rate (nats)")
-plt.grid(True)
-plt.show()
+if __name__ == "__main__":
+    main()

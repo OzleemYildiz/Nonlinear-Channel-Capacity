@@ -369,7 +369,7 @@ def get_linear_interference_capacity(power1, power2, int_ratio, config, reg3_act
     linear_ki = 1 / 2 * np.log(1 + snr_linear_ki)
 
     linear_tin = 1 / 2 * np.log(1 + snr_linear_tin)
-
+    breakpoint()
     if config["complex"]:  # 1/2 comes from real
         linear_ki = linear_ki * 2
         linear_tin = linear_tin * 2

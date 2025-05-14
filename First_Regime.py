@@ -369,7 +369,9 @@ class First_Regime:
             ((pdf_y_given_x2_and_x1 * torch.log(pdf_y_given_x2_and_x1 + 1e-20)) @ pdf_x)
             @ pdf_x2
         )
+    
         cap = entropy_y_given_x2 - entropy_y_given_x1_and_x2
+        
         alphabet_x2 = self.unfix_with_multiplying(alphabet_x2)
         return cap
 

@@ -31,9 +31,9 @@ def main():
 
     int_ratio = config["int_ratio"]
 
-    change_range = np.logspace(
-        np.log10(config["snr_min_dB"]),
-        np.log10(config["snr_min_dB"] + config["snr_range"]),
+    change_range = np.linspace(
+        config["snr_min_dB"],
+        config["snr_min_dB"] + config["snr_range"],
         config["n_change"],
     )
     if config["dB_definition_active"]:
@@ -105,6 +105,10 @@ def main():
         cap_g_ki, cap_g_tin = get_capacity_gaussian(
             regime_RX1, regime_RX2, pdf_x_RX2, int_ratio,reg3_active=reg3_active
         )
+        print("Linear KI: ", linear_ki)
+        print("Gaussian KI: ", cap_g_ki)
+        
+        
         if config["gd_active"]:
             cap_learned_ki, cap_learned_tin, pdf_learned_tin, pdf_learned_ki = (
                 get_capacity_learned(
