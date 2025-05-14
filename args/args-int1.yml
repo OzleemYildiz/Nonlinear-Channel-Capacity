@@ -36,4 +36,4 @@ iip3 : -6.3 # dBm IIP3 of the LNA
 bandwidth : 500000000 # Hz bandwidth of the signal
 gain_later : True
 
-reg3_active : False # if True and regime 1 and x2 fixed and Gaussian, the noise variance is added into the X2 (has to be Gaussian )
+reg3_active : True # if True and regime 1 and x2 fixed and Gaussian, the noise variance is added into the X2 (has to be Gaussian )
