@@ -1,31 +1,40 @@
-dB_definition_active : True
+
 x2_fixed : True 
-x2_type : 0 # Gaussian is the default
-min_samples: 50 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this
+x2_type : QAM # Gaussian is the default
+QAM_k : 4 # number of bits in the QAM
+min_samples: 100 # minimum number of samples to represent alphabets - to update delta if the sample number is lower than this
 cons_type : 1 # 0:peak power, 1:average power, 2:first moment
-output_dir : 'R-Int3' # file name to save the results
+output_dir : 'May14/' # file name to save the results
 regime : 3 # 1: first regime phi(X)+N , 2: second regime phi(IX+N), 3: third regime phi(X+Z_1)+Z_2
 stop_sd : 4 # the length of the sigma, alphabet_x, pdf_x, powerl is taken as stop_sd*sigma extra while calculating the alphabet
-gd_active : True
-epsilon : 0.0000005 #convergence criteria
-lr : [0.00005] # learning rate
+gd_active : False
+epsilon : 0.0000001 #convergence criteria
+lr : [0.005] # learning rate
 max_iter : 10000 # maximum number of iterations
-gd_nostop_cond : False # if True, the gd will not stop until max_iter
-complex : False # if True, the complex alphabet is used
+gd_nostop_cond : True # if True, the gd will not stop until max_iter
+complex : True # if True, the complex alphabet is used
 # New params for the hardware integration
 bits : 3 # bits of the ADC !! Currently not active
 ADC : False
 change : 'INR' # inr: interference_ratio, snr:signal to noise ratio
 n_change : 10 # number of SNRs
-snr_min : 5 # dB
-snr_range : 20 #dB
-snr_fixed : 15 #if the change is inr, this is the fixed snr1, otherwise snr2
-int_ratio : 4 # interference ratio  # different than 1 seems off currently - since I am trying to sum up Noise 1 in power2 if its regime 1
-N_1 : 1 # noise power of w_1 #dB
-N_2 : -25 # noise power of w_2 #dB
-Saturation_to_Noise : 60 #dB
+snr_min_dB : -10 # dB
+snr_range : 100 #dB
+snr_fixed : 10 #if the change iIs inr, this is the fixed snr1, otherwise snr2
+int_ratio : 1 # interference ratio  # different than 1 seems off currently - since I am trying to sum up Noise 1 in power2 if its regime 1
+N_1 : 0 # noise power of w_1 #dB
+N_2 : -10 # noise power of w_2 #dB
+Saturation_to_Noise : 20 #dB
 
 # Y = phi(X_1 + W_1 + aX_2) + W_2
+dB_definition_active : True
 
+hardware_params_active : False # hardware parameters are active for the nonlinearity
+noise_figure1 : 4.53 # dB noise figure of the first amplifier
+noise_figure2 : 15 # dB noise figure of the remaining circuits
+gain : 15.83 # dBI gain of the LNA
+iip3 : -6.3 # dBm IIP3 of the LNA
+bandwidth : 500000000 # Hz bandwidth of the signal
+gain_later : True
 
-
+reg3_active : False # if True and regime 1 and x2 fixed and Gaussian, the noise variance is added into the X2 (has to be Gaussian )
